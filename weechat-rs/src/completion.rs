@@ -125,7 +125,8 @@ impl Weechat {
                 { &mut *(pointer as *mut CompletionHookData<T>) };
             let callback = hook_data.callback;
             let callback_data = &hook_data.callback_data;
-            let buffer = Buffer::from_ptr(hook_data.weechat_ptr, buffer);
+            let weechat = Weechat::from_ptr(hook_data.weechat_ptr);
+            let buffer = weechat.buffer_from_ptr(buffer);
 
             let completion_item =
                 CStr::from_ptr(completion_item).to_string_lossy();

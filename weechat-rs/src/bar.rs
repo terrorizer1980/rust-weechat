@@ -58,7 +58,8 @@ impl Weechat {
                 { &mut *(pointer as *mut BarItemCbData<T>) };
             let callback = data.callback;
             let callback_data = &data.callback_data;
-            let buffer = Buffer::from_ptr(data.weechat_ptr, buffer);
+            let weechat = Weechat::from_ptr(data.weechat_ptr);
+            let buffer = weechat.buffer_from_ptr(buffer);
 
             let item = LightBarItem {
                 ptr: bar_item,

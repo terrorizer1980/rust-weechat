@@ -1,10 +1,12 @@
 //! Weechat Buffer module containing Buffer and Nick types.
-use crate::{LossyCString, Weechat};
-use libc::{c_char, c_int};
+use std::marker::PhantomData;
 use std::borrow::Cow;
 use std::ffi::CStr;
 use std::os::raw::c_void;
 use std::ptr;
+
+use crate::{LossyCString, Weechat};
+use libc::{c_char, c_int};
 use weechat_sys::{
     t_gui_buffer, t_gui_nick, t_gui_nick_group, t_weechat_plugin, WEECHAT_RC_OK,
 };
@@ -12,12 +14,13 @@ use weechat_sys::{
 /// A high level Buffer type encapsulating weechats C buffer pointer.
 /// The buffer won't be closed if the object is destroyed.
 #[derive(Eq)]
-pub struct Buffer {
+pub struct Buffer<'a> {
     pub(crate) weechat: *mut t_weechat_plugin,
     pub(crate) ptr: *mut t_gui_buffer,
+    weechat_phantom: PhantomData<&'a Weechat>
 }
 
-impl PartialEq for Buffer {
+impl PartialEq for Buffer<'_> {
     fn eq(&self, other: &Buffer) -> bool {
         self.ptr == other.ptr
     }
@@ -56,7 +59,15 @@ impl Weechat {
         if buf_ptr.is_null() {
             None
         } else {
-            Some(Buffer::from_ptr(self.ptr, buf_ptr))
+            Some(self.buffer_from_ptr(buf_ptr))
+        }
+    }
+
+    pub(crate) fn buffer_from_ptr(&self, buffer_ptr: *mut t_gui_buffer) -> Buffer {
+        Buffer {
+            weechat: self.ptr,
+            ptr: buffer_ptr,
+            weechat_phantom: PhantomData,
         }
     }
 
@@ -69,7 +80,7 @@ impl Weechat {
         if buf_ptr.is_null() {
             None
         } else {
-            Some(Buffer::from_ptr(self.ptr, buf_ptr))
+            Some(self.buffer_from_ptr(buf_ptr))
         }
     }
 
@@ -101,7 +112,8 @@ impl Weechat {
             let pointers: &mut BufferPointers<A, B> =
                 { &mut *(pointer as *mut BufferPointers<A, B>) };
 
-            let buffer = Buffer::from_ptr(pointers.weechat, buffer);
+            let weechat = Weechat::from_ptr(pointers.weechat);
+            let buffer = weechat.buffer_from_ptr(buffer);
             let data = &mut pointers.input_data;
 
             if let Some(callback) = pointers.input_cb {
@@ -119,7 +131,8 @@ impl Weechat {
             // We use from_raw() here so that the box get's freed at the end
             // of this scope.
             let pointers = Box::from_raw(pointer as *mut BufferPointers<A, B>);
-            let buffer = Buffer::from_ptr(pointers.weechat, buffer);
+            let weechat = Weechat::from_ptr(pointers.weechat);
+            let buffer = weechat.buffer_from_ptr(buffer);
             let data = &pointers.close_cb_data;
 
             if let Some(callback) = pointers.close_cb {
@@ -166,6 +179,7 @@ impl Weechat {
         Buffer {
             weechat: self.ptr,
             ptr: buf_ptr,
+            weechat_phantom: PhantomData,
         }
     }
 }
@@ -271,24 +285,7 @@ impl<'a> Default for NickArgs<'a> {
     }
 }
 
-impl Buffer {
-    /// Create a high level Buffer object from a C plugin pointer and the
-    /// buffer pointer.
-    pub(crate) fn from_ptr(
-        weechat_ptr: *mut t_weechat_plugin,
-        buffer_ptr: *mut t_gui_buffer,
-    ) -> Buffer {
-        Buffer {
-            weechat: weechat_ptr,
-            ptr: buffer_ptr,
-        }
-    }
-
-    /// Get the Weechat plugin object from a Buffer object.
-    pub fn get_weechat(&self) -> Weechat {
-        Weechat::from_ptr(self.weechat)
-    }
-
+impl Buffer<'_> {
     /// Display a message on the buffer.
     pub fn print(&self, message: &str) {
         let weechat = Weechat::from_ptr(self.weechat);

@@ -195,7 +195,8 @@ impl Weechat {
         ) -> c_int {
             let hook_data: &mut CommandHookData<T> =
                 { &mut *(pointer as *mut CommandHookData<T>) };
-            let buffer = Buffer::from_ptr(hook_data.weechat_ptr, buffer);
+            let weechat = Weechat::from_ptr(hook_data.weechat_ptr);
+            let buffer = weechat.buffer_from_ptr(buffer);
             let callback = hook_data.callback;
             let callback_data = &hook_data.callback_data;
             let args = ArgsWeechat::new(argc, argv);
@@ -419,7 +420,8 @@ impl Weechat {
             let callback = hook_data.callback;
             let callback_data = &hook_data.callback_data;
 
-            let buffer = Buffer::from_ptr(hook_data.weechat_ptr, buffer);
+            let weechat = Weechat::from_ptr(hook_data.weechat_ptr);
+            let buffer = weechat.buffer_from_ptr(buffer);
             let command = CStr::from_ptr(command).to_string_lossy();
 
             callback(callback_data, buffer, command) as isize as i32
