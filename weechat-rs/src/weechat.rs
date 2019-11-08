@@ -88,13 +88,30 @@ pub struct Weechat {
     pub(crate) ptr: *mut t_weechat_plugin,
 }
 
+static mut WEECHAT: Option<Weechat> = None;
+
 impl Weechat {
     /// Create a Weechat object from a C t_weechat_plugin pointer.
     /// * `ptr` - Pointer of the weechat plugin.
-    pub fn from_ptr(ptr: *mut t_weechat_plugin) -> Weechat {
+    pub unsafe fn init_from_ptr(ptr: *mut t_weechat_plugin) -> Weechat {
         assert!(!ptr.is_null());
-
         Weechat { ptr }
+    }
+
+    pub(crate) fn from_ptr(ptr: *mut t_weechat_plugin) -> Weechat {
+        assert!(!ptr.is_null());
+        Weechat { ptr }
+    }
+
+    pub unsafe fn init(weechat: Weechat) {
+        WEECHAT = Some(weechat)
+    }
+
+    pub unsafe fn weechat() -> &'static mut Weechat {
+        match WEECHAT {
+            Some(ref mut w) => w,
+            None => panic!("Plugin wasn't initialized correctly"),
+        }
     }
 
     #[inline]

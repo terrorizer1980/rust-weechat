@@ -138,11 +138,16 @@ pub fn weechat_plugin(input: proc_macro::TokenStream) -> proc_macro::TokenStream
             argc: libc::c_int,
             argv: *mut *mut ::libc::c_char,
         ) -> libc::c_int {
-            let plugin = Weechat::from_ptr(plugin);
+            let weechat = unsafe {
+                Weechat::init_from_ptr(plugin)
+            };
             let args = ArgsWeechat::new(argc, argv);
-            match <#plugin as ::weechat::WeechatPlugin>::init(plugin, args) {
+            match <#plugin as ::weechat::WeechatPlugin>::init(&weechat, args) {
                 Ok(p) => {
-                    unsafe { __PLUGIN = Some(p) }
+                    unsafe {
+                        __PLUGIN = Some(p);
+                        Weechat::init(weechat);
+                    }
                     return weechat_sys::WEECHAT_RC_OK;
                 }
                 Err(_e) => {
@@ -157,6 +162,15 @@ pub fn weechat_plugin(input: proc_macro::TokenStream) -> proc_macro::TokenStream
                 __PLUGIN = None;
             }
             weechat_sys::WEECHAT_RC_OK
+        }
+
+        pub(crate) fn plugin() -> &'static mut #plugin {
+            unsafe {
+                match &mut __PLUGIN {
+                    Some(p) => p,
+                    None => panic!("Weechat plugin isn't initialized"),
+                }
+            }
         }
     };
 

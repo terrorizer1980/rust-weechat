@@ -8,7 +8,6 @@ use weechat::{
 };
 
 struct SamplePlugin {
-    weechat: Weechat,
     _rust_hook: CommandHook<String>,
     _rust_config: Config<String>,
     _item: BarItem<String>,
@@ -23,8 +22,7 @@ impl SamplePlugin {
     }
 
     fn close_cb(_data: &(), buffer: Buffer) {
-        let w = buffer.get_weechat();
-        w.print("Closing buffer")
+        // weechat.print("Closing buffer")
     }
 
     fn rust_command_cb(data: &String, buffer: Buffer, args: ArgsWeechat) {
@@ -49,7 +47,7 @@ impl SamplePlugin {
 }
 
 impl WeechatPlugin for SamplePlugin {
-    fn init(weechat: Weechat, _args: ArgsWeechat) -> WeechatResult<Self> {
+    fn init(weechat: &Weechat, _args: ArgsWeechat) -> WeechatResult<Self> {
         weechat.print("Hello Rust!");
 
         let buffer: Buffer = weechat.buffer_new(
@@ -130,7 +128,6 @@ impl WeechatPlugin for SamplePlugin {
             weechat.new_bar_item("buffer_plugin", SamplePlugin::bar_cb, None);
 
         Ok(SamplePlugin {
-            weechat,
             _rust_hook: command,
             _rust_config: config,
             _item: item,
@@ -140,7 +137,6 @@ impl WeechatPlugin for SamplePlugin {
 
 impl Drop for SamplePlugin {
     fn drop(&mut self) {
-        self.weechat.print("Bye rust!");
     }
 }
 
