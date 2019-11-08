@@ -6,7 +6,6 @@ pub mod completion;
 pub mod config;
 pub mod config_options;
 pub mod hooks;
-pub mod infolist;
 pub mod plugin;
 pub mod weechat;
 
@@ -28,8 +27,6 @@ pub use hooks::{
 };
 
 pub use completion::{Completion, CompletionHook, CompletionPosition};
-
-pub use infolist::Infolist;
 
 use std::ffi::CString;
 
