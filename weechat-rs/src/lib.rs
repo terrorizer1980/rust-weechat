@@ -1,17 +1,17 @@
 #![warn(missing_docs)]
 
+use libc::c_int;
+
 pub mod bar;
 pub mod buffer;
 pub mod completion;
 pub mod config;
 pub mod config_options;
 pub mod hooks;
-pub mod plugin;
 pub mod weechat;
 
 pub use weechat_macro::weechat_plugin;
 
-pub use plugin::{WeechatPlugin, WeechatResult};
 pub use weechat::{ArgsWeechat, OptionChanged, Weechat};
 
 pub use buffer::{Buffer, Nick, NickArgs};
@@ -29,6 +29,13 @@ pub use hooks::{
 pub use completion::{Completion, CompletionHook, CompletionPosition};
 
 use std::ffi::CString;
+
+pub trait WeechatPlugin: Sized {
+    fn init(weechat: &Weechat, args: ArgsWeechat) -> WeechatResult<Self>;
+}
+
+pub struct Error(c_int);
+pub type WeechatResult<T> = Result<T, Error>;
 
 /// Status values for weechat callbacks
 pub enum ReturnCode {
