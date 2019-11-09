@@ -146,7 +146,6 @@ pub fn weechat_plugin(input: proc_macro::TokenStream) -> proc_macro::TokenStream
                 Ok(p) => {
                     unsafe {
                         __PLUGIN = Some(p);
-                        Weechat::init(weechat);
                     }
                     return weechat_sys::WEECHAT_RC_OK;
                 }

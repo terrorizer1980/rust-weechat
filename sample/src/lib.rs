@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::time::Instant;
-use weechat::bar::{BarItem, LightBarItem};
+use weechat::{BarItem, LightBarItem};
+use weechat::{WeechatBuffer, PluginBuffer};
 use weechat::{
     weechat_plugin, ArgsWeechat, Buffer, CommandDescription, CommandHook,
     Config, ConfigOption, ConfigSectionInfo, NickArgs, StringOption, Weechat,
@@ -50,7 +51,7 @@ impl WeechatPlugin for SamplePlugin {
     fn init(weechat: &Weechat, _args: ArgsWeechat) -> WeechatResult<Self> {
         weechat.print("Hello Rust!");
 
-        let buffer: Buffer = weechat.buffer_new(
+        let buffer = weechat.buffer_new(
             "Test buffer",
             Some(SamplePlugin::input_cb),
             Some("Hello".to_owned()),

@@ -95,16 +95,15 @@ impl Weechat {
     /// * `ptr` - Pointer of the weechat plugin.
     pub unsafe fn init_from_ptr(ptr: *mut t_weechat_plugin) -> Weechat {
         assert!(!ptr.is_null());
+        if WEECHAT.is_none() {
+            WEECHAT = Some(Weechat { ptr });
+        }
         Weechat { ptr }
     }
 
     pub(crate) fn from_ptr(ptr: *mut t_weechat_plugin) -> Weechat {
         assert!(!ptr.is_null());
         Weechat { ptr }
-    }
-
-    pub unsafe fn init(weechat: Weechat) {
-        WEECHAT = Some(weechat)
     }
 
     pub unsafe fn weechat() -> &'static mut Weechat {
