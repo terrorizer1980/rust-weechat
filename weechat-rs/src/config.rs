@@ -18,16 +18,15 @@ use weechat_sys::{
 };
 
 /// Weechat configuration file
-pub struct Config<T> {
+pub struct Config {
     ptr: *mut t_config_file,
     weechat_ptr: *mut t_weechat_plugin,
-    _config_data: Box<ConfigPointers<T>>,
+    _config_data: Box<ConfigPointers>,
     sections: HashMap<String, ConfigSection>,
 }
 
-struct ConfigPointers<T> {
-    reload_cb: Option<fn(&mut T)>,
-    reload_data: T,
+struct ConfigPointers {
+    reload_cb: Box<dyn FnMut()>,
 }
 
 /// Weechat Configuration section
@@ -74,7 +73,7 @@ pub struct ConfigSectionInfo<'a, T> {
     pub delete_option_callback_data: Option<T>,
 }
 
-impl<T> Drop for Config<T> {
+impl Drop for Config {
     fn drop(&mut self) {
         let weechat = Weechat::from_ptr(self.weechat_ptr);
         let config_free = weechat.get().config_free.unwrap();
@@ -103,7 +102,7 @@ impl Drop for ConfigSection {
     }
 }
 
-impl<T> Config<T> {
+impl Config {
     /// Create a new section in the configuration file.
     pub fn new_section<S: Default>(
         &mut self,
@@ -462,12 +461,6 @@ impl ConfigSection {
     }
 }
 
-type WeechatReloadT = unsafe extern "C" fn(
-    pointer: *const c_void,
-    _data: *mut c_void,
-    _config_pointer: *mut t_config_file,
-) -> c_int;
-
 /// Configuration file part of the weechat API.
 impl Weechat {
     /// Create a new Weechat configuration file, returns a `Config` object.
@@ -478,59 +471,54 @@ impl Weechat {
     /// * `reload_data` - Data that will be taken over by weechat and passed
     /// to the reload callback, this data will be freed when the `Config`
     /// object returned by this method is dropped.
-    pub fn config_new<T: Default>(
+    pub fn config_new(
         &self,
         name: &str,
-        reload_callback: Option<fn(&mut T)>,
-        reload_data: Option<T>,
-    ) -> Config<T> {
-        unsafe extern "C" fn c_reload_cb<T>(
+        reload_callback: impl FnMut() + 'static,
+    ) -> Option<Config> {
+        unsafe extern "C" fn c_reload_cb(
             pointer: *const c_void,
             _data: *mut c_void,
             _config_pointer: *mut t_config_file,
         ) -> c_int {
-            let pointers: &mut ConfigPointers<T> =
-                { &mut *(pointer as *mut ConfigPointers<T>) };
+            let pointers: &mut ConfigPointers =
+                { &mut *(pointer as *mut ConfigPointers) };
 
-            let data = &mut pointers.reload_data;
-
-            if let Some(callback) = pointers.reload_cb {
-                callback(data)
-            }
+            let cb = &mut pointers.reload_cb;
+            cb();
 
             WEECHAT_RC_OK
         }
 
         let c_name = LossyCString::new(name);
 
-        let config_pointers = Box::new(ConfigPointers::<T> {
-            reload_cb: reload_callback,
-            reload_data: reload_data.unwrap_or_default(),
+        let config_pointers = Box::new(ConfigPointers {
+            reload_cb: Box::new(reload_callback),
         });
         let config_pointers_ref = Box::leak(config_pointers);
-
-        let c_reload_cb: Option<WeechatReloadT> = match reload_callback {
-            Some(_) => Some(c_reload_cb::<T>),
-            None => None,
-        };
 
         let config_new = self.get().config_new.unwrap();
         let config_ptr = unsafe {
             config_new(
                 self.ptr,
                 c_name.as_ptr(),
-                c_reload_cb,
+                Some(c_reload_cb),
                 config_pointers_ref as *const _ as *const c_void,
                 ptr::null_mut(),
             )
         };
 
+        if config_ptr.is_null() {
+            return None
+        };
+
         let config_data = unsafe { Box::from_raw(config_pointers_ref) };
-        Config {
+
+        Some(Config {
             ptr: config_ptr,
             weechat_ptr: self.ptr,
             _config_data: config_data,
             sections: HashMap::new(),
-        }
+        })
     }
 }

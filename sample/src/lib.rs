@@ -10,7 +10,7 @@ use weechat::{
 
 struct SamplePlugin {
     _rust_hook: CommandHook<String>,
-    _rust_config: Config<String>,
+    _rust_config: Config,
     _item: BarItem<String>,
 }
 
@@ -105,8 +105,9 @@ impl WeechatPlugin for SamplePlugin {
             Some("Hello rust command".to_owned()),
         );
 
-        let mut config =
-            weechat.config_new("rust_sample", None, None::<String>);
+        let mut config = weechat
+            .config_new("rust_sample", || {})
+            .expect("Can't create new config");
 
         let section_info: ConfigSectionInfo<String> = ConfigSectionInfo {
             name: "sample_section",
