@@ -3,8 +3,8 @@ use std::time::Instant;
 use weechat::{BarItem, LightBarItem};
 use weechat::{
     weechat_plugin, ArgsWeechat, Buffer, CommandDescription, CommandHook,
-    Config, ConfigOption, ConfigSectionInfo, NickArgs, StringOption, Weechat,
-    WeechatPlugin, WeechatResult,
+    Config, ConfigOption, ConfigSectionSettings, NickArgs, StringOption, Weechat,
+    WeechatPlugin, WeechatResult, BooleanOptionSettings, BooleanOpt
 };
 
 struct SamplePlugin {
@@ -14,14 +14,14 @@ struct SamplePlugin {
 }
 
 impl SamplePlugin {
-    fn input_cb(data: &mut String, buffer: Buffer, _input: Cow<str>) {
+    fn input_cb(data: &mut String, buffer: &Buffer, _input: Cow<str>) {
         buffer.print(data);
         if data == "Hello" {
             data.push_str(" world.");
         }
     }
 
-    fn close_cb(_data: &(), buffer: Buffer) {
+    fn close_cb(_data: &(), buffer: &Buffer) {
         // weechat.print("Closing buffer")
     }
 
@@ -32,9 +32,9 @@ impl SamplePlugin {
         }
     }
 
-    fn option_change_cb(_data: &mut String, option: &StringOption) {
-        let weechat = option.get_weechat();
-        weechat.print("Changing rust option");
+    fn option_change_cb(option: &BooleanOpt) {
+        // let weechat = option.get_weechat();
+        // weechat.print("Changing rust option");
     }
 
     fn bar_cb(
@@ -108,22 +108,16 @@ impl WeechatPlugin for SamplePlugin {
             .config_new("rust_sample", || {})
             .expect("Can't create new config");
 
-        let section_info: ConfigSectionInfo<String> = ConfigSectionInfo {
-            name: "sample_section",
-            ..Default::default()
-        };
+        let section_info = ConfigSectionSettings::new("sample_section");
 
         let section = config.new_section(section_info);
 
-        section.new_string_option(
-            "test_option",
-            "",
-            "",
-            "",
-            false,
-            Some(SamplePlugin::option_change_cb),
-            None::<String>,
-        );
+        let option_settings = BooleanOptionSettings::new("test_option")
+            .value(true)
+            .default_value(false)
+            .set_change_callback(SamplePlugin::option_change_cb);
+
+        section.new_boolean_option(option_settings);
 
         let item =
             weechat.new_bar_item("buffer_plugin", SamplePlugin::bar_cb, None);

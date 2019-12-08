@@ -20,7 +20,7 @@ pub use buffer::{Buffer, Nick, NickArgs};
 pub use config::{Config, ConfigSection, ConfigSectionSettings};
 pub use config_options::{
     BaseConfigOption, BooleanOption, ColorOption, ConfigOption, IntegerOption,
-    StringOption,
+    StringOption, BooleanOptionSettings, BooleanOpt
 };
 
 pub use hooks::{
