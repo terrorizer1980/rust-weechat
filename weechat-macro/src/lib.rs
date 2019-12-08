@@ -133,7 +133,7 @@ pub fn weechat_plugin(input: proc_macro::TokenStream) -> proc_macro::TokenStream
         static mut __PLUGIN: Option<#plugin> = None;
 
         #[no_mangle]
-        pub extern "C" fn weechat_plugin_init(
+        pub unsafe extern "C" fn weechat_plugin_init(
             plugin: *mut weechat_sys::t_weechat_plugin,
             argc: libc::c_int,
             argv: *mut *mut ::libc::c_char,
@@ -156,7 +156,7 @@ pub fn weechat_plugin(input: proc_macro::TokenStream) -> proc_macro::TokenStream
         }
 
         #[no_mangle]
-        pub extern "C" fn weechat_plugin_end(_plugin: *mut weechat_sys::t_weechat_plugin) -> ::libc::c_int {
+        pub unsafe extern "C" fn weechat_plugin_end(_plugin: *mut weechat_sys::t_weechat_plugin) -> ::libc::c_int {
             unsafe {
                 __PLUGIN = None;
             }

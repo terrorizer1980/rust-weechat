@@ -28,9 +28,9 @@ impl PartialEq for Buffer<'_> {
 
 pub(crate) struct BufferPointers<A, B> {
     pub(crate) weechat: *mut t_weechat_plugin,
-    pub(crate) input_cb: Option<fn(&mut A, Buffer, Cow<str>)>,
+    pub(crate) input_cb: Option<fn(&mut A, &Buffer, Cow<str>)>,
     pub(crate) input_data: A,
-    pub(crate) close_cb: Option<fn(&B, Buffer)>,
+    pub(crate) close_cb: Option<fn(&B, &Buffer)>,
     pub(crate) close_cb_data: B,
 }
 
@@ -96,9 +96,9 @@ impl Weechat {
     pub fn buffer_new<A: Default, B: Default>(
         &self,
         name: &str,
-        input_cb: Option<fn(&mut A, Buffer, Cow<str>)>,
+        input_cb: Option<fn(&mut A, &Buffer, Cow<str>)>,
         input_data: Option<A>,
-        close_cb: Option<fn(&B, Buffer)>,
+        close_cb: Option<fn(&B, &Buffer)>,
         close_cb_data: Option<B>,
     ) -> Buffer {
         unsafe extern "C" fn c_input_cb<A, B>(
@@ -117,7 +117,7 @@ impl Weechat {
             let data = &mut pointers.input_data;
 
             if let Some(callback) = pointers.input_cb {
-                callback(data, buffer, input_data)
+                callback(data, &buffer, input_data)
             }
 
             WEECHAT_RC_OK
@@ -136,7 +136,7 @@ impl Weechat {
             let data = &pointers.close_cb_data;
 
             if let Some(callback) = pointers.close_cb {
-                callback(data, buffer)
+                callback(data, &buffer)
             }
             WEECHAT_RC_OK
         }

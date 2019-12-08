@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 use std::time::Instant;
 use weechat::{BarItem, LightBarItem};
-use weechat::{WeechatBuffer, PluginBuffer};
 use weechat::{
     weechat_plugin, ArgsWeechat, Buffer, CommandDescription, CommandHook,
     Config, ConfigOption, ConfigSectionInfo, NickArgs, StringOption, Weechat,
