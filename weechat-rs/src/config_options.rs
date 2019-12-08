@@ -1,8 +1,11 @@
 //! A module providing a typed api for Weechat configuration files
 
+use crate::ConfigSection;
 use crate::Weechat;
 use std::borrow::Cow;
 use std::ffi::CStr;
+use std::marker::PhantomData;
+use std::os::raw::c_void;
 use weechat_sys::{t_config_option, t_weechat_plugin};
 
 #[derive(Default)]
@@ -42,20 +45,90 @@ impl Default for OptionType {
     }
 }
 
-/// A trait that defines common behavior for the different data types of config options.
-pub trait ConfigOption<'a> {
-    type R;
+/// Represents the settings for a new boolean config option.
+#[derive(Default)]
+pub struct BooleanOptionSettings {
+    pub(crate) name: String,
 
-    /// Returns the weechat object that this config option was created with.
-    fn get_weechat(&self) -> Weechat;
+    pub(crate) description: String,
+
+    pub(crate) default_value: bool,
+
+    pub(crate) value: bool,
+
+    pub(crate) null_allowed: bool,
+
+    pub(crate) change_cb: Option<Box<dyn FnMut(&BooleanOpt)>>,
+
+    pub(crate) check_cb: Option<Box<dyn FnMut(&BooleanOpt, Cow<str>)>>,
+
+    pub(crate) delete_cb: Option<Box<dyn FnMut(&BooleanOpt)>>,
+}
+
+impl BooleanOptionSettings {
+    pub fn new<N: Into<String>>(name: N) -> Self {
+        BooleanOptionSettings {
+            name: name.into(),
+            ..Default::default()
+        }
+    }
+
+    pub fn description<D: Into<String>>(mut self, descritpion: D) -> Self {
+        self.description = descritpion.into();
+        self
+    }
+
+    pub fn default_value(mut self, value: bool) -> Self {
+        self.default_value = value;
+        self
+    }
+
+    pub fn value(mut self, value: bool) -> Self {
+        self.value = value;
+        self
+    }
+
+    pub fn null_allowed(mut self, value: bool) -> Self {
+        self.null_allowed = value;
+        self
+    }
+
+    pub fn set_change_callback(
+        mut self,
+        callback: impl FnMut(&BooleanOpt) + 'static,
+    ) -> Self {
+        self.change_cb = Some(Box::new(callback));
+        self
+    }
+    pub fn set_check_callback(
+        mut self,
+        callback: impl FnMut(&BooleanOpt, Cow<str>) + 'static,
+    ) -> Self {
+        self.check_cb = Some(Box::new(callback));
+        self
+    }
+    pub fn set_delete_callback(
+        mut self,
+        callback: impl FnMut(&BooleanOpt) + 'static,
+    ) -> Self {
+        self.delete_cb = Some(Box::new(callback));
+        self
+    }
+}
+
+pub trait HidenConfigOptionT {
     /// Returns the raw pointer to the config option.
     fn get_ptr(&self) -> *mut t_config_option;
+}
 
-    /// Constructs a ConfigOption from its raw pointer and a weechat pointer.
-    fn from_ptrs(
-        ptr: *mut t_config_option,
-        weechat_ptr: *mut t_weechat_plugin,
-    ) -> Self;
+pub trait BaseConfigOption: HidenConfigOptionT {
+    /// Returns the weechat object that this config option was created with.
+    fn get_weechat(&self) -> Weechat;
+}
+
+/// A trait that defines common behavior for the different data types of config options.
+pub trait ConfigOption<'a>: BaseConfigOption {
+    type R;
 
     /// Get the value of the option.
     fn value(&'a self) -> Self::R;
@@ -71,55 +144,130 @@ pub trait ConfigOption<'a> {
     }
 }
 
-pub(crate) struct OptionPointers<T, A, B, C> {
+pub(crate) struct OptionPointers<T> {
     pub(crate) weechat_ptr: *mut t_weechat_plugin,
-    pub(crate) check_cb: Option<fn(&mut A, &T, Cow<str>)>,
-    pub(crate) check_cb_data: A,
-    pub(crate) change_cb: Option<fn(&mut B, &T)>,
-    pub(crate) change_cb_data: B,
-    pub(crate) delete_cb: Option<fn(&mut C, &T)>,
-    pub(crate) delete_cb_data: C,
+    pub(crate) check_cb: Option<Box<dyn FnMut(&T, Cow<str>)>>,
+    pub(crate) change_cb: Option<Box<dyn FnMut(&T)>>,
+    pub(crate) delete_cb: Option<Box<dyn FnMut(&T)>>,
+}
+
+pub(crate) struct OptionPointerHandle(pub(crate) *const c_void);
+
+impl Drop for OptionPointerHandle {
+    fn drop(&mut self) {
+        unsafe {
+            Box::from_raw(self.0 as *mut OptionPointerHandle);
+        }
+    }
 }
 
 /// A config option with a string value.
-pub struct StringOption {
+pub struct StringOption<'a> {
     pub(crate) ptr: *mut t_config_option,
     pub(crate) weechat_ptr: *mut t_weechat_plugin,
+    pub(crate) section: PhantomData<&'a ConfigSection>,
+    pub(crate) _pointer_handle: OptionPointerHandle,
 }
 
 /// A config option with a boolean value.
-pub struct BooleanOption {
+pub struct BooleanOption<'a> {
     pub(crate) ptr: *mut t_config_option,
     pub(crate) weechat_ptr: *mut t_weechat_plugin,
+    pub(crate) section: PhantomData<&'a ConfigSection>,
+    pub(crate) _pointer_handle: OptionPointerHandle,
+}
+
+pub struct BooleanOpt {
+    pub(crate) ptr: *mut t_config_option,
+    pub(crate) weechat_ptr: *mut t_weechat_plugin,
+}
+
+impl BorrowedOption for BooleanOpt {
+    fn from_ptrs(
+        option_ptr: *mut t_config_option,
+        weechat_ptr: *mut t_weechat_plugin,
+    ) -> Self {
+        BooleanOpt {
+            ptr: option_ptr,
+            weechat_ptr,
+        }
+    }
+}
+
+pub trait BorrowedOption {
+    /// Returns the raw pointer to the config option.
+    fn from_ptrs(
+        option_ptr: *mut t_config_option,
+        weechat_ptr: *mut t_weechat_plugin,
+    ) -> Self;
 }
 
 /// A config option with a integer value.
-pub struct IntegerOption {
+pub struct IntegerOption<'a> {
     pub(crate) ptr: *mut t_config_option,
     pub(crate) weechat_ptr: *mut t_weechat_plugin,
+    pub(crate) section: PhantomData<&'a ConfigSection>,
+    pub(crate) _pointer_handle: OptionPointerHandle,
 }
 
 /// A config option with a color value.
-pub struct ColorOption {
+pub struct ColorOption<'a> {
     pub(crate) ptr: *mut t_config_option,
     pub(crate) weechat_ptr: *mut t_weechat_plugin,
+    pub(crate) section: PhantomData<&'a ConfigSection>,
+    pub(crate) _pointer_handle: OptionPointerHandle,
 }
 
-impl<'a> ConfigOption<'a> for StringOption {
-    type R = Cow<'a, str>;
-
-    fn get_weechat(&self) -> Weechat {
-        Weechat::from_ptr(self.weechat_ptr)
-    }
+impl HidenConfigOptionT for StringOption<'_> {
     fn get_ptr(&self) -> *mut t_config_option {
         self.ptr
     }
-    fn from_ptrs(
-        ptr: *mut t_config_option,
-        weechat_ptr: *mut t_weechat_plugin,
-    ) -> StringOption {
-        StringOption { ptr, weechat_ptr }
+}
+
+impl HidenConfigOptionT for BooleanOption<'_> {
+    fn get_ptr(&self) -> *mut t_config_option {
+        self.ptr
     }
+}
+
+impl HidenConfigOptionT for ColorOption<'_> {
+    fn get_ptr(&self) -> *mut t_config_option {
+        self.ptr
+    }
+}
+
+impl HidenConfigOptionT for IntegerOption<'_> {
+    fn get_ptr(&self) -> *mut t_config_option {
+        self.ptr
+    }
+}
+
+impl BaseConfigOption for StringOption<'_> {
+    fn get_weechat(&self) -> Weechat {
+        Weechat::from_ptr(self.weechat_ptr)
+    }
+}
+
+impl BaseConfigOption for BooleanOption<'_> {
+    fn get_weechat(&self) -> Weechat {
+        Weechat::from_ptr(self.weechat_ptr)
+    }
+}
+
+impl BaseConfigOption for ColorOption<'_> {
+    fn get_weechat(&self) -> Weechat {
+        Weechat::from_ptr(self.weechat_ptr)
+    }
+}
+
+impl BaseConfigOption for IntegerOption<'_> {
+    fn get_weechat(&self) -> Weechat {
+        Weechat::from_ptr(self.weechat_ptr)
+    }
+}
+
+impl<'a> ConfigOption<'a> for StringOption<'a> {
+    type R = Cow<'a, str>;
 
     fn value(&self) -> Self::R {
         let weechat = self.get_weechat();
@@ -131,21 +279,8 @@ impl<'a> ConfigOption<'a> for StringOption {
     }
 }
 
-impl<'a> ConfigOption<'a> for BooleanOption {
+impl<'a> ConfigOption<'a> for BooleanOption<'a> {
     type R = bool;
-
-    fn get_weechat(&self) -> Weechat {
-        Weechat::from_ptr(self.weechat_ptr)
-    }
-    fn get_ptr(&self) -> *mut t_config_option {
-        self.ptr
-    }
-    fn from_ptrs(
-        ptr: *mut t_config_option,
-        weechat_ptr: *mut t_weechat_plugin,
-    ) -> BooleanOption {
-        BooleanOption { ptr, weechat_ptr }
-    }
 
     fn value(&self) -> Self::R {
         let weechat = self.get_weechat();
@@ -155,21 +290,8 @@ impl<'a> ConfigOption<'a> for BooleanOption {
     }
 }
 
-impl<'a> ConfigOption<'a> for IntegerOption {
+impl<'a> ConfigOption<'a> for IntegerOption<'a> {
     type R = i32;
-
-    fn get_weechat(&self) -> Weechat {
-        Weechat::from_ptr(self.weechat_ptr)
-    }
-    fn get_ptr(&self) -> *mut t_config_option {
-        self.ptr
-    }
-    fn from_ptrs(
-        ptr: *mut t_config_option,
-        weechat_ptr: *mut t_weechat_plugin,
-    ) -> IntegerOption {
-        IntegerOption { ptr, weechat_ptr }
-    }
 
     fn value(&self) -> Self::R {
         let weechat = self.get_weechat();
@@ -178,21 +300,8 @@ impl<'a> ConfigOption<'a> for IntegerOption {
     }
 }
 
-impl<'a> ConfigOption<'a> for ColorOption {
+impl<'a> ConfigOption<'a> for ColorOption<'a> {
     type R = Cow<'a, str>;
-
-    fn get_weechat(&self) -> Weechat {
-        Weechat::from_ptr(self.weechat_ptr)
-    }
-    fn get_ptr(&self) -> *mut t_config_option {
-        self.ptr
-    }
-    fn from_ptrs(
-        ptr: *mut t_config_option,
-        weechat_ptr: *mut t_weechat_plugin,
-    ) -> ColorOption {
-        ColorOption { ptr, weechat_ptr }
-    }
 
     fn value(&'a self) -> Self::R {
         let weechat = self.get_weechat();
@@ -204,7 +313,7 @@ impl<'a> ConfigOption<'a> for ColorOption {
     }
 }
 
-impl PartialEq<bool> for BooleanOption {
+impl<'a> PartialEq<bool> for BooleanOption<'a> {
     fn eq(&self, other: &bool) -> bool {
         self.value() == *other
     }

@@ -6,7 +6,7 @@ pub mod bar;
 pub mod buffer;
 pub mod completion;
 pub mod config;
-pub mod config_options;
+mod config_options;
 pub mod hooks;
 pub mod weechat;
 
@@ -14,11 +14,13 @@ pub use weechat_macro::weechat_plugin;
 
 pub use weechat::{ArgsWeechat, OptionChanged, Weechat};
 
+pub use bar::{BarItem, LightBarItem};
 pub use buffer::{Buffer, Nick, NickArgs};
 
-pub use config::{Config, ConfigSection, ConfigSectionInfo};
+pub use config::{Config, ConfigSection, ConfigSectionSettings};
 pub use config_options::{
-    BooleanOption, ColorOption, ConfigOption, IntegerOption, StringOption,
+    BaseConfigOption, BooleanOption, ColorOption, ConfigOption, IntegerOption,
+    StringOption,
 };
 
 pub use hooks::{

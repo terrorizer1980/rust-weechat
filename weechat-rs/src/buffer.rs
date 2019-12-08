@@ -1,7 +1,7 @@
 //! Weechat Buffer module containing Buffer and Nick types.
-use std::marker::PhantomData;
 use std::borrow::Cow;
 use std::ffi::CStr;
+use std::marker::PhantomData;
 use std::os::raw::c_void;
 use std::ptr;
 
@@ -17,7 +17,7 @@ use weechat_sys::{
 pub struct Buffer<'a> {
     pub(crate) weechat: *mut t_weechat_plugin,
     pub(crate) ptr: *mut t_gui_buffer,
-    weechat_phantom: PhantomData<&'a Weechat>
+    weechat_phantom: PhantomData<&'a Weechat>,
 }
 
 impl PartialEq for Buffer<'_> {
@@ -63,7 +63,10 @@ impl Weechat {
         }
     }
 
-    pub(crate) fn buffer_from_ptr(&self, buffer_ptr: *mut t_gui_buffer) -> Buffer {
+    pub(crate) fn buffer_from_ptr(
+        &self,
+        buffer_ptr: *mut t_gui_buffer,
+    ) -> Buffer {
         Buffer {
             weechat: self.ptr,
             ptr: buffer_ptr,

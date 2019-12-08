@@ -3,12 +3,14 @@
 use libc::{c_char, c_int};
 use std::collections::HashMap;
 use std::ffi::CStr;
+use std::marker::PhantomData;
 use std::os::raw::c_void;
 use std::ptr;
 
 use crate::config_options::{
-    BooleanOption, ColorOption, ConfigOption, IntegerOption, OptionDescription,
-    OptionPointers, OptionType, StringOption,
+    BaseConfigOption, BooleanOption, BooleanOptionSettings, BorrowedOption,
+    ColorOption, ConfigOption, IntegerOption, OptionDescription,
+    OptionPointerHandle, OptionPointers, OptionType, StringOption,
 };
 use crate::{LossyCString, Weechat};
 use std::borrow::Cow;
@@ -29,48 +31,71 @@ struct ConfigPointers {
     reload_cb: Box<dyn FnMut()>,
 }
 
+struct ConfigSectionPointers {
+    read_cb: Option<Box<dyn FnMut(&str, &str)>>,
+    write_cb: Option<Box<dyn FnMut(&str)>>,
+}
+
 /// Weechat Configuration section
 pub struct ConfigSection {
     ptr: *mut t_config_section,
     config_ptr: *mut t_config_file,
     weechat_ptr: *mut t_weechat_plugin,
+    section_data: *const c_void,
 }
 
 /// Represents the options when creating a new config section.
 #[derive(Default)]
-pub struct ConfigSectionInfo<'a, T> {
-    /// Name of the config section
-    pub name: &'a str,
+pub struct ConfigSectionSettings {
+    name: String,
 
-    /// Can the user create new options?
-    pub user_can_add_options: bool,
-    /// Can the user delete options?
-    pub user_can_delete_option: bool,
-
-    /// A function called when an option from the section is read from the disk
-    pub read_callback: Option<fn(&T)>,
-    /// Data passed to the `read_callback`
-    pub read_callback_data: Option<T>,
+    read_callback: Option<Box<dyn FnMut(&str, &str)>>,
 
     /// A function called when the section is written to the disk
-    pub write_callback: Option<fn(&T)>,
-    /// Data passed to the `write_callback`
-    pub write_callback_data: Option<T>,
+    write_callback: Option<Box<dyn FnMut(&str)>>,
 
     /// A function called when default values for the section must be written to the disk
-    pub write_default_callback: Option<fn(&T)>,
-    /// Data passed to the `write_default_callback`
-    pub write_default_callback_data: Option<T>,
+    write_default_callback: Option<Box<dyn FnMut()>>,
+}
 
-    /// A function called when a new option is created in the section
-    pub create_option_callback: Option<fn(&T)>,
-    /// Data passed to the `create_option_callback`
-    pub create_option_callback_data: Option<T>,
+impl ConfigSectionSettings {
+    /// Create a new config section info.
+    /// This can be passed to a config which will create a new ConfigSection.
+    /// #Arguments
+    /// `name` - The name that the section should get.
+    pub fn new<P: Into<String>>(name: P) -> Self {
+        ConfigSectionSettings {
+            name: name.into(),
+            ..Default::default()
+        }
+    }
 
-    /// A function called when an option is deleted in the section
-    pub delete_option_callback: Option<fn(&T)>,
-    /// Data passed to the `delete_option_callback`
-    pub delete_option_callback_data: Option<T>,
+    /// Set the function that will be called when an option from the section is
+    /// read from the disk.
+    ///
+    /// #Arguments
+    /// `callback` - The callback for a section read operation.
+    pub fn set_read_callback(
+        mut self,
+        callback: impl FnMut(&str, &str) + 'static,
+    ) -> Self {
+        self.read_callback = Some(Box::new(callback));
+        self
+    }
+    pub fn set_write_callback(
+        mut self,
+        callback: impl FnMut(&str) + 'static,
+    ) -> Self {
+        self.write_callback = Some(Box::new(callback));
+        self
+    }
+    pub fn set_write_default_callback(
+        mut self,
+        callback: impl FnMut() + 'static,
+    ) -> Self {
+        self.write_default_callback = Some(Box::new(callback));
+        self
+    }
 }
 
 impl Drop for Config {
@@ -96,35 +121,102 @@ impl Drop for ConfigSection {
         let section_free = weechat.get().config_section_free.unwrap();
 
         unsafe {
+            Box::from_raw(self.section_data as *mut ConfigSectionPointers);
             options_free(self.ptr);
             section_free(self.ptr);
         };
     }
 }
 
+type SectionReadCbT = unsafe extern "C" fn(
+    pointer: *const c_void,
+    _data: *mut c_void,
+    _config: *mut t_config_file,
+    _section: *mut t_config_section,
+    option_name: *const i8,
+    value: *const i8,
+) -> c_int;
+
+type SectionWriteCbT = unsafe extern "C" fn(
+    pointer: *const c_void,
+    _data: *mut c_void,
+    _config: *mut t_config_file,
+    section_name: *const c_char,
+) -> c_int;
+
 impl Config {
     /// Create a new section in the configuration file.
-    pub fn new_section<S: Default>(
+    pub fn new_section(
         &mut self,
-        section_info: ConfigSectionInfo<S>,
+        section_info: ConfigSectionSettings,
     ) -> &ConfigSection {
+        unsafe extern "C" fn c_read_cb(
+            pointer: *const c_void,
+            _data: *mut c_void,
+            _config: *mut t_config_file,
+            _section: *mut t_config_section,
+            option_name: *const c_char,
+            value: *const c_char,
+        ) -> c_int {
+            let option_name = CStr::from_ptr(option_name).to_string_lossy();
+            let value = CStr::from_ptr(value).to_string_lossy();
+            let pointers: &mut ConfigSectionPointers =
+                { &mut *(pointer as *mut ConfigSectionPointers) };
+
+            if let Some(ref mut callback) = pointers.read_cb {
+                callback(option_name.as_ref(), value.as_ref())
+            }
+            WEECHAT_RC_OK
+        }
+
+        unsafe extern "C" fn c_write_cb(
+            pointer: *const c_void,
+            _data: *mut c_void,
+            _config: *mut t_config_file,
+            section_name: *const c_char,
+        ) -> c_int {
+            let section_name = CStr::from_ptr(section_name).to_string_lossy();
+
+            let pointers: &mut ConfigSectionPointers =
+                { &mut *(pointer as *mut ConfigSectionPointers) };
+
+            if let Some(ref mut callback) = pointers.write_cb {
+                callback(section_name.as_ref())
+            }
+            WEECHAT_RC_OK
+        }
+
         let weechat = Weechat::from_ptr(self.weechat_ptr);
 
         let new_section = weechat.get().config_new_section.unwrap();
 
-        let name = LossyCString::new(section_info.name);
+        let name = LossyCString::new(&section_info.name);
+
+        let (c_read_cb, read_cb) = match section_info.read_callback {
+            Some(cb) => (Some(c_read_cb as SectionReadCbT), Some(cb)),
+            None => (None, None),
+        };
+
+        let (c_write_cb, write_cb) = match section_info.write_callback {
+            Some(cb) => (Some(c_write_cb as SectionWriteCbT), Some(cb)),
+            None => (None, None),
+        };
+
+        let section_data =
+            Box::new(ConfigSectionPointers { read_cb, write_cb });
+        let section_data_ptr = Box::leak(section_data);
 
         let ptr = unsafe {
             new_section(
                 self.ptr,
                 name.as_ptr(),
-                section_info.user_can_add_options as i32,
-                section_info.user_can_delete_option as i32,
-                None,
+                0,
+                0,
+                c_read_cb,
+                section_data_ptr as *const _ as *const c_void,
                 ptr::null_mut(),
-                ptr::null_mut(),
-                None,
-                ptr::null_mut(),
+                c_write_cb,
+                section_data_ptr as *const _ as *const c_void,
                 ptr::null_mut(),
                 None,
                 ptr::null_mut(),
@@ -141,9 +233,38 @@ impl Config {
             ptr,
             config_ptr: self.ptr,
             weechat_ptr: weechat.ptr,
+            section_data: section_data_ptr as *const _ as *const c_void,
         };
-        self.sections.insert(section_info.name.to_string(), section);
-        &self.sections[section_info.name]
+        self.sections.insert(section_info.name.clone(), section);
+        &self.sections[&section_info.name]
+    }
+
+    pub fn search_section(&self, section_name: &str) -> Option<&ConfigSection> {
+        self.sections.get(section_name)
+    }
+
+    pub fn write_line(&self, option_name: &str, value: Option<&str>) {
+        let weechat = Weechat::from_ptr(self.weechat_ptr);
+        let write_line = weechat.get().config_write_line.unwrap();
+
+        let option_name = LossyCString::new(option_name);
+
+        let c_value = match value {
+            Some(v) => LossyCString::new(v).as_ptr(),
+            None => ptr::null(),
+        };
+
+        unsafe {
+            write_line(self.ptr, option_name.as_ptr(), c_value);
+        }
+    }
+
+    pub fn write_option(&self, option: &dyn BaseConfigOption) {
+        let weechat = Weechat::from_ptr(self.weechat_ptr);
+        let write_option = weechat.get().config_write_option.unwrap();
+        unsafe {
+            write_option(self.ptr, option.get_ptr());
+        }
     }
 }
 
@@ -162,237 +283,216 @@ type WeechatOptCheckCbT = unsafe extern "C" fn(
 
 impl ConfigSection {
     /// Create a new string Weechat configuration option.
-    pub fn new_string_option<D>(
-        &self,
-        name: &str,
-        description: &str,
-        default_value: &str,
-        value: &str,
-        null_allowed: bool,
-        change_cb: Option<fn(&mut D, &StringOption)>,
-        change_cb_data: Option<D>,
-    ) -> StringOption
-    where
-        D: Default,
-    {
-        let ptr = self.new_option(
-            OptionDescription {
-                name,
-                description,
-                option_type: OptionType::String,
-                default_value,
-                value,
-                null_allowed,
-                ..Default::default()
-            },
-            None,
-            None::<String>,
-            change_cb,
-            change_cb_data,
-            None,
-            None::<String>,
-        );
-        StringOption {
-            ptr,
-            weechat_ptr: self.weechat_ptr,
-        }
-    }
+    // pub fn new_string_option<D>(
+    //     &self,
+    //     name: &str,
+    //     description: &str,
+    //     default_value: &str,
+    //     value: &str,
+    //     null_allowed: bool,
+    //     change_cb: impl FnMut(&mut D, &StringOption),
+    // ) -> StringOption
+    // where
+    //     D: Default,
+    // {
+    //     let ptr = self.new_option(
+    //         OptionDescription {
+    //             name,
+    //             description,
+    //             option_type: OptionType::String,
+    //             default_value,
+    //             value,
+    //             null_allowed,
+    //             ..Default::default()
+    //         },
+    //         None,
+    //         None::<String>,
+    //         Box::new(change_cb),
+    //         None,
+    //         None::<String>,
+    //     );
+    //     StringOption {
+    //         ptr,
+    //         weechat_ptr: self.weechat_ptr,
+    //         section: PhantomData,
+    //     }
+    // }
 
     /// Create a new boolean Weechat configuration option.
-    pub fn new_boolean_option<D>(
+    pub fn new_boolean_option(
         &self,
-        name: &str,
-        description: &str,
-        default_value: bool,
-        value: bool,
-        null_allowed: bool,
-        change_cb: Option<fn(&mut D, &BooleanOption)>,
-        change_cb_data: Option<D>,
-    ) -> BooleanOption
-    where
-        D: Default,
-    {
-        let value = if value { "on" } else { "off" };
-        let default_value = if default_value { "on" } else { "off" };
-        let ptr = self.new_option(
+        settings: BooleanOptionSettings,
+    ) -> BooleanOption {
+        let value = if settings.value { "on" } else { "off" };
+        let default_value = if settings.default_value { "on" } else { "off" };
+        let (ptr, option_pointer) = self.new_option(
             OptionDescription {
-                name,
-                description,
+                name: &settings.name,
+                description: &settings.description,
                 option_type: OptionType::Boolean,
                 default_value,
                 value,
-                null_allowed,
+                null_allowed: settings.null_allowed,
                 ..Default::default()
             },
-            None,
-            None::<String>,
-            change_cb,
-            change_cb_data,
-            None,
-            None::<String>,
+            settings.check_cb,
+            settings.change_cb,
+            settings.delete_cb,
         );
         BooleanOption {
             ptr,
             weechat_ptr: self.weechat_ptr,
+            section: PhantomData,
+            _pointer_handle: OptionPointerHandle(option_pointer),
         }
     }
 
     /// Create a new integer Weechat configuration option.
-    pub fn new_integer_option<D>(
-        &self,
-        name: &str,
-        description: &str,
-        string_values: &str,
-        min: i32,
-        max: i32,
-        default_value: &str,
-        value: &str,
-        null_allowed: bool,
-        change_cb: Option<fn(&mut D, &IntegerOption)>,
-        change_cb_data: Option<D>,
-    ) -> IntegerOption
-    where
-        D: Default,
-    {
-        let ptr = self.new_option(
-            OptionDescription {
-                name,
-                option_type: OptionType::Integer,
-                description,
-                string_values,
-                min,
-                max,
-                default_value,
-                value,
-                null_allowed,
-            },
-            None,
-            None::<String>,
-            change_cb,
-            change_cb_data,
-            None,
-            None::<String>,
-        );
-        IntegerOption {
-            ptr,
-            weechat_ptr: self.weechat_ptr,
-        }
-    }
+    // pub fn new_integer_option<D>(
+    //     &self,
+    //     name: &str,
+    //     description: &str,
+    //     string_values: &str,
+    //     min: i32,
+    //     max: i32,
+    //     default_value: &str,
+    //     value: &str,
+    //     null_allowed: bool,
+    //     change_cb: Option<fn(&mut D, &IntegerOption)>,
+    //     change_cb_data: Option<D>,
+    // ) -> IntegerOption
+    // where
+    //     D: Default,
+    // {
+    //     let ptr = self.new_option(
+    //         OptionDescription {
+    //             name,
+    //             option_type: OptionType::Integer,
+    //             description,
+    //             string_values,
+    //             min,
+    //             max,
+    //             default_value,
+    //             value,
+    //             null_allowed,
+    //         },
+    //         None,
+    //         None::<String>,
+    //         change_cb,
+    //         change_cb_data,
+    //         None,
+    //         None::<String>,
+    //     );
+    //     IntegerOption {
+    //         ptr,
+    //         weechat_ptr: self.weechat_ptr,
+    //         section: PhantomData,
+    //     }
+    // }
 
-    /// Create a new color Weechat configuration option.
-    pub fn new_color_option<D>(
-        &self,
-        name: &str,
-        description: &str,
-        default_value: &str,
-        value: &str,
-        null_allowed: bool,
-        change_cb: Option<fn(&mut D, &ColorOption)>,
-        change_cb_data: Option<D>,
-    ) -> ColorOption
-    where
-        D: Default,
-    {
-        let ptr = self.new_option(
-            OptionDescription {
-                name,
-                description,
-                option_type: OptionType::Color,
-                default_value,
-                value,
-                null_allowed,
-                ..Default::default()
-            },
-            None,
-            None::<String>,
-            change_cb,
-            change_cb_data,
-            None,
-            None::<String>,
-        );
-        ColorOption {
-            ptr,
-            weechat_ptr: self.weechat_ptr,
-        }
-    }
+    // /// Create a new color Weechat configuration option.
+    // pub fn new_color_option<D>(
+    //     &self,
+    //     name: &str,
+    //     description: &str,
+    //     default_value: &str,
+    //     value: &str,
+    //     null_allowed: bool,
+    //     change_cb: Option<fn(&mut D, &ColorOption)>,
+    // ) -> ColorOption
+    // where
+    //     D: Default,
+    // {
+    //     let ptr = self.new_option(
+    //         OptionDescription {
+    //             name,
+    //             description,
+    //             option_type: OptionType::Color,
+    //             default_value,
+    //             value,
+    //             null_allowed,
+    //             ..Default::default()
+    //         },
+    //         None,
+    //         change_cb,
+    //         None,
+    //     );
+    //     ColorOption {
+    //         ptr,
+    //         weechat_ptr: self.weechat_ptr,
+    //         section: PhantomData,
+    //     }
+    // }
 
-    fn new_option<'a, T, A, B, C>(
+    fn new_option<T>(
         &self,
         option_description: OptionDescription,
-        check_cb: Option<fn(&mut A, &T, Cow<str>)>,
-        check_cb_data: Option<A>,
-        change_cb: Option<fn(&mut B, &T)>,
-        change_cb_data: Option<B>,
-        delete_cb: Option<fn(&mut C, &T)>,
-        delete_cb_data: Option<C>,
-    ) -> *mut t_config_option
+        check_cb: Option<Box<dyn FnMut(&T, Cow<str>)>>,
+        change_cb: Option<Box<dyn FnMut(&T)>>,
+        delete_cb: Option<Box<dyn FnMut(&T)>>,
+    ) -> (*mut t_config_option, *const c_void)
     where
-        T: ConfigOption<'static>,
-        A: Default,
-        B: Default,
-        C: Default,
+        T: BorrowedOption,
     {
-        unsafe extern "C" fn c_check_cb<T, A, B, C>(
+        unsafe extern "C" fn c_check_cb<T>(
             pointer: *const c_void,
             _data: *mut c_void,
             option_pointer: *mut t_config_option,
             value: *const c_char,
         ) -> c_int
         where
-            T: ConfigOption<'static>,
+            T: BorrowedOption,
         {
             let value = CStr::from_ptr(value).to_string_lossy();
-            let pointers: &mut OptionPointers<T, A, B, C> =
-                { &mut *(pointer as *mut OptionPointers<T, A, B, C>) };
+            let pointers: &mut OptionPointers<T> =
+                { &mut *(pointer as *mut OptionPointers<T>) };
 
             let option = T::from_ptrs(option_pointer, pointers.weechat_ptr);
 
-            let data = &mut pointers.check_cb_data;
-
-            if let Some(callback) = pointers.check_cb {
-                callback(data, &option, value)
+            if let Some(callback) = &mut pointers.check_cb {
+                callback(&option, value)
             };
 
             WEECHAT_RC_OK
         }
 
-        unsafe extern "C" fn c_change_cb<T, A, B, C>(
-            pointer: *const c_void,
-            _data: *mut c_void,
-            option_pointer: *mut t_config_option,
-        ) where
-            T: ConfigOption<'static>,
-        {
-            let pointers: &mut OptionPointers<T, A, B, C> =
-                { &mut *(pointer as *mut OptionPointers<T, A, B, C>) };
+        // unsafe extern "C" fn c_change_cb<T>(
+        //     pointer: *const c_void,
+        //     _data: *mut c_void,
+        //     option_pointer: *mut t_config_option,
+        // ) where
+        //     T: ConfigOption<'static>,
+        // {
+        //     let pointers: &mut OptionPointers<T> =
+        //         { &mut *(pointer as *mut OptionPointers<T>) };
 
-            let option = T::from_ptrs(option_pointer, pointers.weechat_ptr);
+        //     // let option = T::from_ptrs(option_pointer, pointers.weechat_ptr);
 
-            let data = &mut pointers.change_cb_data;
+        //     // let data = &mut pointers.change_cb_data;
 
-            if let Some(callback) = pointers.change_cb {
-                callback(data, &option)
-            };
-        }
+        //     // if let Some(callback) = pointers.change_cb {
+        //     //     callback(data, &option)
+        //     // };
+        // }
 
-        unsafe extern "C" fn c_delete_cb<T, A, B, C>(
-            pointer: *const c_void,
-            _data: *mut c_void,
-            option_pointer: *mut t_config_option,
-        ) where
-            T: ConfigOption<'static>,
-        {
-            let pointers: &mut OptionPointers<T, A, B, C> =
-                { &mut *(pointer as *mut OptionPointers<T, A, B, C>) };
+        // unsafe extern "C" fn c_delete_cb<T>(
+        //     pointer: *const c_void,
+        //     _data: *mut c_void,
+        //     option_pointer: *mut t_config_option,
+        // ) where
+        //     T: ConfigOption<'static>,
+        // {
+        //     let pointers: &mut OptionPointers<T> =
+        //         { &mut *(pointer as *mut OptionPointers<T>) };
 
-            let option = T::from_ptrs(option_pointer, pointers.weechat_ptr);
+        //     // let option = T::from_ptrs(option_pointer, pointers.weechat_ptr);
 
-            let data = &mut pointers.delete_cb_data;
+        //     // let data = &mut pointers.delete_cb_data;
 
-            if let Some(callback) = pointers.delete_cb {
-                callback(data, &option)
-            };
-        }
+        //     // if let Some(callback) = pointers.delete_cb {
+        //     //     callback(data, &option)
+        //     // };
+        // }
 
         let weechat = Weechat::from_ptr(self.weechat_ptr);
 
@@ -404,37 +504,33 @@ impl ConfigSection {
         let default_value = LossyCString::new(option_description.default_value);
         let value = LossyCString::new(option_description.value);
 
-        let option_pointers = Box::new(OptionPointers::<T, A, B, C> {
+        let c_check_cb = match check_cb {
+            Some(_) => Some(c_check_cb::<T> as WeechatOptCheckCbT),
+            None => None,
+        };
+
+        let option_pointers = Box::new(OptionPointers {
             weechat_ptr: self.weechat_ptr,
-            check_cb: check_cb,
-            check_cb_data: check_cb_data.unwrap_or_default(),
-            change_cb: change_cb,
-            change_cb_data: change_cb_data.unwrap_or_default(),
-            delete_cb: delete_cb,
-            delete_cb_data: delete_cb_data.unwrap_or_default(),
+            check_cb,
+            change_cb,
+            delete_cb,
         });
 
-        // TODO this leaks curently.
-        let option_pointers_ref: &OptionPointers<T, A, B, C> =
+        let option_pointers_ref: &OptionPointers<T> =
             Box::leak(option_pointers);
 
-        let c_check_cb: Option<WeechatOptCheckCbT> = match check_cb {
-            Some(_) => Some(c_check_cb::<T, A, B, C>),
-            None => None,
-        };
+        // let c_change_cb: Option<WeechatOptChangeCbT> = match change_cb {
+        //     Some(_) => Some(c_change_cb::<T>),
+        //     None => None,
+        // };
 
-        let c_change_cb: Option<WeechatOptChangeCbT> = match change_cb {
-            Some(_) => Some(c_change_cb::<T, A, B, C>),
-            None => None,
-        };
-
-        let c_delete_cb: Option<WeechatOptChangeCbT> = match delete_cb {
-            Some(_) => Some(c_delete_cb::<T, A, B, C>),
-            None => None,
-        };
+        // let c_delete_cb: Option<WeechatOptChangeCbT> = match delete_cb {
+        //     Some(_) => Some(c_delete_cb::<T>),
+        //     None => None,
+        // };
 
         let config_new_option = weechat.get().config_new_option.unwrap();
-        unsafe {
+        let ptr = unsafe {
             config_new_option(
                 self.config_ptr,
                 self.ptr,
@@ -450,14 +546,16 @@ impl ConfigSection {
                 c_check_cb,
                 option_pointers_ref as *const _ as *const c_void,
                 ptr::null_mut(),
-                c_change_cb,
+                None,
                 option_pointers_ref as *const _ as *const c_void,
                 ptr::null_mut(),
-                c_delete_cb,
+                None,
                 option_pointers_ref as *const _ as *const c_void,
                 ptr::null_mut(),
             )
-        }
+        };
+
+        (ptr, option_pointers_ref as *const _ as *const c_void)
     }
 }
 
@@ -509,7 +607,7 @@ impl Weechat {
         };
 
         if config_ptr.is_null() {
-            return None
+            return None;
         };
 
         let config_data = unsafe { Box::from_raw(config_pointers_ref) };
