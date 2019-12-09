@@ -6,7 +6,6 @@ use crate::config::{
 use crate::ConfigSection;
 use crate::Weechat;
 use std::borrow::Cow;
-use std::ffi::CStr;
 use std::marker::PhantomData;
 use std::ops::Deref;
 use weechat_sys::{t_config_option, t_weechat_plugin};
@@ -117,13 +116,24 @@ impl HidenConfigOptionT for BooleanOpt {
     fn get_ptr(&self) -> *mut t_config_option {
         self.ptr
     }
-}
 
-impl BaseConfigOption for BooleanOpt {
     fn get_weechat(&self) -> Weechat {
         Weechat::from_ptr(self.weechat_ptr)
     }
 }
+
+impl<'a> HidenConfigOptionT for BooleanOption<'a> {
+    fn get_ptr(&self) -> *mut t_config_option {
+        self.ptr
+    }
+
+    fn get_weechat(&self) -> Weechat {
+        Weechat::from_ptr(self.weechat_ptr)
+    }
+}
+
+impl<'a> BaseConfigOption for BooleanOption<'a> {}
+impl BaseConfigOption for BooleanOpt {}
 
 impl ConfigOption for BooleanOpt {
     type R = bool;

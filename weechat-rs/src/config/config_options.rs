@@ -3,9 +3,7 @@
 use crate::ConfigSection;
 use crate::Weechat;
 use std::borrow::Cow;
-use std::ffi::CStr;
 use std::marker::PhantomData;
-use std::ops::Deref;
 use weechat_sys::{t_config_option, t_weechat_plugin};
 
 #[derive(Default)]
@@ -48,12 +46,10 @@ impl Default for OptionType {
 pub trait HidenConfigOptionT {
     /// Returns the raw pointer to the config option.
     fn get_ptr(&self) -> *mut t_config_option;
-}
-
-pub trait BaseConfigOption: HidenConfigOptionT {
-    /// Returns the weechat object that this config option was created with.
     fn get_weechat(&self) -> Weechat;
 }
+
+pub trait BaseConfigOption: HidenConfigOptionT {}
 
 /// A trait that defines common behavior for the different data types of config options.
 pub trait ConfigOption: BaseConfigOption {
@@ -113,11 +109,19 @@ impl HidenConfigOptionT for StringOption<'_> {
     fn get_ptr(&self) -> *mut t_config_option {
         self.ptr
     }
+
+    fn get_weechat(&self) -> Weechat {
+        Weechat::from_ptr(self.weechat_ptr)
+    }
 }
 
 impl HidenConfigOptionT for ColorOption<'_> {
     fn get_ptr(&self) -> *mut t_config_option {
         self.ptr
+    }
+
+    fn get_weechat(&self) -> Weechat {
+        Weechat::from_ptr(self.weechat_ptr)
     }
 }
 
@@ -125,21 +129,7 @@ impl HidenConfigOptionT for IntegerOption<'_> {
     fn get_ptr(&self) -> *mut t_config_option {
         self.ptr
     }
-}
 
-impl BaseConfigOption for StringOption<'_> {
-    fn get_weechat(&self) -> Weechat {
-        Weechat::from_ptr(self.weechat_ptr)
-    }
-}
-
-impl BaseConfigOption for ColorOption<'_> {
-    fn get_weechat(&self) -> Weechat {
-        Weechat::from_ptr(self.weechat_ptr)
-    }
-}
-
-impl BaseConfigOption for IntegerOption<'_> {
     fn get_weechat(&self) -> Weechat {
         Weechat::from_ptr(self.weechat_ptr)
     }
@@ -168,15 +158,15 @@ impl BaseConfigOption for IntegerOption<'_> {
 //     }
 // }
 
-impl<'a> ConfigOption for ColorOption<'a> {
-    type R = Cow<'a, str>;
+// impl<'a> ConfigOption for ColorOption<'a> {
+//     type R = Cow<'a, str>;
 
-    fn value(&self) -> Self::R {
-        let weechat = self.get_weechat();
-        let config_color = weechat.get().config_color.unwrap();
-        unsafe {
-            let string = config_color(self.get_ptr());
-            CStr::from_ptr(string).to_string_lossy()
-        }
-    }
-}
+//     fn value(&self) -> Self::R {
+//         let weechat = self.get_weechat();
+//         let config_color = weechat.get().config_color.unwrap();
+//         unsafe {
+//             let string = config_color(self.get_ptr());
+//             CStr::from_ptr(string).to_string_lossy()
+//         }
+//     }
+// }

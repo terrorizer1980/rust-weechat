@@ -7,7 +7,7 @@ mod section;
 use libc::{c_char, c_int};
 use std::collections::HashMap;
 use std::ffi::CStr;
-use std::marker::PhantomData;
+use std::ops::Deref;
 use std::os::raw::c_void;
 use std::ptr;
 
@@ -25,22 +25,33 @@ use crate::config::section::{
     ConfigSectionPointers, SectionReadCbT, SectionWriteCbT,
 };
 use crate::{LossyCString, Weechat};
-use std::borrow::Cow;
 use weechat_sys::{
-    t_config_file, t_config_option, t_config_section, t_weechat_plugin,
-    WEECHAT_RC_OK,
+    t_config_file, t_config_section, t_weechat_plugin, WEECHAT_RC_OK,
 };
 
 /// Weechat configuration file
 pub struct Config {
-    ptr: *mut t_config_file,
-    weechat_ptr: *mut t_weechat_plugin,
+    inner: Conf,
     _config_data: Box<ConfigPointers>,
     sections: HashMap<String, ConfigSection>,
 }
 
+pub struct Conf {
+    ptr: *mut t_config_file,
+    weechat_ptr: *mut t_weechat_plugin,
+}
+
 struct ConfigPointers {
-    reload_cb: Box<dyn FnMut()>,
+    reload_cb: Box<dyn FnMut(&Conf)>,
+    weechat_ptr: *mut t_weechat_plugin,
+}
+
+impl Deref for Config {
+    type Target = Conf;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
 }
 
 /// Configuration file part of the weechat API.
@@ -56,18 +67,23 @@ impl Weechat {
     pub fn config_new(
         &self,
         name: &str,
-        reload_callback: impl FnMut() + 'static,
+        reload_callback: impl FnMut(&Conf) + 'static,
     ) -> Option<Config> {
         unsafe extern "C" fn c_reload_cb(
             pointer: *const c_void,
             _data: *mut c_void,
-            _config_pointer: *mut t_config_file,
+            config_pointer: *mut t_config_file,
         ) -> c_int {
             let pointers: &mut ConfigPointers =
                 { &mut *(pointer as *mut ConfigPointers) };
 
             let cb = &mut pointers.reload_cb;
-            cb();
+            let conf = Conf {
+                ptr: config_pointer,
+                weechat_ptr: pointers.weechat_ptr,
+            };
+
+            cb(&conf);
 
             WEECHAT_RC_OK
         }
@@ -76,6 +92,7 @@ impl Weechat {
 
         let config_pointers = Box::new(ConfigPointers {
             reload_cb: Box::new(reload_callback),
+            weechat_ptr: self.ptr,
         });
         let config_pointers_ref = Box::leak(config_pointers);
 
@@ -97,8 +114,10 @@ impl Weechat {
         let config_data = unsafe { Box::from_raw(config_pointers_ref) };
 
         Some(Config {
-            ptr: config_ptr,
-            weechat_ptr: self.ptr,
+            inner: Conf {
+                ptr: config_ptr,
+                weechat_ptr: self.ptr,
+            },
             _config_data: config_data,
             sections: HashMap::new(),
         })
@@ -214,11 +233,12 @@ impl Config {
         self.sections.insert(section_info.name.clone(), section);
         &self.sections[&section_info.name]
     }
-
     pub fn search_section(&self, section_name: &str) -> Option<&ConfigSection> {
         self.sections.get(section_name)
     }
+}
 
+impl Conf {
     pub fn write_line(&self, option_name: &str, value: Option<&str>) {
         let weechat = Weechat::from_ptr(self.weechat_ptr);
         let write_line = weechat.get().config_write_line.unwrap();
