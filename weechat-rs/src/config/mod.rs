@@ -1,5 +1,7 @@
 //! Weechat Configuration module
 
+mod config_options;
+
 use libc::{c_char, c_int};
 use std::collections::HashMap;
 use std::ffi::CStr;
@@ -7,10 +9,12 @@ use std::marker::PhantomData;
 use std::os::raw::c_void;
 use std::ptr;
 
-use crate::config_options::{
-    BaseConfigOption, BooleanOption, BooleanOptionSettings, BorrowedOption,
-    ColorOption, ConfigOption, IntegerOption, OptionDescription,
-    OptionPointers, OptionType, StringOption, BooleanOpt
+pub use crate::config::config_options::{
+    BaseConfigOption, BooleanOpt, BooleanOption, BooleanOptionSettings,
+    BorrowedOption, ColorOption, ConfigOption, IntegerOption, StringOption,
+};
+use crate::config::config_options::{
+    OptionDescription, OptionPointers, OptionType,
 };
 use crate::{LossyCString, Weechat};
 use std::borrow::Cow;
@@ -459,7 +463,7 @@ impl ConfigSection {
             _data: *mut c_void,
             option_pointer: *mut t_config_option,
         ) where
-            T: BorrowedOption
+            T: BorrowedOption,
         {
             let pointers: &mut OptionPointers<T> =
                 { &mut *(pointer as *mut OptionPointers<T>) };
@@ -476,7 +480,7 @@ impl ConfigSection {
             _data: *mut c_void,
             option_pointer: *mut t_config_option,
         ) where
-            T: BorrowedOption
+            T: BorrowedOption,
         {
             let pointers: &mut OptionPointers<T> =
                 { &mut *(pointer as *mut OptionPointers<T>) };
