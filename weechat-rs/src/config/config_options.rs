@@ -52,7 +52,7 @@ pub trait HidenConfigOptionT {
 pub trait BaseConfigOption: HidenConfigOptionT {}
 
 /// A trait that defines common behavior for the different data types of config options.
-pub trait ConfigOption: BaseConfigOption {
+pub trait ConfigOption<'a>: BaseConfigOption {
     type R;
 
     /// Get the value of the option.
@@ -74,13 +74,6 @@ pub(crate) struct OptionPointers<T> {
     pub(crate) check_cb: Option<Box<dyn FnMut(&T, Cow<str>)>>,
     pub(crate) change_cb: Option<Box<dyn FnMut(&T)>>,
     pub(crate) delete_cb: Option<Box<dyn FnMut(&T)>>,
-}
-
-/// A config option with a string value.
-pub struct StringOption<'a> {
-    pub(crate) ptr: *mut t_config_option,
-    pub(crate) weechat_ptr: *mut t_weechat_plugin,
-    pub(crate) section: PhantomData<&'a ConfigSection>,
 }
 
 pub trait BorrowedOption {
@@ -105,16 +98,6 @@ pub struct ColorOption<'a> {
     pub(crate) section: PhantomData<&'a ConfigSection>,
 }
 
-impl HidenConfigOptionT for StringOption<'_> {
-    fn get_ptr(&self) -> *mut t_config_option {
-        self.ptr
-    }
-
-    fn get_weechat(&self) -> Weechat {
-        Weechat::from_ptr(self.weechat_ptr)
-    }
-}
-
 impl HidenConfigOptionT for ColorOption<'_> {
     fn get_ptr(&self) -> *mut t_config_option {
         self.ptr
@@ -134,19 +117,6 @@ impl HidenConfigOptionT for IntegerOption<'_> {
         Weechat::from_ptr(self.weechat_ptr)
     }
 }
-
-// impl<'a> ConfigOption<'a> for StringOption<'a> {
-//     type R = Cow<'a, str>;
-
-//     fn value(&self) -> Self::R {
-//         let weechat = self.get_weechat();
-//         let config_string = weechat.get().config_string.unwrap();
-//         unsafe {
-//             let string = config_string(self.get_ptr());
-//             CStr::from_ptr(string).to_string_lossy()
-//         }
-//     }
-// }
 
 // impl ConfigOption for IntegerOption {
 //     type R = i32;

@@ -1,6 +1,7 @@
 //! Weechat Configuration module
 
 mod boolean;
+mod string;
 mod config_options;
 mod section;
 
@@ -11,6 +12,7 @@ use std::ops::Deref;
 use std::os::raw::c_void;
 use std::ptr;
 
+pub use crate::config::string::{StringOption, StringOpt, StringOptionSettings};
 pub use crate::config::boolean::{
     BooleanOpt, BooleanOption, BooleanOptionSettings,
 };

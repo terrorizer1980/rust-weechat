@@ -11,6 +11,7 @@ use weechat_sys::{
 
 use crate::config::{
     BooleanOpt, BooleanOption, BooleanOptionSettings, BorrowedOption,
+    StringOption, StringOpt, StringOptionSettings,
 };
 use crate::config::{OptionDescription, OptionPointers, OptionType};
 use crate::{LossyCString, Weechat};
@@ -130,40 +131,32 @@ type WeechatOptCheckCbT = unsafe extern "C" fn(
 
 impl ConfigSection {
     /// Create a new string Weechat configuration option.
-    // pub fn new_string_option<D>(
-    //     &self,
-    //     name: &str,
-    //     description: &str,
-    //     default_value: &str,
-    //     value: &str,
-    //     null_allowed: bool,
-    //     change_cb: impl FnMut(&mut D, &StringOption),
-    // ) -> StringOption
-    // where
-    //     D: Default,
-    // {
-    //     let ptr = self.new_option(
-    //         OptionDescription {
-    //             name,
-    //             description,
-    //             option_type: OptionType::String,
-    //             default_value,
-    //             value,
-    //             null_allowed,
-    //             ..Default::default()
-    //         },
-    //         None,
-    //         None::<String>,
-    //         Box::new(change_cb),
-    //         None,
-    //         None::<String>,
-    //     );
-    //     StringOption {
-    //         ptr,
-    //         weechat_ptr: self.weechat_ptr,
-    //         section: PhantomData,
-    //     }
-    // }
+    pub fn new_string_option<D>(
+        &self,
+        settings: StringOptionSettings,
+    ) -> StringOption
+    where
+        D: Default,
+    {
+        let ptr = self.new_option(
+            OptionDescription {
+                name: &settings.name,
+                description: &settings.description,
+                option_type: OptionType::String,
+                default_value: &settings.default_value,
+                value: &settings.value,
+                null_allowed: settings.null_allowed,
+                ..Default::default()
+            },
+            settings.check_cb,
+            settings.change_cb,
+            settings.delete_cb,
+        );
+        StringOption {
+            inner: StringOpt { ptr, weechat_ptr: self.weechat_ptr },
+            section: PhantomData,
+        }
+    }
 
     /// Create a new boolean Weechat configuration option.
     pub fn new_boolean_option(
