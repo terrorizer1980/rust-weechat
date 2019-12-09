@@ -1,7 +1,9 @@
 //! A module providing a typed api for Weechat configuration files
 
+use crate::config::{
+    BaseConfigOption, BorrowedOption, ConfigOption, HidenConfigOptionT,
+};
 use crate::ConfigSection;
-use crate::config::{BorrowedOption, HidenConfigOptionT, BaseConfigOption, ConfigOption};
 use crate::Weechat;
 use std::borrow::Cow;
 use std::ffi::CStr;
