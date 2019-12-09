@@ -45,77 +45,6 @@ impl Default for OptionType {
     }
 }
 
-/// Represents the settings for a new boolean config option.
-#[derive(Default)]
-pub struct BooleanOptionSettings {
-    pub(crate) name: String,
-
-    pub(crate) description: String,
-
-    pub(crate) default_value: bool,
-
-    pub(crate) value: bool,
-
-    pub(crate) null_allowed: bool,
-
-    pub(crate) change_cb: Option<Box<dyn FnMut(&BooleanOpt)>>,
-
-    pub(crate) check_cb: Option<Box<dyn FnMut(&BooleanOpt, Cow<str>)>>,
-
-    pub(crate) delete_cb: Option<Box<dyn FnMut(&BooleanOpt)>>,
-}
-
-impl BooleanOptionSettings {
-    pub fn new<N: Into<String>>(name: N) -> Self {
-        BooleanOptionSettings {
-            name: name.into(),
-            ..Default::default()
-        }
-    }
-
-    pub fn description<D: Into<String>>(mut self, descritpion: D) -> Self {
-        self.description = descritpion.into();
-        self
-    }
-
-    pub fn default_value(mut self, value: bool) -> Self {
-        self.default_value = value;
-        self
-    }
-
-    pub fn value(mut self, value: bool) -> Self {
-        self.value = value;
-        self
-    }
-
-    pub fn null_allowed(mut self, value: bool) -> Self {
-        self.null_allowed = value;
-        self
-    }
-
-    pub fn set_change_callback(
-        mut self,
-        callback: impl FnMut(&BooleanOpt) + 'static,
-    ) -> Self {
-        self.change_cb = Some(Box::new(callback));
-        self
-    }
-    pub fn set_check_callback(
-        mut self,
-        callback: impl FnMut(&BooleanOpt, Cow<str>) + 'static,
-    ) -> Self {
-        self.check_cb = Some(Box::new(callback));
-        self
-    }
-    pub fn set_delete_callback(
-        mut self,
-        callback: impl FnMut(&BooleanOpt) + 'static,
-    ) -> Self {
-        self.delete_cb = Some(Box::new(callback));
-        self
-    }
-}
-
 pub trait HidenConfigOptionT {
     /// Returns the raw pointer to the config option.
     fn get_ptr(&self) -> *mut t_config_option;
@@ -158,37 +87,6 @@ pub struct StringOption<'a> {
     pub(crate) section: PhantomData<&'a ConfigSection>,
 }
 
-/// A config option with a boolean value.
-pub struct BooleanOption<'a> {
-    pub(crate) inner: BooleanOpt,
-    pub(crate) section: PhantomData<&'a ConfigSection>,
-}
-
-pub struct BooleanOpt {
-    pub(crate) ptr: *mut t_config_option,
-    pub(crate) weechat_ptr: *mut t_weechat_plugin,
-}
-
-impl BorrowedOption for BooleanOpt {
-    fn from_ptrs(
-        option_ptr: *mut t_config_option,
-        weechat_ptr: *mut t_weechat_plugin,
-    ) -> Self {
-        BooleanOpt {
-            ptr: option_ptr,
-            weechat_ptr,
-        }
-    }
-}
-
-impl<'a> Deref for BooleanOption<'a> {
-    type Target = BooleanOpt;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
 pub trait BorrowedOption {
     /// Returns the raw pointer to the config option.
     fn from_ptrs(
@@ -217,12 +115,6 @@ impl HidenConfigOptionT for StringOption<'_> {
     }
 }
 
-impl HidenConfigOptionT for BooleanOpt {
-    fn get_ptr(&self) -> *mut t_config_option {
-        self.ptr
-    }
-}
-
 impl HidenConfigOptionT for ColorOption<'_> {
     fn get_ptr(&self) -> *mut t_config_option {
         self.ptr
@@ -236,12 +128,6 @@ impl HidenConfigOptionT for IntegerOption<'_> {
 }
 
 impl BaseConfigOption for StringOption<'_> {
-    fn get_weechat(&self) -> Weechat {
-        Weechat::from_ptr(self.weechat_ptr)
-    }
-}
-
-impl BaseConfigOption for BooleanOpt {
     fn get_weechat(&self) -> Weechat {
         Weechat::from_ptr(self.weechat_ptr)
     }
@@ -272,17 +158,6 @@ impl BaseConfigOption for IntegerOption<'_> {
 //     }
 // }
 
-impl ConfigOption for BooleanOpt {
-    type R = bool;
-
-    fn value(&self) -> Self::R {
-        let weechat = self.get_weechat();
-        let config_boolean = weechat.get().config_boolean.unwrap();
-        let ret = unsafe { config_boolean(self.get_ptr()) };
-        ret != 0
-    }
-}
-
 // impl ConfigOption for IntegerOption {
 //     type R = i32;
 
@@ -303,11 +178,5 @@ impl<'a> ConfigOption for ColorOption<'a> {
             let string = config_color(self.get_ptr());
             CStr::from_ptr(string).to_string_lossy()
         }
-    }
-}
-
-impl PartialEq<bool> for BooleanOpt {
-    fn eq(&self, other: &bool) -> bool {
-        self.value() == *other
     }
 }
