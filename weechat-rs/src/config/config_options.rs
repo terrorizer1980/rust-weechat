@@ -2,9 +2,13 @@
 
 use crate::ConfigSection;
 use crate::Weechat;
+use crate::LossyCString;
 use std::borrow::Cow;
+use std::ffi::CStr;
+use std::convert::TryFrom;
 use std::marker::PhantomData;
 use weechat_sys::{t_config_option, t_weechat_plugin};
+
 
 #[derive(Default)]
 pub(crate) struct OptionDescription<'a> {
@@ -19,11 +23,26 @@ pub(crate) struct OptionDescription<'a> {
     pub null_allowed: bool,
 }
 
-pub(crate) enum OptionType {
+pub enum OptionType {
     Boolean,
     Integer,
     String,
     Color,
+}
+
+impl TryFrom<&str> for OptionType {
+    type Error = &'static str;
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let ret = match value {
+            "boolean" => OptionType::Boolean,
+            "integer" => OptionType::Integer,
+            "string" => OptionType::String,
+            "color" => OptionType::Color,
+            _ => return Err("Invalid option type"),
+        };
+
+        Ok(ret)
+    }
 }
 
 impl OptionType {
@@ -47,16 +66,53 @@ pub trait HidenConfigOptionT {
     /// Returns the raw pointer to the config option.
     fn get_ptr(&self) -> *mut t_config_option;
     fn get_weechat(&self) -> Weechat;
+
+    fn get_string(&self, property: &str) -> Option<Cow<str>> {
+        let weechat = self.get_weechat();
+        let get_string = weechat.get().config_option_get_string.unwrap();
+        let property = LossyCString::new(property);
+
+        unsafe {
+            let string = get_string(self.get_ptr(), property.as_ptr());
+            if string.is_null() {
+                None
+            } else {
+                Some(CStr::from_ptr(string).to_string_lossy())
+            }
+        }
+    }
 }
 
-pub trait BaseConfigOption: HidenConfigOptionT {}
+/// Base configuration option methods.
+///
+/// These methods are implemented for every option and don't depend on the
+/// option type.
+pub trait BaseConfigOption: HidenConfigOptionT {
+    /// Get the name of the option.
+    fn name(&self) -> Cow<str> {
+        self.get_string("name").expect("Can't get the name of the option")
+    }
 
-/// A trait that defines common behavior for the different data types of config options.
-pub trait ConfigOption<'a>: BaseConfigOption {
-    type R;
+    /// Get the description of the option.
+    fn description(&self) -> Cow<str> {
+        self.get_string("description").expect("Can't get the description of the option")
+    }
 
-    /// Get the value of the option.
-    fn value(&self) -> Self::R;
+    /// Get the section name of the section the option belongs to.
+    fn section_name(&self) -> Cow<str> {
+        self.get_string("section_name").expect("Can't get the section name of the option")
+    }
+
+    /// Get the config name the option belongs to.
+    fn config_name(&self) -> Cow<str> {
+        self.get_string("config_name").expect("Can't get the config name of the option")
+    }
+
+    /// Get the type of the config option
+    fn option_type(&self) -> OptionType {
+        let option_type = self.get_string("type").expect("Can't get the config name of the option");
+        OptionType::try_from(option_type.as_ref()).unwrap()
+    }
 
     /// Resets the option to its default value.
     fn reset(&self, run_callback: bool) -> crate::OptionChanged {
@@ -67,6 +123,26 @@ pub trait ConfigOption<'a>: BaseConfigOption {
 
         crate::OptionChanged::from_int(ret)
     }
+
+    /// Is the option undefined/null.
+    fn is_null(&self) -> bool {
+        let weechat = self.get_weechat();
+        let is_null = weechat.get().config_option_is_null.unwrap();
+
+        let ret = unsafe { is_null(self.get_ptr()) };
+
+        ret != 0
+    }
+
+}
+
+/// A trait that defines common behavior for the different data types of config options.
+pub trait ConfigOption<'a>: BaseConfigOption {
+    /// The return type of the config option.
+    type R;
+
+    /// Get the value of the option.
+    fn value(&self) -> Self::R;
 }
 
 pub(crate) struct OptionPointers<T> {

@@ -17,10 +17,10 @@ pub use crate::config::boolean::{
     BooleanOpt, BooleanOption, BooleanOptionSettings,
 };
 pub use crate::config::config_options::{
-    BaseConfigOption, BorrowedOption, ColorOption, ConfigOption, IntegerOption,
+    BaseConfigOption, BorrowedOption, ColorOption, ConfigOption, IntegerOption, OptionType
 };
 pub(crate) use crate::config::config_options::{
-    HidenConfigOptionT, OptionDescription, OptionPointers, OptionType,
+    HidenConfigOptionT, OptionDescription, OptionPointers,
 };
 pub use crate::config::section::{ConfigSection, ConfigSectionSettings};
 use crate::config::section::{
