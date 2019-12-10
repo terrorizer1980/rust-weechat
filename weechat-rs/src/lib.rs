@@ -16,12 +16,6 @@ pub use weechat::{ArgsWeechat, OptionChanged, Weechat};
 pub use bar::{BarItem, LightBarItem};
 pub use buffer::{Buffer, Nick, NickArgs};
 
-pub use config::{
-    BaseConfigOption, BooleanOpt, BooleanOption, BooleanOptionSettings,
-    ColorOption, ConfigOption, IntegerOption, OptionType,
-};
-pub use config::{Conf, Config, ConfigSection, ConfigSectionSettings};
-
 pub use hooks::{
     CommandDescription, CommandHook, CommandRunHook, FdHook, FdHookMode,
     SignalHook, SignalHookValue, TimerHook,

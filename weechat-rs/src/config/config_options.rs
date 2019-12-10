@@ -154,10 +154,12 @@ pub(crate) struct OptionPointers<T> {
     pub(crate) delete_cb: Option<Box<dyn FnMut(&T)>>,
 }
 
-pub trait BorrowedOption {
+pub trait HiddenBorrowedOption {
     /// Returns the raw pointer to the config option.
     fn from_ptrs(
         option_ptr: *mut t_config_option,
         weechat_ptr: *mut t_weechat_plugin,
     ) -> Self;
 }
+
+pub trait BorrowedOption: HiddenBorrowedOption {}

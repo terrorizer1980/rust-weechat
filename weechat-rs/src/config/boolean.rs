@@ -1,7 +1,7 @@
 use crate::config::{
-    BaseConfigOption, BorrowedOption, ConfigOption, HidenConfigOptionT,
+    BaseConfigOption, BorrowedOption, ConfigOption, ConfigSection,
+    HiddenBorrowedOption, HidenConfigOptionT,
 };
-use crate::ConfigSection;
 use crate::Weechat;
 use std::marker::PhantomData;
 use std::ops::Deref;
@@ -64,7 +64,7 @@ pub struct BooleanOpt {
     pub(crate) weechat_ptr: *mut t_weechat_plugin,
 }
 
-impl BorrowedOption for BooleanOpt {
+impl HiddenBorrowedOption for BooleanOpt {
     fn from_ptrs(
         option_ptr: *mut t_config_option,
         weechat_ptr: *mut t_weechat_plugin,
@@ -75,6 +75,8 @@ impl BorrowedOption for BooleanOpt {
         }
     }
 }
+
+impl BorrowedOption for BooleanOpt {}
 
 impl<'a> Deref for BooleanOption<'a> {
     type Target = BooleanOpt;

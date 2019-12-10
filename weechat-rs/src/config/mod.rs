@@ -21,7 +21,7 @@ pub use crate::config::config_options::{
     BaseConfigOption, BorrowedOption, ConfigOption, OptionType,
 };
 pub(crate) use crate::config::config_options::{
-    HidenConfigOptionT, OptionDescription, OptionPointers,
+    HiddenBorrowedOption, HidenConfigOptionT, OptionDescription, OptionPointers,
 };
 pub use crate::config::integer::{
     IntegerOpt, IntegerOption, IntegerOptionSettings,

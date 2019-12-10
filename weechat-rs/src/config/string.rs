@@ -1,7 +1,7 @@
 use crate::config::{
-    BaseConfigOption, BorrowedOption, ConfigOption, HidenConfigOptionT,
+    BaseConfigOption, BorrowedOption, ConfigOption, ConfigSection,
+    HiddenBorrowedOption, HidenConfigOptionT,
 };
-use crate::ConfigSection;
 use crate::Weechat;
 use std::borrow::Cow;
 use std::ffi::CStr;
@@ -76,7 +76,7 @@ pub struct StringOpt {
     pub(crate) weechat_ptr: *mut t_weechat_plugin,
 }
 
-impl BorrowedOption for StringOpt {
+impl HiddenBorrowedOption for StringOpt {
     fn from_ptrs(
         option_ptr: *mut t_config_option,
         weechat_ptr: *mut t_weechat_plugin,
@@ -87,6 +87,8 @@ impl BorrowedOption for StringOpt {
         }
     }
 }
+
+impl BorrowedOption for StringOpt {}
 
 impl<'a> Deref for StringOption<'a> {
     type Target = StringOpt;
