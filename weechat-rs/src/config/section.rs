@@ -10,9 +10,9 @@ use weechat_sys::{
 };
 
 use crate::config::{
-    BooleanOpt, BooleanOption, BooleanOptionSettings, BorrowedOption,
-    IntegerOpt, IntegerOption, IntegerOptionSettings, StringOpt, StringOption,
-    StringOptionSettings, ColorOpt, ColorOption, ColorOptionSettings
+    BooleanOpt, BooleanOption, BooleanOptionSettings, BorrowedOption, ColorOpt,
+    ColorOption, ColorOptionSettings, Conf, IntegerOpt, IntegerOption,
+    IntegerOptionSettings, StringOpt, StringOption, StringOptionSettings,
 };
 use crate::config::{OptionDescription, OptionPointers, OptionType};
 use crate::{LossyCString, Weechat};
@@ -26,8 +26,10 @@ pub struct ConfigSection {
 }
 
 pub(crate) struct ConfigSectionPointers {
-    pub(crate) read_cb: Option<Box<dyn FnMut(&str, &str)>>,
-    pub(crate) write_cb: Option<Box<dyn FnMut(&str)>>,
+    pub(crate) read_cb: Option<Box<dyn FnMut(&Conf, &str, &str)>>,
+    pub(crate) write_cb: Option<Box<dyn FnMut(&Conf, &str)>>,
+    pub(crate) write_default_cb: Option<Box<dyn FnMut(&Conf, &str)>>,
+    pub(crate) weechat_ptr: *mut t_weechat_plugin,
 }
 
 /// Represents the options when creating a new config section.
@@ -35,13 +37,13 @@ pub(crate) struct ConfigSectionPointers {
 pub struct ConfigSectionSettings {
     pub(crate) name: String,
 
-    pub(crate) read_callback: Option<Box<dyn FnMut(&str, &str)>>,
+    pub(crate) read_callback: Option<Box<dyn FnMut(&Conf, &str, &str)>>,
 
     /// A function called when the section is written to the disk
-    pub(crate) write_callback: Option<Box<dyn FnMut(&str)>>,
+    pub(crate) write_callback: Option<Box<dyn FnMut(&Conf, &str)>>,
 
     /// A function called when default values for the section must be written to the disk
-    pub(crate) write_default_callback: Option<Box<dyn FnMut()>>,
+    pub(crate) write_default_callback: Option<Box<dyn FnMut(&Conf, &str)>>,
 }
 
 impl ConfigSectionSettings {
@@ -63,7 +65,7 @@ impl ConfigSectionSettings {
     /// `callback` - The callback for a section read operation.
     pub fn set_read_callback(
         mut self,
-        callback: impl FnMut(&str, &str) + 'static,
+        callback: impl FnMut(&Conf, &str, &str) + 'static,
     ) -> Self {
         self.read_callback = Some(Box::new(callback));
         self
@@ -71,7 +73,7 @@ impl ConfigSectionSettings {
 
     pub fn set_write_callback(
         mut self,
-        callback: impl FnMut(&str) + 'static,
+        callback: impl FnMut(&Conf, &str) + 'static,
     ) -> Self {
         self.write_callback = Some(Box::new(callback));
         self
@@ -79,7 +81,7 @@ impl ConfigSectionSettings {
 
     pub fn set_write_default_callback(
         mut self,
-        callback: impl FnMut() + 'static,
+        callback: impl FnMut(&Conf, &str) + 'static,
     ) -> Self {
         self.write_default_callback = Some(Box::new(callback));
         self
@@ -236,7 +238,10 @@ impl ConfigSection {
             settings.delete_cb,
         );
         ColorOption {
-            inner: ColorOpt { ptr, weechat_ptr: self.weechat_ptr },
+            inner: ColorOpt {
+                ptr,
+                weechat_ptr: self.weechat_ptr,
+            },
             section: PhantomData,
         }
     }

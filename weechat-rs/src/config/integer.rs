@@ -6,7 +6,6 @@ use crate::config::{
 use crate::ConfigSection;
 use crate::Weechat;
 use std::borrow::Cow;
-use std::ffi::CStr;
 use std::marker::PhantomData;
 use std::ops::Deref;
 use weechat_sys::{t_config_option, t_weechat_plugin};

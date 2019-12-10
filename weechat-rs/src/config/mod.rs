@@ -10,13 +10,13 @@ mod string;
 use libc::{c_char, c_int};
 use std::collections::HashMap;
 use std::ffi::CStr;
-use std::ops::Deref;
 use std::os::raw::c_void;
 use std::ptr;
 
 pub use crate::config::boolean::{
     BooleanOpt, BooleanOption, BooleanOptionSettings,
 };
+pub use crate::config::color::{ColorOpt, ColorOption, ColorOptionSettings};
 pub use crate::config::config_options::{
     BaseConfigOption, BorrowedOption, ConfigOption, OptionType,
 };
@@ -25,9 +25,6 @@ pub(crate) use crate::config::config_options::{
 };
 pub use crate::config::integer::{
     IntegerOpt, IntegerOption, IntegerOptionSettings,
-};
-pub use crate::config::color::{
-    ColorOpt, ColorOption, ColorOptionSettings,
 };
 pub use crate::config::section::{ConfigSection, ConfigSectionSettings};
 use crate::config::section::{
@@ -56,14 +53,6 @@ pub struct Conf {
 struct ConfigPointers {
     reload_cb: Box<dyn FnMut(&Conf)>,
     weechat_ptr: *mut t_weechat_plugin,
-}
-
-impl Deref for Config {
-    type Target = Conf;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
 }
 
 /// Configuration file part of the weechat API.
@@ -138,7 +127,7 @@ impl Weechat {
 
 impl Drop for Config {
     fn drop(&mut self) {
-        let weechat = Weechat::from_ptr(self.weechat_ptr);
+        let weechat = Weechat::from_ptr(self.inner.weechat_ptr);
         let config_free = weechat.get().config_free.unwrap();
 
         // Drop the sections first.
@@ -146,7 +135,7 @@ impl Drop for Config {
 
         unsafe {
             // Now drop the config.
-            config_free(self.ptr)
+            config_free(self.inner.ptr)
         };
     }
 }
@@ -160,7 +149,7 @@ impl Config {
         unsafe extern "C" fn c_read_cb(
             pointer: *const c_void,
             _data: *mut c_void,
-            _config: *mut t_config_file,
+            config: *mut t_config_file,
             _section: *mut t_config_section,
             option_name: *const c_char,
             value: *const c_char,
@@ -170,8 +159,13 @@ impl Config {
             let pointers: &mut ConfigSectionPointers =
                 { &mut *(pointer as *mut ConfigSectionPointers) };
 
+            let conf = Conf {
+                ptr: config,
+                weechat_ptr: pointers.weechat_ptr,
+            };
+
             if let Some(ref mut callback) = pointers.read_cb {
-                callback(option_name.as_ref(), value.as_ref())
+                callback(&conf, option_name.as_ref(), value.as_ref())
             }
             WEECHAT_RC_OK
         }
@@ -179,7 +173,7 @@ impl Config {
         unsafe extern "C" fn c_write_cb(
             pointer: *const c_void,
             _data: *mut c_void,
-            _config: *mut t_config_file,
+            config: *mut t_config_file,
             section_name: *const c_char,
         ) -> c_int {
             let section_name = CStr::from_ptr(section_name).to_string_lossy();
@@ -187,13 +181,40 @@ impl Config {
             let pointers: &mut ConfigSectionPointers =
                 { &mut *(pointer as *mut ConfigSectionPointers) };
 
+            let conf = Conf {
+                ptr: config,
+                weechat_ptr: pointers.weechat_ptr,
+            };
+
             if let Some(ref mut callback) = pointers.write_cb {
-                callback(section_name.as_ref())
+                callback(&conf, section_name.as_ref())
             }
             WEECHAT_RC_OK
         }
 
-        let weechat = Weechat::from_ptr(self.weechat_ptr);
+        unsafe extern "C" fn c_write_default_cb(
+            pointer: *const c_void,
+            _data: *mut c_void,
+            config: *mut t_config_file,
+            section_name: *const c_char,
+        ) -> c_int {
+            let section_name = CStr::from_ptr(section_name).to_string_lossy();
+
+            let pointers: &mut ConfigSectionPointers =
+                { &mut *(pointer as *mut ConfigSectionPointers) };
+
+            let conf = Conf {
+                ptr: config,
+                weechat_ptr: pointers.weechat_ptr,
+            };
+
+            if let Some(ref mut callback) = pointers.write_default_cb {
+                callback(&conf, section_name.as_ref())
+            }
+            WEECHAT_RC_OK
+        }
+
+        let weechat = Weechat::from_ptr(self.inner.weechat_ptr);
 
         let new_section = weechat.get().config_new_section.unwrap();
 
@@ -209,13 +230,24 @@ impl Config {
             None => (None, None),
         };
 
-        let section_data =
-            Box::new(ConfigSectionPointers { read_cb, write_cb });
+        let (c_write_default_cb, write_default_cb) = match section_info
+            .write_default_callback
+        {
+            Some(cb) => (Some(c_write_default_cb as SectionWriteCbT), Some(cb)),
+            None => (None, None),
+        };
+
+        let section_data = Box::new(ConfigSectionPointers {
+            read_cb,
+            write_cb,
+            write_default_cb,
+            weechat_ptr: self.inner.weechat_ptr,
+        });
         let section_data_ptr = Box::leak(section_data);
 
         let ptr = unsafe {
             new_section(
-                self.ptr,
+                self.inner.ptr,
                 name.as_ptr(),
                 0,
                 0,
@@ -225,8 +257,8 @@ impl Config {
                 c_write_cb,
                 section_data_ptr as *const _ as *const c_void,
                 ptr::null_mut(),
-                None,
-                ptr::null_mut(),
+                c_write_default_cb,
+                section_data_ptr as *const _ as *const c_void,
                 ptr::null_mut(),
                 None,
                 ptr::null_mut(),
@@ -238,7 +270,7 @@ impl Config {
         };
         let section = ConfigSection {
             ptr,
-            config_ptr: self.ptr,
+            config_ptr: self.inner.ptr,
             weechat_ptr: weechat.ptr,
             section_data: section_data_ptr as *const _ as *const c_void,
         };
