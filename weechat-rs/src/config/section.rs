@@ -145,12 +145,11 @@ impl ConfigSection {
                 option_type: OptionType::String,
                 default_value: &settings.default_value,
                 value: &settings.value,
-                null_allowed: settings.null_allowed,
                 ..Default::default()
             },
             settings.check_cb,
             settings.change_cb,
-            settings.delete_cb,
+            None,
         );
         StringOption {
             inner: StringOpt {
@@ -175,12 +174,11 @@ impl ConfigSection {
                 option_type: OptionType::Boolean,
                 default_value,
                 value,
-                null_allowed: settings.null_allowed,
                 ..Default::default()
             },
-            settings.check_cb,
+            None,
             settings.change_cb,
-            settings.delete_cb,
+            None,
         );
         BooleanOption {
             inner: BooleanOpt::from_ptrs(ptr, self.weechat_ptr),
@@ -203,11 +201,11 @@ impl ConfigSection {
                 max: settings.max,
                 default_value: &settings.default_value.to_string(),
                 value: &settings.value.to_string(),
-                null_allowed: settings.null_allowed,
+                ..Default::default()
             },
-            settings.check_cb,
+            None,
             settings.change_cb,
-            settings.delete_cb,
+            None,
         );
         IntegerOption {
             inner: IntegerOpt {
@@ -230,12 +228,11 @@ impl ConfigSection {
                 option_type: OptionType::Color,
                 default_value: &settings.default_value,
                 value: &settings.value,
-                null_allowed: settings.null_allowed,
                 ..Default::default()
             },
-            settings.check_cb,
+            None,
             settings.change_cb,
-            settings.delete_cb,
+            None,
         );
         ColorOption {
             inner: ColorOpt {

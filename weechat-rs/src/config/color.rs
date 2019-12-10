@@ -9,7 +9,7 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 use weechat_sys::{t_config_option, t_weechat_plugin};
 
-/// Represents the settings for a new string config option.
+/// Represents the settings for a new color config option.
 #[derive(Default)]
 pub struct ColorOptionSettings {
     pub(crate) name: String,
@@ -20,13 +20,7 @@ pub struct ColorOptionSettings {
 
     pub(crate) value: String,
 
-    pub(crate) null_allowed: bool,
-
     pub(crate) change_cb: Option<Box<dyn FnMut(&ColorOpt)>>,
-
-    pub(crate) check_cb: Option<Box<dyn FnMut(&ColorOpt, Cow<str>)>>,
-
-    pub(crate) delete_cb: Option<Box<dyn FnMut(&ColorOpt)>>,
 }
 
 impl ColorOptionSettings {
@@ -52,32 +46,11 @@ impl ColorOptionSettings {
         self
     }
 
-    pub fn null_allowed(mut self, value: bool) -> Self {
-        self.null_allowed = value;
-        self
-    }
-
     pub fn set_change_callback(
         mut self,
         callback: impl FnMut(&ColorOpt) + 'static,
     ) -> Self {
         self.change_cb = Some(Box::new(callback));
-        self
-    }
-
-    pub fn set_check_callback(
-        mut self,
-        callback: impl FnMut(&ColorOpt, Cow<str>) + 'static,
-    ) -> Self {
-        self.check_cb = Some(Box::new(callback));
-        self
-    }
-
-    pub fn set_delete_callback(
-        mut self,
-        callback: impl FnMut(&ColorOpt) + 'static,
-    ) -> Self {
-        self.delete_cb = Some(Box::new(callback));
         self
     }
 }

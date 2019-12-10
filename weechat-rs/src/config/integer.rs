@@ -1,11 +1,8 @@
-//! A module providing a typed api for Weechat configuration files
-
 use crate::config::{
     BaseConfigOption, BorrowedOption, ConfigOption, HidenConfigOptionT,
 };
 use crate::ConfigSection;
 use crate::Weechat;
-use std::borrow::Cow;
 use std::marker::PhantomData;
 use std::ops::Deref;
 use weechat_sys::{t_config_option, t_weechat_plugin};
@@ -27,13 +24,7 @@ pub struct IntegerOptionSettings {
 
     pub(crate) string_values: String,
 
-    pub(crate) null_allowed: bool,
-
     pub(crate) change_cb: Option<Box<dyn FnMut(&IntegerOpt)>>,
-
-    pub(crate) check_cb: Option<Box<dyn FnMut(&IntegerOpt, Cow<str>)>>,
-
-    pub(crate) delete_cb: Option<Box<dyn FnMut(&IntegerOpt)>>,
 }
 
 impl IntegerOptionSettings {
@@ -59,11 +50,6 @@ impl IntegerOptionSettings {
         self
     }
 
-    pub fn null_allowed(mut self, value: bool) -> Self {
-        self.null_allowed = value;
-        self
-    }
-
     pub fn string_values<V: Into<String>>(mut self, value: V) -> Self {
         self.string_values = value.into();
         self
@@ -84,20 +70,6 @@ impl IntegerOptionSettings {
         callback: impl FnMut(&IntegerOpt) + 'static,
     ) -> Self {
         self.change_cb = Some(Box::new(callback));
-        self
-    }
-    pub fn set_check_callback(
-        mut self,
-        callback: impl FnMut(&IntegerOpt, Cow<str>) + 'static,
-    ) -> Self {
-        self.check_cb = Some(Box::new(callback));
-        self
-    }
-    pub fn set_delete_callback(
-        mut self,
-        callback: impl FnMut(&IntegerOpt) + 'static,
-    ) -> Self {
-        self.delete_cb = Some(Box::new(callback));
         self
     }
 }

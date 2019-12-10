@@ -1,5 +1,3 @@
-//! A module providing a typed api for Weechat configuration files
-
 use crate::config::{
     BaseConfigOption, BorrowedOption, ConfigOption, HidenConfigOptionT,
 };
@@ -22,13 +20,9 @@ pub struct StringOptionSettings {
 
     pub(crate) value: String,
 
-    pub(crate) null_allowed: bool,
-
     pub(crate) change_cb: Option<Box<dyn FnMut(&StringOpt)>>,
 
     pub(crate) check_cb: Option<Box<dyn FnMut(&StringOpt, Cow<str>)>>,
-
-    pub(crate) delete_cb: Option<Box<dyn FnMut(&StringOpt)>>,
 }
 
 impl StringOptionSettings {
@@ -54,11 +48,6 @@ impl StringOptionSettings {
         self
     }
 
-    pub fn null_allowed(mut self, value: bool) -> Self {
-        self.null_allowed = value;
-        self
-    }
-
     pub fn set_change_callback(
         mut self,
         callback: impl FnMut(&StringOpt) + 'static,
@@ -66,18 +55,12 @@ impl StringOptionSettings {
         self.change_cb = Some(Box::new(callback));
         self
     }
+
     pub fn set_check_callback(
         mut self,
         callback: impl FnMut(&StringOpt, Cow<str>) + 'static,
     ) -> Self {
         self.check_cb = Some(Box::new(callback));
-        self
-    }
-    pub fn set_delete_callback(
-        mut self,
-        callback: impl FnMut(&StringOpt) + 'static,
-    ) -> Self {
-        self.delete_cb = Some(Box::new(callback));
         self
     }
 }
