@@ -1,14 +1,11 @@
 //! A module providing a typed api for Weechat configuration files
 
-use crate::ConfigSection;
-use crate::Weechat;
 use crate::LossyCString;
+use crate::Weechat;
 use std::borrow::Cow;
-use std::ffi::CStr;
 use std::convert::TryFrom;
-use std::marker::PhantomData;
+use std::ffi::CStr;
 use weechat_sys::{t_config_option, t_weechat_plugin};
-
 
 #[derive(Default)]
 pub(crate) struct OptionDescription<'a> {
@@ -90,27 +87,33 @@ pub trait HidenConfigOptionT {
 pub trait BaseConfigOption: HidenConfigOptionT {
     /// Get the name of the option.
     fn name(&self) -> Cow<str> {
-        self.get_string("name").expect("Can't get the name of the option")
+        self.get_string("name")
+            .expect("Can't get the name of the option")
     }
 
     /// Get the description of the option.
     fn description(&self) -> Cow<str> {
-        self.get_string("description").expect("Can't get the description of the option")
+        self.get_string("description")
+            .expect("Can't get the description of the option")
     }
 
     /// Get the section name of the section the option belongs to.
     fn section_name(&self) -> Cow<str> {
-        self.get_string("section_name").expect("Can't get the section name of the option")
+        self.get_string("section_name")
+            .expect("Can't get the section name of the option")
     }
 
     /// Get the config name the option belongs to.
     fn config_name(&self) -> Cow<str> {
-        self.get_string("config_name").expect("Can't get the config name of the option")
+        self.get_string("config_name")
+            .expect("Can't get the config name of the option")
     }
 
     /// Get the type of the config option
     fn option_type(&self) -> OptionType {
-        let option_type = self.get_string("type").expect("Can't get the config name of the option");
+        let option_type = self
+            .get_string("type")
+            .expect("Can't get the config name of the option");
         OptionType::try_from(option_type.as_ref()).unwrap()
     }
 
@@ -133,7 +136,6 @@ pub trait BaseConfigOption: HidenConfigOptionT {
 
         ret != 0
     }
-
 }
 
 /// A trait that defines common behavior for the different data types of config options.
@@ -159,60 +161,3 @@ pub trait BorrowedOption {
         weechat_ptr: *mut t_weechat_plugin,
     ) -> Self;
 }
-
-/// A config option with a integer value.
-pub struct IntegerOption<'a> {
-    pub(crate) ptr: *mut t_config_option,
-    pub(crate) weechat_ptr: *mut t_weechat_plugin,
-    pub(crate) section: PhantomData<&'a ConfigSection>,
-}
-
-/// A config option with a color value.
-pub struct ColorOption<'a> {
-    pub(crate) ptr: *mut t_config_option,
-    pub(crate) weechat_ptr: *mut t_weechat_plugin,
-    pub(crate) section: PhantomData<&'a ConfigSection>,
-}
-
-impl HidenConfigOptionT for ColorOption<'_> {
-    fn get_ptr(&self) -> *mut t_config_option {
-        self.ptr
-    }
-
-    fn get_weechat(&self) -> Weechat {
-        Weechat::from_ptr(self.weechat_ptr)
-    }
-}
-
-impl HidenConfigOptionT for IntegerOption<'_> {
-    fn get_ptr(&self) -> *mut t_config_option {
-        self.ptr
-    }
-
-    fn get_weechat(&self) -> Weechat {
-        Weechat::from_ptr(self.weechat_ptr)
-    }
-}
-
-// impl ConfigOption for IntegerOption {
-//     type R = i32;
-
-//     fn value(&self) -> Self::R {
-//         let weechat = self.get_weechat();
-//         let config_integer = weechat.get().config_integer.unwrap();
-//         unsafe { config_integer(self.get_ptr()) }
-//     }
-// }
-
-// impl<'a> ConfigOption for ColorOption<'a> {
-//     type R = Cow<'a, str>;
-
-//     fn value(&self) -> Self::R {
-//         let weechat = self.get_weechat();
-//         let config_color = weechat.get().config_color.unwrap();
-//         unsafe {
-//             let string = config_color(self.get_ptr());
-//             CStr::from_ptr(string).to_string_lossy()
-//         }
-//     }
-// }

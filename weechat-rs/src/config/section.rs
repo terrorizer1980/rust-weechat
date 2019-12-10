@@ -11,7 +11,8 @@ use weechat_sys::{
 
 use crate::config::{
     BooleanOpt, BooleanOption, BooleanOptionSettings, BorrowedOption,
-    StringOption, StringOpt, StringOptionSettings,
+    IntegerOpt, IntegerOption, IntegerOptionSettings, StringOpt, StringOption,
+    StringOptionSettings, ColorOpt, ColorOption, ColorOptionSettings
 };
 use crate::config::{OptionDescription, OptionPointers, OptionType};
 use crate::{LossyCString, Weechat};
@@ -131,13 +132,10 @@ type WeechatOptCheckCbT = unsafe extern "C" fn(
 
 impl ConfigSection {
     /// Create a new string Weechat configuration option.
-    pub fn new_string_option<D>(
+    pub fn new_string_option(
         &self,
         settings: StringOptionSettings,
-    ) -> StringOption
-    where
-        D: Default,
-    {
+    ) -> StringOption {
         let ptr = self.new_option(
             OptionDescription {
                 name: &settings.name,
@@ -153,7 +151,10 @@ impl ConfigSection {
             settings.delete_cb,
         );
         StringOption {
-            inner: StringOpt { ptr, weechat_ptr: self.weechat_ptr },
+            inner: StringOpt {
+                ptr,
+                weechat_ptr: self.weechat_ptr,
+            },
             section: PhantomData,
         }
     }
@@ -186,81 +187,59 @@ impl ConfigSection {
     }
 
     /// Create a new integer Weechat configuration option.
-    // pub fn new_integer_option<D>(
-    //     &self,
-    //     name: &str,
-    //     description: &str,
-    //     string_values: &str,
-    //     min: i32,
-    //     max: i32,
-    //     default_value: &str,
-    //     value: &str,
-    //     null_allowed: bool,
-    //     change_cb: Option<fn(&mut D, &IntegerOption)>,
-    //     change_cb_data: Option<D>,
-    // ) -> IntegerOption
-    // where
-    //     D: Default,
-    // {
-    //     let ptr = self.new_option(
-    //         OptionDescription {
-    //             name,
-    //             option_type: OptionType::Integer,
-    //             description,
-    //             string_values,
-    //             min,
-    //             max,
-    //             default_value,
-    //             value,
-    //             null_allowed,
-    //         },
-    //         None,
-    //         None::<String>,
-    //         change_cb,
-    //         change_cb_data,
-    //         None,
-    //         None::<String>,
-    //     );
-    //     IntegerOption {
-    //         ptr,
-    //         weechat_ptr: self.weechat_ptr,
-    //         section: PhantomData,
-    //     }
-    // }
+    pub fn new_integer_option(
+        &self,
+        settings: IntegerOptionSettings,
+    ) -> IntegerOption {
+        let ptr = self.new_option(
+            OptionDescription {
+                name: &settings.name,
+                option_type: OptionType::Integer,
+                description: &settings.description,
+                string_values: &settings.string_values,
+                min: settings.min,
+                max: settings.max,
+                default_value: &settings.default_value.to_string(),
+                value: &settings.value.to_string(),
+                null_allowed: settings.null_allowed,
+            },
+            settings.check_cb,
+            settings.change_cb,
+            settings.delete_cb,
+        );
+        IntegerOption {
+            inner: IntegerOpt {
+                ptr,
+                weechat_ptr: self.weechat_ptr,
+            },
+            section: PhantomData,
+        }
+    }
 
-    // /// Create a new color Weechat configuration option.
-    // pub fn new_color_option<D>(
-    //     &self,
-    //     name: &str,
-    //     description: &str,
-    //     default_value: &str,
-    //     value: &str,
-    //     null_allowed: bool,
-    //     change_cb: Option<fn(&mut D, &ColorOption)>,
-    // ) -> ColorOption
-    // where
-    //     D: Default,
-    // {
-    //     let ptr = self.new_option(
-    //         OptionDescription {
-    //             name,
-    //             description,
-    //             option_type: OptionType::Color,
-    //             default_value,
-    //             value,
-    //             null_allowed,
-    //             ..Default::default()
-    //         },
-    //         None,
-    //         change_cb,
-    //         None,
-    //     );
-    //     ColorOption {
-    //         ptr,
-    //         weechat_ptr: self.weechat_ptr,
-    //         section: PhantomData,
-    //     }
-    // }
+    /// Create a new color Weechat configuration option.
+    pub fn new_color_option(
+        &self,
+        settings: ColorOptionSettings,
+    ) -> ColorOption {
+        let ptr = self.new_option(
+            OptionDescription {
+                name: &settings.name,
+                description: &settings.description,
+                option_type: OptionType::Color,
+                default_value: &settings.default_value,
+                value: &settings.value,
+                null_allowed: settings.null_allowed,
+                ..Default::default()
+            },
+            settings.check_cb,
+            settings.change_cb,
+            settings.delete_cb,
+        );
+        ColorOption {
+            inner: ColorOpt { ptr, weechat_ptr: self.weechat_ptr },
+            section: PhantomData,
+        }
+    }
 
     fn new_option<T>(
         &self,

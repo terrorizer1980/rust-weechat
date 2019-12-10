@@ -11,29 +11,35 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 use weechat_sys::{t_config_option, t_weechat_plugin};
 
-/// Represents the settings for a new string config option.
+/// Represents the settings for a new integer config option.
 #[derive(Default)]
-pub struct StringOptionSettings {
+pub struct IntegerOptionSettings {
     pub(crate) name: String,
 
     pub(crate) description: String,
 
-    pub(crate) default_value: String,
+    pub(crate) default_value: i32,
 
-    pub(crate) value: String,
+    pub(crate) value: i32,
+
+    pub(crate) min: i32,
+
+    pub(crate) max: i32,
+
+    pub(crate) string_values: String,
 
     pub(crate) null_allowed: bool,
 
-    pub(crate) change_cb: Option<Box<dyn FnMut(&StringOpt)>>,
+    pub(crate) change_cb: Option<Box<dyn FnMut(&IntegerOpt)>>,
 
-    pub(crate) check_cb: Option<Box<dyn FnMut(&StringOpt, Cow<str>)>>,
+    pub(crate) check_cb: Option<Box<dyn FnMut(&IntegerOpt, Cow<str>)>>,
 
-    pub(crate) delete_cb: Option<Box<dyn FnMut(&StringOpt)>>,
+    pub(crate) delete_cb: Option<Box<dyn FnMut(&IntegerOpt)>>,
 }
 
-impl StringOptionSettings {
+impl IntegerOptionSettings {
     pub fn new<N: Into<String>>(name: N) -> Self {
-        StringOptionSettings {
+        IntegerOptionSettings {
             name: name.into(),
             ..Default::default()
         }
@@ -44,12 +50,12 @@ impl StringOptionSettings {
         self
     }
 
-    pub fn default_value<V: Into<String>>(mut self, value: V) -> Self {
+    pub fn default_value<V: Into<i32>>(mut self, value: V) -> Self {
         self.default_value = value.into();
         self
     }
 
-    pub fn value<V: Into<String>>(mut self, value: V) -> Self {
+    pub fn value<V: Into<i32>>(mut self, value: V) -> Self {
         self.value = value.into();
         self
     }
@@ -59,23 +65,38 @@ impl StringOptionSettings {
         self
     }
 
+    pub fn string_values<V: Into<String>>(mut self, value: V) -> Self {
+        self.string_values = value.into();
+        self
+    }
+
+    pub fn min(mut self, value: i32) -> Self {
+        self.min = value;
+        self
+    }
+
+    pub fn max(mut self, value: i32) -> Self {
+        self.max = value;
+        self
+    }
+
     pub fn set_change_callback(
         mut self,
-        callback: impl FnMut(&StringOpt) + 'static,
+        callback: impl FnMut(&IntegerOpt) + 'static,
     ) -> Self {
         self.change_cb = Some(Box::new(callback));
         self
     }
     pub fn set_check_callback(
         mut self,
-        callback: impl FnMut(&StringOpt, Cow<str>) + 'static,
+        callback: impl FnMut(&IntegerOpt, Cow<str>) + 'static,
     ) -> Self {
         self.check_cb = Some(Box::new(callback));
         self
     }
     pub fn set_delete_callback(
         mut self,
-        callback: impl FnMut(&StringOpt) + 'static,
+        callback: impl FnMut(&IntegerOpt) + 'static,
     ) -> Self {
         self.delete_cb = Some(Box::new(callback));
         self
@@ -83,37 +104,37 @@ impl StringOptionSettings {
 }
 
 /// A config option with a boolean value.
-pub struct StringOption<'a> {
-    pub(crate) inner: StringOpt,
+pub struct IntegerOption<'a> {
+    pub(crate) inner: IntegerOpt,
     pub(crate) section: PhantomData<&'a ConfigSection>,
 }
 
-pub struct StringOpt {
+pub struct IntegerOpt {
     pub(crate) ptr: *mut t_config_option,
     pub(crate) weechat_ptr: *mut t_weechat_plugin,
 }
 
-impl BorrowedOption for StringOpt {
+impl BorrowedOption for IntegerOpt {
     fn from_ptrs(
         option_ptr: *mut t_config_option,
         weechat_ptr: *mut t_weechat_plugin,
     ) -> Self {
-        StringOpt {
+        IntegerOpt {
             ptr: option_ptr,
             weechat_ptr,
         }
     }
 }
 
-impl<'a> Deref for StringOption<'a> {
-    type Target = StringOpt;
+impl<'a> Deref for IntegerOption<'a> {
+    type Target = IntegerOpt;
 
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-impl HidenConfigOptionT for StringOpt {
+impl HidenConfigOptionT for IntegerOpt {
     fn get_ptr(&self) -> *mut t_config_option {
         self.ptr
     }
@@ -123,7 +144,7 @@ impl HidenConfigOptionT for StringOpt {
     }
 }
 
-impl<'a> HidenConfigOptionT for StringOption<'a> {
+impl<'a> HidenConfigOptionT for IntegerOption<'a> {
     fn get_ptr(&self) -> *mut t_config_option {
         self.ptr
     }
@@ -133,18 +154,15 @@ impl<'a> HidenConfigOptionT for StringOption<'a> {
     }
 }
 
-impl<'a> BaseConfigOption for StringOption<'a> {}
-impl BaseConfigOption for StringOpt {}
+impl<'a> BaseConfigOption for IntegerOption<'a> {}
+impl BaseConfigOption for IntegerOpt {}
 
-impl<'a> ConfigOption<'a> for StringOpt {
-    type R = Cow<'a, str>;
+impl<'a> ConfigOption<'a> for IntegerOpt {
+    type R = i32;
 
     fn value(&self) -> Self::R {
         let weechat = self.get_weechat();
-        let config_string = weechat.get().config_string.unwrap();
-        unsafe {
-            let string = config_string(self.get_ptr());
-            CStr::from_ptr(string).to_string_lossy()
-        }
+        let config_integer = weechat.get().config_integer.unwrap();
+        unsafe { config_integer(self.get_ptr()) }
     }
 }

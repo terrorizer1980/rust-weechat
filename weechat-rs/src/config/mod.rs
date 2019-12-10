@@ -1,9 +1,11 @@
 //! Weechat Configuration module
 
 mod boolean;
-mod string;
+mod color;
 mod config_options;
+mod integer;
 mod section;
+mod string;
 
 use libc::{c_char, c_int};
 use std::collections::HashMap;
@@ -12,19 +14,27 @@ use std::ops::Deref;
 use std::os::raw::c_void;
 use std::ptr;
 
-pub use crate::config::string::{StringOption, StringOpt, StringOptionSettings};
 pub use crate::config::boolean::{
     BooleanOpt, BooleanOption, BooleanOptionSettings,
 };
 pub use crate::config::config_options::{
-    BaseConfigOption, BorrowedOption, ColorOption, ConfigOption, IntegerOption, OptionType
+    BaseConfigOption, BorrowedOption, ConfigOption, OptionType,
 };
 pub(crate) use crate::config::config_options::{
     HidenConfigOptionT, OptionDescription, OptionPointers,
 };
+pub use crate::config::integer::{
+    IntegerOpt, IntegerOption, IntegerOptionSettings,
+};
+pub use crate::config::color::{
+    ColorOpt, ColorOption, ColorOptionSettings,
+};
 pub use crate::config::section::{ConfigSection, ConfigSectionSettings};
 use crate::config::section::{
     ConfigSectionPointers, SectionReadCbT, SectionWriteCbT,
+};
+pub use crate::config::string::{
+    StringOpt, StringOption, StringOptionSettings,
 };
 use crate::{LossyCString, Weechat};
 use weechat_sys::{

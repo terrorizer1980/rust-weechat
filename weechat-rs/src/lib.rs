@@ -18,7 +18,7 @@ pub use buffer::{Buffer, Nick, NickArgs};
 
 pub use config::{
     BaseConfigOption, BooleanOpt, BooleanOption, BooleanOptionSettings,
-    ColorOption, ConfigOption, IntegerOption, OptionType
+    ColorOption, ConfigOption, IntegerOption, OptionType,
 };
 pub use config::{Config, ConfigSection, ConfigSectionSettings};
 
