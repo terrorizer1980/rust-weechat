@@ -24,7 +24,7 @@ pub struct IntegerOptionSettings {
 
     pub(crate) string_values: String,
 
-    pub(crate) change_cb: Option<Box<dyn FnMut(&IntegerOpt)>>,
+    pub(crate) change_cb: Option<Box<dyn FnMut(&Weechat, &IntegerOpt)>>,
 }
 
 impl IntegerOptionSettings {
@@ -67,7 +67,7 @@ impl IntegerOptionSettings {
 
     pub fn set_change_callback(
         mut self,
-        callback: impl FnMut(&IntegerOpt) + 'static,
+        callback: impl FnMut(&Weechat, &IntegerOpt) + 'static,
     ) -> Self {
         self.change_cb = Some(Box::new(callback));
         self

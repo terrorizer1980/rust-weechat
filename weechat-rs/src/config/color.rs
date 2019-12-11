@@ -20,7 +20,7 @@ pub struct ColorOptionSettings {
 
     pub(crate) value: String,
 
-    pub(crate) change_cb: Option<Box<dyn FnMut(&ColorOpt)>>,
+    pub(crate) change_cb: Option<Box<dyn FnMut(&Weechat, &ColorOpt)>>,
 }
 
 impl ColorOptionSettings {
@@ -48,7 +48,7 @@ impl ColorOptionSettings {
 
     pub fn set_change_callback(
         mut self,
-        callback: impl FnMut(&ColorOpt) + 'static,
+        callback: impl FnMut(&Weechat, &ColorOpt) + 'static,
     ) -> Self {
         self.change_cb = Some(Box::new(callback));
         self

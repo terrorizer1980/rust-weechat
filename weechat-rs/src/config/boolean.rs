@@ -18,7 +18,7 @@ pub struct BooleanOptionSettings {
 
     pub(crate) value: bool,
 
-    pub(crate) change_cb: Option<Box<dyn FnMut(&BooleanOpt)>>,
+    pub(crate) change_cb: Option<Box<dyn FnMut(&Weechat, &BooleanOpt)>>,
 }
 
 impl BooleanOptionSettings {
@@ -46,7 +46,7 @@ impl BooleanOptionSettings {
 
     pub fn set_change_callback(
         mut self,
-        callback: impl FnMut(&BooleanOpt) + 'static,
+        callback: impl FnMut(&Weechat, &BooleanOpt) + 'static,
     ) -> Self {
         self.change_cb = Some(Box::new(callback));
         self

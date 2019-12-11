@@ -51,7 +51,7 @@ pub struct Conf {
 }
 
 struct ConfigPointers {
-    reload_cb: Box<dyn FnMut(&Conf)>,
+    reload_cb: Box<dyn FnMut(&Weechat, &Conf)>,
     weechat_ptr: *mut t_weechat_plugin,
 }
 
@@ -68,7 +68,7 @@ impl Weechat {
     pub fn config_new(
         &self,
         name: &str,
-        reload_callback: impl FnMut(&Conf) + 'static,
+        reload_callback: impl FnMut(&Weechat, &Conf) + 'static,
     ) -> Option<Config> {
         unsafe extern "C" fn c_reload_cb(
             pointer: *const c_void,
@@ -84,7 +84,9 @@ impl Weechat {
                 weechat_ptr: pointers.weechat_ptr,
             };
 
-            cb(&conf);
+            let weechat = Weechat::from_ptr(pointers.weechat_ptr);
+
+            cb(&weechat, &conf);
 
             WEECHAT_RC_OK
         }
@@ -163,9 +165,10 @@ impl Config {
                 ptr: config,
                 weechat_ptr: pointers.weechat_ptr,
             };
+            let weechat = Weechat::from_ptr(pointers.weechat_ptr);
 
             if let Some(ref mut callback) = pointers.read_cb {
-                callback(&conf, option_name.as_ref(), value.as_ref())
+                callback(&weechat, &conf, option_name.as_ref(), value.as_ref())
             }
             WEECHAT_RC_OK
         }
@@ -185,9 +188,10 @@ impl Config {
                 ptr: config,
                 weechat_ptr: pointers.weechat_ptr,
             };
+            let weechat = Weechat::from_ptr(pointers.weechat_ptr);
 
             if let Some(ref mut callback) = pointers.write_cb {
-                callback(&conf, section_name.as_ref())
+                callback(&weechat, &conf, section_name.as_ref())
             }
             WEECHAT_RC_OK
         }
@@ -207,9 +211,10 @@ impl Config {
                 ptr: config,
                 weechat_ptr: pointers.weechat_ptr,
             };
+            let weechat = Weechat::from_ptr(pointers.weechat_ptr);
 
             if let Some(ref mut callback) = pointers.write_default_cb {
-                callback(&conf, section_name.as_ref())
+                callback(&weechat, &conf, section_name.as_ref())
             }
             WEECHAT_RC_OK
         }

@@ -20,9 +20,9 @@ pub struct StringOptionSettings {
 
     pub(crate) value: String,
 
-    pub(crate) change_cb: Option<Box<dyn FnMut(&StringOpt)>>,
+    pub(crate) change_cb: Option<Box<dyn FnMut(&Weechat, &StringOpt)>>,
 
-    pub(crate) check_cb: Option<Box<dyn FnMut(&StringOpt, Cow<str>)>>,
+    pub(crate) check_cb: Option<Box<dyn FnMut(&Weechat, &StringOpt, Cow<str>)>>,
 }
 
 impl StringOptionSettings {
@@ -50,7 +50,7 @@ impl StringOptionSettings {
 
     pub fn set_change_callback(
         mut self,
-        callback: impl FnMut(&StringOpt) + 'static,
+        callback: impl FnMut(&Weechat, &StringOpt) + 'static,
     ) -> Self {
         self.change_cb = Some(Box::new(callback));
         self
@@ -58,7 +58,7 @@ impl StringOptionSettings {
 
     pub fn set_check_callback(
         mut self,
-        callback: impl FnMut(&StringOpt, Cow<str>) + 'static,
+        callback: impl FnMut(&Weechat, &StringOpt, Cow<str>) + 'static,
     ) -> Self {
         self.check_cb = Some(Box::new(callback));
         self

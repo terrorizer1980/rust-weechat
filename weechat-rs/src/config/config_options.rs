@@ -149,9 +149,9 @@ pub trait ConfigOption<'a>: BaseConfigOption {
 
 pub(crate) struct OptionPointers<T> {
     pub(crate) weechat_ptr: *mut t_weechat_plugin,
-    pub(crate) check_cb: Option<Box<dyn FnMut(&T, Cow<str>)>>,
-    pub(crate) change_cb: Option<Box<dyn FnMut(&T)>>,
-    pub(crate) delete_cb: Option<Box<dyn FnMut(&T)>>,
+    pub(crate) check_cb: Option<Box<dyn FnMut(&Weechat, &T, Cow<str>)>>,
+    pub(crate) change_cb: Option<Box<dyn FnMut(&Weechat, &T)>>,
+    pub(crate) delete_cb: Option<Box<dyn FnMut(&Weechat, &T)>>,
 }
 
 pub trait HiddenBorrowedOption {
