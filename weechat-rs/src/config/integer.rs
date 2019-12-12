@@ -16,8 +16,6 @@ pub struct IntegerOptionSettings {
 
     pub(crate) default_value: i32,
 
-    pub(crate) value: i32,
-
     pub(crate) min: i32,
 
     pub(crate) max: i32,

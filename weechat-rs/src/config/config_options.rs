@@ -1,5 +1,3 @@
-//! A module providing a typed api for Weechat configuration files
-
 use crate::LossyCString;
 use crate::Weechat;
 use std::borrow::Cow;
@@ -20,6 +18,8 @@ pub(crate) struct OptionDescription<'a> {
     pub null_allowed: bool,
 }
 
+#[derive(Debug, PartialEq, Clone)]
+#[allow(missing_docs)]
 pub enum OptionType {
     Boolean,
     Integer,
@@ -43,7 +43,7 @@ impl TryFrom<&str> for OptionType {
 }
 
 impl OptionType {
-    pub fn as_str(&self) -> &'static str {
+    pub(crate) fn as_str(&self) -> &'static str {
         match self {
             OptionType::Boolean => "boolean",
             OptionType::Integer => "integer",
@@ -147,9 +147,11 @@ pub trait ConfigOption<'a>: BaseConfigOption {
     fn value(&self) -> Self::R;
 }
 
+pub(crate) type CheckCB<T> = dyn FnMut(&Weechat, &T, Cow<str>) -> bool;
+
 pub(crate) struct OptionPointers<T> {
     pub(crate) weechat_ptr: *mut t_weechat_plugin,
-    pub(crate) check_cb: Option<Box<dyn FnMut(&Weechat, &T, Cow<str>)>>,
+    pub(crate) check_cb: Option<Box<CheckCB<T>>>,
     pub(crate) change_cb: Option<Box<dyn FnMut(&Weechat, &T)>>,
     pub(crate) delete_cb: Option<Box<dyn FnMut(&Weechat, &T)>>,
 }

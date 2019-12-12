@@ -18,8 +18,6 @@ pub struct ColorOptionSettings {
 
     pub(crate) default_value: String,
 
-    pub(crate) value: String,
-
     pub(crate) change_cb: Option<Box<dyn FnMut(&Weechat, &ColorOpt)>>,
 }
 
@@ -38,11 +36,6 @@ impl ColorOptionSettings {
 
     pub fn default_value<V: Into<String>>(mut self, value: V) -> Self {
         self.default_value = value.into();
-        self
-    }
-
-    pub fn value<V: Into<String>>(mut self, value: V) -> Self {
-        self.value = value.into();
         self
     }
 

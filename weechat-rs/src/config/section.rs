@@ -1,12 +1,10 @@
 use libc::{c_char, c_int};
-use std::borrow::Cow;
 use std::ffi::CStr;
 use std::marker::PhantomData;
 use std::os::raw::c_void;
 use std::ptr;
 use weechat_sys::{
     t_config_file, t_config_option, t_config_section, t_weechat_plugin,
-    WEECHAT_RC_OK,
 };
 
 use crate::config::{
@@ -16,6 +14,7 @@ use crate::config::{
     HiddenBorrowedOption,
 };
 use crate::config::{OptionDescription, OptionPointers, OptionType};
+use crate::config::config_options::CheckCB;
 use crate::{LossyCString, Weechat};
 
 /// Weechat Configuration section
@@ -26,10 +25,13 @@ pub struct ConfigSection {
     pub(crate) section_data: *const c_void,
 }
 
+type ReadCB = dyn FnMut(&Weechat, &Conf, &str, &str);
+type WriteCB = dyn FnMut(&Weechat, &Conf, &str);
+
 pub(crate) struct ConfigSectionPointers {
-    pub(crate) read_cb: Option<Box<dyn FnMut(&Weechat, &Conf, &str, &str)>>,
-    pub(crate) write_cb: Option<Box<dyn FnMut(&Weechat, &Conf, &str)>>,
-    pub(crate) write_default_cb: Option<Box<dyn FnMut(&Weechat, &Conf, &str)>>,
+    pub(crate) read_cb: Option<Box<ReadCB>>,
+    pub(crate) write_cb: Option<Box<WriteCB>>,
+    pub(crate) write_default_cb: Option<Box<WriteCB>>,
     pub(crate) weechat_ptr: *mut t_weechat_plugin,
 }
 
@@ -38,13 +40,13 @@ pub(crate) struct ConfigSectionPointers {
 pub struct ConfigSectionSettings {
     pub(crate) name: String,
 
-    pub(crate) read_callback: Option<Box<dyn FnMut(&Weechat, &Conf, &str, &str)>>,
+    pub(crate) read_callback: Option<Box<ReadCB>>,
 
     /// A function called when the section is written to the disk
-    pub(crate) write_callback: Option<Box<dyn FnMut(&Weechat, &Conf, &str)>>,
+    pub(crate) write_callback: Option<Box<WriteCB>>,
 
     /// A function called when default values for the section must be written to the disk
-    pub(crate) write_default_callback: Option<Box<dyn FnMut(&Weechat, &Conf, &str)>>,
+    pub(crate) write_default_callback: Option<Box<WriteCB>>,
 }
 
 impl ConfigSectionSettings {
@@ -138,35 +140,40 @@ impl ConfigSection {
     pub fn new_string_option(
         &self,
         settings: StringOptionSettings,
-    ) -> StringOption {
+    ) -> Option<StringOption> {
         let ptr = self.new_option(
             OptionDescription {
                 name: &settings.name,
                 description: &settings.description,
                 option_type: OptionType::String,
                 default_value: &settings.default_value,
-                value: &settings.value,
+                value: &settings.default_value,
                 ..Default::default()
             },
             settings.check_cb,
             settings.change_cb,
             None,
         );
-        StringOption {
+
+        if ptr.is_null() {
+            return None;
+        };
+
+        Some(StringOption {
             inner: StringOpt {
                 ptr,
                 weechat_ptr: self.weechat_ptr,
             },
             section: PhantomData,
-        }
+        })
     }
 
     /// Create a new boolean Weechat configuration option.
     pub fn new_boolean_option(
         &self,
         settings: BooleanOptionSettings,
-    ) -> BooleanOption {
-        let value = if settings.value { "on" } else { "off" };
+    ) -> Option<BooleanOption> {
+        let value = if settings.default_value { "on" } else { "off" };
         let default_value = if settings.default_value { "on" } else { "off" };
         let ptr = self.new_option(
             OptionDescription {
@@ -181,17 +188,22 @@ impl ConfigSection {
             settings.change_cb,
             None,
         );
-        BooleanOption {
+
+        if ptr.is_null() {
+            return None;
+        };
+
+        Some(BooleanOption {
             inner: BooleanOpt::from_ptrs(ptr, self.weechat_ptr),
             section: PhantomData,
-        }
+        })
     }
 
     /// Create a new integer Weechat configuration option.
     pub fn new_integer_option(
         &self,
         settings: IntegerOptionSettings,
-    ) -> IntegerOption {
+    ) -> Option<IntegerOption> {
         let ptr = self.new_option(
             OptionDescription {
                 name: &settings.name,
@@ -201,53 +213,63 @@ impl ConfigSection {
                 min: settings.min,
                 max: settings.max,
                 default_value: &settings.default_value.to_string(),
-                value: &settings.value.to_string(),
+                value: &settings.default_value.to_string(),
                 ..Default::default()
             },
             None,
             settings.change_cb,
             None,
         );
-        IntegerOption {
+
+        if ptr.is_null() {
+            return None;
+        };
+
+        Some(IntegerOption {
             inner: IntegerOpt {
                 ptr,
                 weechat_ptr: self.weechat_ptr,
             },
             section: PhantomData,
-        }
+        })
     }
 
     /// Create a new color Weechat configuration option.
     pub fn new_color_option(
         &self,
         settings: ColorOptionSettings,
-    ) -> ColorOption {
+    ) -> Option<ColorOption> {
         let ptr = self.new_option(
             OptionDescription {
                 name: &settings.name,
                 description: &settings.description,
                 option_type: OptionType::Color,
                 default_value: &settings.default_value,
-                value: &settings.value,
+                value: &settings.default_value,
                 ..Default::default()
             },
             None,
             settings.change_cb,
             None,
         );
-        ColorOption {
+
+        if ptr.is_null() {
+            return None;
+        };
+
+        Some(ColorOption {
             inner: ColorOpt {
                 ptr,
                 weechat_ptr: self.weechat_ptr,
             },
             section: PhantomData,
-        }
+        })
     }
 
     fn new_option<T>(
         &self,
         option_description: OptionDescription,
-        check_cb: Option<Box<dyn FnMut(&Weechat, &T, Cow<str>)>>,
+        check_cb: Option<Box<CheckCB<T>>>,
         change_cb: Option<Box<dyn FnMut(&Weechat, &T)>>,
         delete_cb: Option<Box<dyn FnMut(&Weechat, &T)>>,
     ) -> *mut t_config_option

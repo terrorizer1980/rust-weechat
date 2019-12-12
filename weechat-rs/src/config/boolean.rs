@@ -16,8 +16,6 @@ pub struct BooleanOptionSettings {
 
     pub(crate) default_value: bool,
 
-    pub(crate) value: bool,
-
     pub(crate) change_cb: Option<Box<dyn FnMut(&Weechat, &BooleanOpt)>>,
 }
 
@@ -36,11 +34,6 @@ impl BooleanOptionSettings {
 
     pub fn default_value(mut self, value: bool) -> Self {
         self.default_value = value;
-        self
-    }
-
-    pub fn value(mut self, value: bool) -> Self {
-        self.value = value;
         self
     }
 

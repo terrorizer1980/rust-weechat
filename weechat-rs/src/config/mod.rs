@@ -147,7 +147,7 @@ impl Config {
     pub fn new_section(
         &mut self,
         section_info: ConfigSectionSettings,
-    ) -> &ConfigSection {
+    ) -> Option<&ConfigSection> {
         unsafe extern "C" fn c_read_cb(
             pointer: *const c_void,
             _data: *mut c_void,
@@ -273,6 +273,11 @@ impl Config {
                 ptr::null_mut(),
             )
         };
+
+        if ptr.is_null() {
+            return None;
+        };
+
         let section = ConfigSection {
             ptr,
             config_ptr: self.inner.ptr,
@@ -280,7 +285,7 @@ impl Config {
             section_data: section_data_ptr as *const _ as *const c_void,
         };
         self.sections.insert(section_info.name.clone(), section);
-        &self.sections[&section_info.name]
+        Some(&self.sections[&section_info.name])
     }
     pub fn search_section(&self, section_name: &str) -> Option<&ConfigSection> {
         self.sections.get(section_name)
