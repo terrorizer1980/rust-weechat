@@ -292,11 +292,17 @@ impl ConfigSection {
             let option = T::from_ptrs(option_pointer, pointers.weechat_ptr);
             let weechat = Weechat::from_ptr(pointers.weechat_ptr);
 
-            if let Some(callback) = &mut pointers.check_cb {
+            let ret = if let Some(callback) = &mut pointers.check_cb {
                 callback(&weechat, &option, value)
+            } else {
+                true
             };
 
-            WEECHAT_RC_OK
+            if ret {
+                1
+            } else {
+                0
+            }
         }
 
         unsafe extern "C" fn c_change_cb<T>(
