@@ -164,4 +164,5 @@ pub trait HiddenBorrowedOption {
     ) -> Self;
 }
 
+/// A trait for options that will be present in the option callbacks.
 pub trait BorrowedOption: HiddenBorrowedOption {}
