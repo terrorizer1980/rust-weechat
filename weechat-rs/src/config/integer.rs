@@ -1,10 +1,7 @@
 use crate::config::{
-    BaseConfigOption, BorrowedOption, ConfigOption, ConfigSection,
-    HiddenBorrowedOption, HidenConfigOptionT,
+    BaseConfigOption, ConfigOptions, FromPtrs, HidenConfigOptionT,
 };
 use crate::Weechat;
-use std::marker::PhantomData;
-use std::ops::Deref;
 use weechat_sys::{t_config_option, t_weechat_plugin};
 
 /// Settings for building a new integer option.
@@ -22,7 +19,7 @@ pub struct IntegerOptionSettings {
 
     pub(crate) string_values: String,
 
-    pub(crate) change_cb: Option<Box<dyn FnMut(&Weechat, &IntegerOpt)>>,
+    pub(crate) change_cb: Option<Box<dyn FnMut(&Weechat, &IntegerOption)>>,
 }
 
 impl IntegerOptionSettings {
@@ -123,7 +120,7 @@ impl IntegerOptionSettings {
     /// ```
     pub fn set_change_callback(
         mut self,
-        callback: impl FnMut(&Weechat, &IntegerOpt) + 'static,
+        callback: impl FnMut(&Weechat, &IntegerOption) + 'static,
     ) -> Self {
         self.change_cb = Some(Box::new(callback));
         self
@@ -131,42 +128,25 @@ impl IntegerOptionSettings {
 }
 
 /// A config option with a integer value.
-pub struct IntegerOption<'a> {
-    pub(crate) inner: IntegerOpt,
-    pub(crate) section: PhantomData<&'a ConfigSection>,
-}
-
-/// The borrowed equivalent of the IntegerOption
-///
-/// This option type will be present in callbacks.
-pub struct IntegerOpt {
+#[derive(Debug)]
+pub struct IntegerOption {
     pub(crate) ptr: *mut t_config_option,
     pub(crate) weechat_ptr: *mut t_weechat_plugin,
 }
 
-impl HiddenBorrowedOption for IntegerOpt {
+impl FromPtrs for IntegerOption {
     fn from_ptrs(
         option_ptr: *mut t_config_option,
         weechat_ptr: *mut t_weechat_plugin,
     ) -> Self {
-        IntegerOpt {
+        IntegerOption {
             ptr: option_ptr,
             weechat_ptr,
         }
     }
 }
 
-impl BorrowedOption for IntegerOpt {}
-
-impl<'a> Deref for IntegerOption<'a> {
-    type Target = IntegerOpt;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl HidenConfigOptionT for IntegerOpt {
+impl HidenConfigOptionT for IntegerOption {
     fn get_ptr(&self) -> *mut t_config_option {
         self.ptr
     }
@@ -176,20 +156,9 @@ impl HidenConfigOptionT for IntegerOpt {
     }
 }
 
-impl<'a> HidenConfigOptionT for IntegerOption<'a> {
-    fn get_ptr(&self) -> *mut t_config_option {
-        self.ptr
-    }
+impl BaseConfigOption for IntegerOption {}
 
-    fn get_weechat(&self) -> Weechat {
-        Weechat::from_ptr(self.weechat_ptr)
-    }
-}
-
-impl<'a> BaseConfigOption for IntegerOption<'a> {}
-impl BaseConfigOption for IntegerOpt {}
-
-impl<'a> ConfigOption<'a> for IntegerOpt {
+impl<'a> ConfigOptions<'a> for IntegerOption {
     type R = i32;
 
     fn value(&self) -> Self::R {

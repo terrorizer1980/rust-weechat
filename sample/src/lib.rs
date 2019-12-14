@@ -1,11 +1,13 @@
 use std::borrow::Cow;
 use std::time::Instant;
-use weechat::{BarItem, LightBarItem};
+use weechat::config::{
+    BooleanOption, BooleanOptionSettings, Config, ConfigSectionSettings,
+};
 use weechat::{
     weechat_plugin, ArgsWeechat, Buffer, CommandDescription, CommandHook,
-    Config, ConfigOption, ConfigSectionSettings, NickArgs, StringOption, Weechat,
-    WeechatPlugin, WeechatResult, BooleanOptionSettings, BooleanOpt
+    NickArgs, Weechat, WeechatPlugin, WeechatResult,
 };
+use weechat::{BarItem, LightBarItem};
 
 struct SamplePlugin {
     _rust_hook: CommandHook<String>,
@@ -32,9 +34,8 @@ impl SamplePlugin {
         }
     }
 
-    fn option_change_cb(option: &BooleanOpt) {
-        // let weechat = option.get_weechat();
-        // weechat.print("Changing rust option");
+    fn option_change_cb(weechat: &Weechat, option: &BooleanOption) {
+        weechat.print("Changing rust option");
     }
 
     fn bar_cb(
@@ -105,15 +106,18 @@ impl WeechatPlugin for SamplePlugin {
         );
 
         let mut config = weechat
-            .config_new("rust_sample", || {})
+            .config_new("rust_sample", |weechat, _config| {
+                weechat.print("Reloaded config");
+            })
             .expect("Can't create new config");
 
         let section_info = ConfigSectionSettings::new("sample_section");
 
-        let section = config.new_section(section_info);
+        let section = config
+            .new_section(section_info)
+            .expect("Can't create section");
 
         let option_settings = BooleanOptionSettings::new("test_option")
-            .value(true)
             .default_value(false)
             .set_change_callback(SamplePlugin::option_change_cb);
 
@@ -131,8 +135,7 @@ impl WeechatPlugin for SamplePlugin {
 }
 
 impl Drop for SamplePlugin {
-    fn drop(&mut self) {
-    }
+    fn drop(&mut self) {}
 }
 
 weechat_plugin!(

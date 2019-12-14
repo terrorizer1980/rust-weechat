@@ -10,30 +10,31 @@ mod string;
 use libc::{c_char, c_int};
 use std::collections::HashMap;
 use std::ffi::CStr;
+use std::io::Error as IoError;
+use std::io::ErrorKind;
 use std::os::raw::c_void;
 use std::ptr;
 
-pub use crate::config::boolean::{
-    BooleanOpt, BooleanOption, BooleanOptionSettings,
-};
-pub use crate::config::color::{ColorOpt, ColorOption, ColorOptionSettings};
+pub use crate::config::boolean::{BooleanOption, BooleanOptionSettings};
+pub use crate::config::color::{ColorOption, ColorOptionSettings};
+pub use crate::config::integer::{IntegerOption, IntegerOptionSettings};
+pub use crate::config::string::{StringOption, StringOptionSettings};
+
 pub use crate::config::config_options::{
-    BaseConfigOption, BorrowedOption, ConfigOption, OptionType,
+    BaseConfigOption, ConfigOptions, OptionType,
 };
+pub use crate::config::section::{
+    ConfigOption, ConfigSection, ConfigSectionSettings,
+};
+
 pub(crate) use crate::config::config_options::{
-    HiddenBorrowedOption, HidenConfigOptionT, OptionDescription, OptionPointers,
+    FromPtrs, HidenConfigOptionT, OptionDescription, OptionPointers,
 };
-pub use crate::config::integer::{
-    IntegerOpt, IntegerOption, IntegerOptionSettings,
-};
-pub use crate::config::section::{ConfigSection, ConfigSectionSettings};
 use crate::config::section::{
     ConfigSectionPointers, SectionReadCbT, SectionWriteCbT,
 };
-pub use crate::config::string::{
-    StringOpt, StringOption, StringOptionSettings,
-};
 use crate::{LossyCString, Weechat};
+
 use weechat_sys::{
     t_config_file, t_config_section, t_weechat_plugin, WEECHAT_RC_OK,
 };
@@ -45,6 +46,7 @@ pub struct Config {
     sections: HashMap<String, ConfigSection>,
 }
 
+/// The borrowed equivalent of the `Config`. Will be present in callbacks.
 pub struct Conf {
     ptr: *mut t_config_file,
     weechat_ptr: *mut t_weechat_plugin,
@@ -55,16 +57,19 @@ struct ConfigPointers {
     weechat_ptr: *mut t_weechat_plugin,
 }
 
-/// Configuration file part of the weechat API.
 impl Weechat {
     /// Create a new Weechat configuration file, returns a `Config` object.
     /// The configuration file is freed when the `Config` object is dropped.
     /// * `name` - Name of the new configuration file
     /// * `reload_callback` - Callback that will be called when the
     /// configuration file is reloaded.
-    /// * `reload_data` - Data that will be taken over by weechat and passed
-    /// to the reload callback, this data will be freed when the `Config`
-    /// object returned by this method is dropped.
+    ///
+    /// # Examples
+    /// ```
+    /// let config = weechat::new("server_buffer", |weechat, conf| {
+    ///     weechat.print("Config was reloaded")
+    ///     });
+    ///
     pub fn config_new(
         &self,
         name: &str,
@@ -143,11 +148,47 @@ impl Drop for Config {
 }
 
 impl Config {
+    /// Read the configuration file from the disk.
+    pub fn read(&self) -> std::io::Result<()> {
+        let weechat = Weechat::from_ptr(self.inner.weechat_ptr);
+        let config_read = weechat.get().config_read.unwrap();
+
+        let ret = unsafe { config_read(self.inner.ptr) };
+
+        Config::return_value_to_error(ret)
+    }
+
+    fn return_value_to_error(return_value: c_int) -> std::io::Result<()> {
+        match return_value {
+            weechat_sys::WEECHAT_CONFIG_READ_OK => Ok(()),
+            weechat_sys::WEECHAT_CONFIG_READ_FILE_NOT_FOUND => {
+                Err(IoError::new(ErrorKind::NotFound, "File was not found"))
+            }
+            weechat_sys::WEECHAT_CONFIG_READ_MEMORY_ERROR => {
+                Err(IoError::new(ErrorKind::Other, "Not enough memory"))
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    /// Write the configuration file to the disk.
+    pub fn write(&self) -> std::io::Result<()> {
+        let weechat = Weechat::from_ptr(self.inner.weechat_ptr);
+        let config_write = weechat.get().config_write.unwrap();
+
+        let ret = unsafe { config_write(self.inner.ptr) };
+
+        Config::return_value_to_error(ret)
+    }
+
     /// Create a new section in the configuration file.
+    /// # Arguments
+    /// `section_settings` - Settings that decide how the section will be
+    /// created.
     pub fn new_section(
         &mut self,
-        section_info: ConfigSectionSettings,
-    ) -> Option<&ConfigSection> {
+        section_settings: ConfigSectionSettings,
+    ) -> Option<&mut ConfigSection> {
         unsafe extern "C" fn c_read_cb(
             pointer: *const c_void,
             _data: *mut c_void,
@@ -165,10 +206,18 @@ impl Config {
                 ptr: config,
                 weechat_ptr: pointers.weechat_ptr,
             };
+            let mut section =
+                &mut *(pointers.section_ptr as *mut ConfigSection);
             let weechat = Weechat::from_ptr(pointers.weechat_ptr);
 
             if let Some(ref mut callback) = pointers.read_cb {
-                callback(&weechat, &conf, option_name.as_ref(), value.as_ref())
+                callback(
+                    &weechat,
+                    &conf,
+                    &mut section,
+                    option_name.as_ref(),
+                    value.as_ref(),
+                )
             }
             WEECHAT_RC_OK
         }
@@ -223,19 +272,19 @@ impl Config {
 
         let new_section = weechat.get().config_new_section.unwrap();
 
-        let name = LossyCString::new(&section_info.name);
+        let name = LossyCString::new(&section_settings.name);
 
-        let (c_read_cb, read_cb) = match section_info.read_callback {
+        let (c_read_cb, read_cb) = match section_settings.read_callback {
             Some(cb) => (Some(c_read_cb as SectionReadCbT), Some(cb)),
             None => (None, None),
         };
 
-        let (c_write_cb, write_cb) = match section_info.write_callback {
+        let (c_write_cb, write_cb) = match section_settings.write_callback {
             Some(cb) => (Some(c_write_cb as SectionWriteCbT), Some(cb)),
             None => (None, None),
         };
 
-        let (c_write_default_cb, write_default_cb) = match section_info
+        let (c_write_default_cb, write_default_cb) = match section_settings
             .write_default_callback
         {
             Some(cb) => (Some(c_write_default_cb as SectionWriteCbT), Some(cb)),
@@ -247,6 +296,7 @@ impl Config {
             write_cb,
             write_default_cb,
             weechat_ptr: self.inner.weechat_ptr,
+            section_ptr: ptr::null_mut(),
         });
         let section_data_ptr = Box::leak(section_data);
 
@@ -275,29 +325,58 @@ impl Config {
         };
 
         if ptr.is_null() {
+            unsafe { Box::from_raw(section_data_ptr) };
             return None;
         };
 
-        let section = ConfigSection {
+        let mut section = ConfigSection {
             ptr,
             config_ptr: self.inner.ptr,
             weechat_ptr: weechat.ptr,
             section_data: section_data_ptr as *const _ as *const c_void,
+            option_pointers: HashMap::new(),
+            options: HashMap::new(),
         };
-        self.sections.insert(section_info.name.clone(), section);
-        Some(&self.sections[&section_info.name])
+
+        let section_ptr = &mut section as *mut ConfigSection;
+        let pointers: &mut ConfigSectionPointers =
+            unsafe { &mut *(section_data_ptr as *mut ConfigSectionPointers) };
+        pointers.section_ptr = section_ptr;
+
+        self.sections.insert(section_settings.name.clone(), section);
+        self.sections.get_mut(&section_settings.name)
     }
+
+    /// Search the configuration object for a section.
+    /// # Arguments
+    /// `section_name` - The name of the section that should be retrieved.
     pub fn search_section(&self, section_name: &str) -> Option<&ConfigSection> {
         self.sections.get(section_name)
+    }
+
+    /// Search the configuration object for a section and borrow it mutably.
+    /// # Arguments
+    /// `section_name` - The name of the section that should be retrieved.
+    pub fn search_section_mut(
+        &mut self,
+        section_name: &str,
+    ) -> Option<&mut ConfigSection> {
+        self.sections.get_mut(section_name)
     }
 }
 
 impl Conf {
-    pub fn write_line(&self, option_name: &str, value: Option<&str>) {
+    /// Write a line in a configuration file.
+    /// # Arguments
+    /// `key` - The key of the option that will be written. Can be a
+    /// section name.
+    /// `value` - The value of the option that will be written. If `None` a
+    /// section will be written instead.
+    pub fn write_line(&self, key: &str, value: Option<&str>) {
         let weechat = Weechat::from_ptr(self.weechat_ptr);
         let write_line = weechat.get().config_write_line.unwrap();
 
-        let option_name = LossyCString::new(option_name);
+        let option_name = LossyCString::new(key);
 
         let c_value = match value {
             Some(v) => LossyCString::new(v).as_ptr(),
@@ -309,6 +388,9 @@ impl Conf {
         }
     }
 
+    /// Write a line in a configuration file with option and its value.
+    /// # Arguments
+    /// `option` - The option that will be written to the configuration file.
     pub fn write_option(&self, option: &dyn BaseConfigOption) {
         let weechat = Weechat::from_ptr(self.weechat_ptr);
         let write_option = weechat.get().config_write_option.unwrap();

@@ -1,12 +1,9 @@
 use crate::config::{
-    BaseConfigOption, BorrowedOption, ConfigOption, ConfigSection,
-    HiddenBorrowedOption, HidenConfigOptionT,
+    BaseConfigOption, ConfigOptions, FromPtrs, HidenConfigOptionT,
 };
 use crate::Weechat;
 use std::borrow::Cow;
 use std::ffi::CStr;
-use std::marker::PhantomData;
-use std::ops::Deref;
 use weechat_sys::{t_config_option, t_weechat_plugin};
 
 /// Represents the settings for a new color config option.
@@ -18,7 +15,7 @@ pub struct ColorOptionSettings {
 
     pub(crate) default_value: String,
 
-    pub(crate) change_cb: Option<Box<dyn FnMut(&Weechat, &ColorOpt)>>,
+    pub(crate) change_cb: Option<Box<dyn FnMut(&Weechat, &ColorOption)>>,
 }
 
 impl ColorOptionSettings {
@@ -41,7 +38,7 @@ impl ColorOptionSettings {
 
     pub fn set_change_callback(
         mut self,
-        callback: impl FnMut(&Weechat, &ColorOpt) + 'static,
+        callback: impl FnMut(&Weechat, &ColorOption) + 'static,
     ) -> Self {
         self.change_cb = Some(Box::new(callback));
         self
@@ -49,39 +46,25 @@ impl ColorOptionSettings {
 }
 
 /// A config option with a color value.
-pub struct ColorOption<'a> {
-    pub(crate) inner: ColorOpt,
-    pub(crate) section: PhantomData<&'a ConfigSection>,
-}
-
-pub struct ColorOpt {
+#[derive(Debug)]
+pub struct ColorOption {
     pub(crate) ptr: *mut t_config_option,
     pub(crate) weechat_ptr: *mut t_weechat_plugin,
 }
 
-impl HiddenBorrowedOption for ColorOpt {
+impl FromPtrs for ColorOption {
     fn from_ptrs(
         option_ptr: *mut t_config_option,
         weechat_ptr: *mut t_weechat_plugin,
     ) -> Self {
-        ColorOpt {
+        ColorOption {
             ptr: option_ptr,
             weechat_ptr,
         }
     }
 }
 
-impl BorrowedOption for ColorOpt {}
-
-impl<'a> Deref for ColorOption<'a> {
-    type Target = ColorOpt;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl HidenConfigOptionT for ColorOpt {
+impl HidenConfigOptionT for ColorOption {
     fn get_ptr(&self) -> *mut t_config_option {
         self.ptr
     }
@@ -91,20 +74,9 @@ impl HidenConfigOptionT for ColorOpt {
     }
 }
 
-impl<'a> HidenConfigOptionT for ColorOption<'a> {
-    fn get_ptr(&self) -> *mut t_config_option {
-        self.ptr
-    }
+impl BaseConfigOption for ColorOption {}
 
-    fn get_weechat(&self) -> Weechat {
-        Weechat::from_ptr(self.weechat_ptr)
-    }
-}
-
-impl<'a> BaseConfigOption for ColorOption<'a> {}
-impl BaseConfigOption for ColorOpt {}
-
-impl<'a> ConfigOption<'a> for ColorOpt {
+impl<'a> ConfigOptions<'a> for ColorOption {
     type R = Cow<'a, str>;
 
     fn value(&self) -> Self::R {

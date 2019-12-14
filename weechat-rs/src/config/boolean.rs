@@ -1,10 +1,7 @@
 use crate::config::{
-    BaseConfigOption, BorrowedOption, ConfigOption, ConfigSection,
-    HiddenBorrowedOption, HidenConfigOptionT,
+    BaseConfigOption, ConfigOptions, FromPtrs, HidenConfigOptionT,
 };
 use crate::Weechat;
-use std::marker::PhantomData;
-use std::ops::Deref;
 use weechat_sys::{t_config_option, t_weechat_plugin};
 
 /// Represents the settings for a new boolean config option.
@@ -16,7 +13,7 @@ pub struct BooleanOptionSettings {
 
     pub(crate) default_value: bool,
 
-    pub(crate) change_cb: Option<Box<dyn FnMut(&Weechat, &BooleanOpt)>>,
+    pub(crate) change_cb: Option<Box<dyn FnMut(&Weechat, &BooleanOption)>>,
 }
 
 impl BooleanOptionSettings {
@@ -39,7 +36,7 @@ impl BooleanOptionSettings {
 
     pub fn set_change_callback(
         mut self,
-        callback: impl FnMut(&Weechat, &BooleanOpt) + 'static,
+        callback: impl FnMut(&Weechat, &BooleanOption) + 'static,
     ) -> Self {
         self.change_cb = Some(Box::new(callback));
         self
@@ -47,39 +44,25 @@ impl BooleanOptionSettings {
 }
 
 /// A config option with a boolean value.
-pub struct BooleanOption<'a> {
-    pub(crate) inner: BooleanOpt,
-    pub(crate) section: PhantomData<&'a ConfigSection>,
-}
-
-pub struct BooleanOpt {
+#[derive(Debug)]
+pub struct BooleanOption {
     pub(crate) ptr: *mut t_config_option,
     pub(crate) weechat_ptr: *mut t_weechat_plugin,
 }
 
-impl HiddenBorrowedOption for BooleanOpt {
+impl FromPtrs for BooleanOption {
     fn from_ptrs(
         option_ptr: *mut t_config_option,
         weechat_ptr: *mut t_weechat_plugin,
     ) -> Self {
-        BooleanOpt {
+        BooleanOption {
             ptr: option_ptr,
             weechat_ptr,
         }
     }
 }
 
-impl BorrowedOption for BooleanOpt {}
-
-impl<'a> Deref for BooleanOption<'a> {
-    type Target = BooleanOpt;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl HidenConfigOptionT for BooleanOpt {
+impl HidenConfigOptionT for BooleanOption {
     fn get_ptr(&self) -> *mut t_config_option {
         self.ptr
     }
@@ -89,20 +72,9 @@ impl HidenConfigOptionT for BooleanOpt {
     }
 }
 
-impl<'a> HidenConfigOptionT for BooleanOption<'a> {
-    fn get_ptr(&self) -> *mut t_config_option {
-        self.ptr
-    }
+impl BaseConfigOption for BooleanOption {}
 
-    fn get_weechat(&self) -> Weechat {
-        Weechat::from_ptr(self.weechat_ptr)
-    }
-}
-
-impl<'a> BaseConfigOption for BooleanOption<'a> {}
-impl BaseConfigOption for BooleanOpt {}
-
-impl<'a> ConfigOption<'a> for BooleanOpt {
+impl<'a> ConfigOptions<'a> for BooleanOption {
     type R = bool;
 
     fn value(&self) -> Self::R {
@@ -113,7 +85,7 @@ impl<'a> ConfigOption<'a> for BooleanOpt {
     }
 }
 
-impl PartialEq<bool> for BooleanOpt {
+impl PartialEq<bool> for BooleanOption {
     fn eq(&self, other: &bool) -> bool {
         self.value() == *other
     }

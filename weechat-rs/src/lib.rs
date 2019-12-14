@@ -32,7 +32,7 @@ pub trait WeechatPlugin: Sized {
 pub struct Error(c_int);
 pub type WeechatResult<T> = Result<T, Error>;
 
-/// Status values for weechat callbacks
+/// Status values for Weechat callbacks
 pub enum ReturnCode {
     Ok = weechat_sys::WEECHAT_RC_OK as isize,
     OkEat = weechat_sys::WEECHAT_RC_OK_EAT as isize,

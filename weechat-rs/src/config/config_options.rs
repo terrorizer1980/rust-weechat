@@ -59,6 +59,14 @@ impl Default for OptionType {
     }
 }
 
+pub trait FromPtrs {
+    /// Returns the raw pointer to the config option.
+    fn from_ptrs(
+        option_ptr: *mut t_config_option,
+        weechat_ptr: *mut t_weechat_plugin,
+    ) -> Self;
+}
+
 pub trait HidenConfigOptionT {
     /// Returns the raw pointer to the config option.
     fn get_ptr(&self) -> *mut t_config_option;
@@ -139,7 +147,7 @@ pub trait BaseConfigOption: HidenConfigOptionT {
 }
 
 /// A trait that defines common behavior for the different data types of config options.
-pub trait ConfigOption<'a>: BaseConfigOption {
+pub trait ConfigOptions<'a>: BaseConfigOption + FromPtrs {
     /// The return type of the config option.
     type R;
 
@@ -155,14 +163,3 @@ pub(crate) struct OptionPointers<T> {
     pub(crate) change_cb: Option<Box<dyn FnMut(&Weechat, &T)>>,
     pub(crate) delete_cb: Option<Box<dyn FnMut(&Weechat, &T)>>,
 }
-
-pub trait HiddenBorrowedOption {
-    /// Returns the raw pointer to the config option.
-    fn from_ptrs(
-        option_ptr: *mut t_config_option,
-        weechat_ptr: *mut t_weechat_plugin,
-    ) -> Self;
-}
-
-/// A trait for options that will be present in the option callbacks.
-pub trait BorrowedOption: HiddenBorrowedOption {}

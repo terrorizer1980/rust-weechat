@@ -1,38 +1,100 @@
 use libc::{c_char, c_int};
+use std::collections::HashMap;
 use std::ffi::CStr;
-use std::marker::PhantomData;
 use std::os::raw::c_void;
 use std::ptr;
+
 use weechat_sys::{
     t_config_file, t_config_option, t_config_section, t_weechat_plugin,
 };
 
+use crate::config::config_options::CheckCB;
 use crate::config::{
-    BooleanOpt, BooleanOption, BooleanOptionSettings, BorrowedOption, ColorOpt,
-    ColorOption, ColorOptionSettings, Conf, IntegerOpt, IntegerOption,
-    IntegerOptionSettings, StringOpt, StringOption, StringOptionSettings,
-    HiddenBorrowedOption,
+    BooleanOption, BooleanOptionSettings, ColorOption, ColorOptionSettings,
+    Conf, ConfigOptions, FromPtrs, IntegerOption, IntegerOptionSettings,
+    StringOption, StringOptionSettings,
 };
 use crate::config::{OptionDescription, OptionPointers, OptionType};
-use crate::config::config_options::CheckCB;
 use crate::{LossyCString, Weechat};
 
+#[derive(Debug)]
+#[allow(missing_docs)]
+pub enum ConfigOption {
+    Boolean(BooleanOption),
+    Integer(IntegerOption),
+    String(StringOption),
+    Color(ColorOption),
+}
+
+impl ConfigOption {
+    fn boolean(&self) -> &BooleanOption {
+        if let ConfigOption::Boolean(o) = self {
+            o
+        } else {
+            panic!("Invalid option type")
+        }
+    }
+    fn integer(&self) -> &IntegerOption {
+        if let ConfigOption::Integer(o) = self {
+            o
+        } else {
+            panic!("Invalid option type")
+        }
+    }
+    fn string(&self) -> &StringOption {
+        if let ConfigOption::String(o) = self {
+            o
+        } else {
+            panic!("Invalid option type")
+        }
+    }
+    fn color(&self) -> &ColorOption {
+        if let ConfigOption::Color(o) = self {
+            o
+        } else {
+            panic!("Invalid option type")
+        }
+    }
+}
+
+#[derive(Debug)]
+pub(crate) enum ConfigOptionPointers {
+    Boolean(*const c_void),
+    Integer(*const c_void),
+    String(*const c_void),
+    Color(*const c_void),
+}
+
 /// Weechat Configuration section
+#[derive(Debug)]
 pub struct ConfigSection {
     pub(crate) ptr: *mut t_config_section,
     pub(crate) config_ptr: *mut t_config_file,
     pub(crate) weechat_ptr: *mut t_weechat_plugin,
     pub(crate) section_data: *const c_void,
+    pub(crate) option_pointers: HashMap<String, ConfigOptionPointers>,
+    pub(crate) options: HashMap<String, ConfigOption>,
 }
 
-type ReadCB = dyn FnMut(&Weechat, &Conf, &str, &str);
+type ReadCB = dyn FnMut(&Weechat, &Conf, &mut ConfigSection, &str, &str);
 type WriteCB = dyn FnMut(&Weechat, &Conf, &str);
 
 pub(crate) struct ConfigSectionPointers {
     pub(crate) read_cb: Option<Box<ReadCB>>,
     pub(crate) write_cb: Option<Box<WriteCB>>,
     pub(crate) write_default_cb: Option<Box<WriteCB>>,
+    pub(crate) section_ptr: *mut ConfigSection,
     pub(crate) weechat_ptr: *mut t_weechat_plugin,
+}
+
+impl std::fmt::Debug for ConfigSectionPointers {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "ConfigSectionPointers {{ section_ptr: {:?} weechat_ptr: {:?}}}",
+            self.section_ptr, self.weechat_ptr
+        )
+    }
 }
 
 /// Represents the options when creating a new config section.
@@ -68,7 +130,8 @@ impl ConfigSectionSettings {
     /// `callback` - The callback for a section read operation.
     pub fn set_read_callback(
         mut self,
-        callback: impl FnMut(&Weechat, &Conf, &str, &str) + 'static,
+        callback: impl FnMut(&Weechat, &Conf, &mut ConfigSection, &str, &str)
+            + 'static,
     ) -> Self {
         self.read_callback = Some(Box::new(callback));
         self
@@ -97,6 +160,25 @@ impl Drop for ConfigSection {
 
         let options_free = weechat.get().config_section_free_options.unwrap();
         let section_free = weechat.get().config_section_free.unwrap();
+
+        for (_, option_ptrs) in self.option_pointers.drain() {
+            unsafe {
+                match option_ptrs {
+                    ConfigOptionPointers::Integer(p) => {
+                        Box::from_raw(p as *mut OptionPointers<IntegerOption>);
+                    }
+                    ConfigOptionPointers::Boolean(p) => {
+                        Box::from_raw(p as *mut OptionPointers<BooleanOption>);
+                    }
+                    ConfigOptionPointers::String(p) => {
+                        Box::from_raw(p as *mut OptionPointers<StringOption>);
+                    }
+                    ConfigOptionPointers::Color(p) => {
+                        Box::from_raw(p as *mut OptionPointers<ColorOption>);
+                    }
+                }
+            }
+        }
 
         unsafe {
             Box::from_raw(self.section_data as *mut ConfigSectionPointers);
@@ -138,10 +220,10 @@ type WeechatOptCheckCbT = unsafe extern "C" fn(
 impl ConfigSection {
     /// Create a new string Weechat configuration option.
     pub fn new_string_option(
-        &self,
+        &mut self,
         settings: StringOptionSettings,
-    ) -> Option<StringOption> {
-        let ptr = self.new_option(
+    ) -> Option<&StringOption> {
+        let ret = self.new_option(
             OptionDescription {
                 name: &settings.name,
                 description: &settings.description,
@@ -155,27 +237,32 @@ impl ConfigSection {
             None,
         );
 
-        if ptr.is_null() {
+        let (ptr, option_pointers) = if let Some((ptr, ptrs)) = ret {
+            (ptr, ptrs)
+        } else {
             return None;
         };
 
-        Some(StringOption {
-            inner: StringOpt {
-                ptr,
-                weechat_ptr: self.weechat_ptr,
-            },
-            section: PhantomData,
-        })
+        let option_ptrs = ConfigOptionPointers::String(option_pointers);
+        self.option_pointers
+            .insert(settings.name.clone(), option_ptrs);
+
+        let option = ConfigOption::String(StringOption::from_ptrs(
+            ptr,
+            self.weechat_ptr,
+        ));
+        self.options.insert(settings.name.clone(), option);
+        Some(self.options[&settings.name].string())
     }
 
     /// Create a new boolean Weechat configuration option.
     pub fn new_boolean_option(
-        &self,
+        &mut self,
         settings: BooleanOptionSettings,
-    ) -> Option<BooleanOption> {
+    ) -> Option<&BooleanOption> {
         let value = if settings.default_value { "on" } else { "off" };
         let default_value = if settings.default_value { "on" } else { "off" };
-        let ptr = self.new_option(
+        let ret = self.new_option(
             OptionDescription {
                 name: &settings.name,
                 description: &settings.description,
@@ -189,22 +276,30 @@ impl ConfigSection {
             None,
         );
 
-        if ptr.is_null() {
+        let (ptr, option_pointers) = if let Some((ptr, ptrs)) = ret {
+            (ptr, ptrs)
+        } else {
             return None;
         };
 
-        Some(BooleanOption {
-            inner: BooleanOpt::from_ptrs(ptr, self.weechat_ptr),
-            section: PhantomData,
-        })
+        let option_ptrs = ConfigOptionPointers::Boolean(option_pointers);
+        self.option_pointers
+            .insert(settings.name.clone(), option_ptrs);
+
+        let option = ConfigOption::Boolean(BooleanOption::from_ptrs(
+            ptr,
+            self.weechat_ptr,
+        ));
+        self.options.insert(settings.name.clone(), option);
+        Some(self.options[&settings.name].boolean())
     }
 
     /// Create a new integer Weechat configuration option.
     pub fn new_integer_option(
-        &self,
+        &mut self,
         settings: IntegerOptionSettings,
-    ) -> Option<IntegerOption> {
-        let ptr = self.new_option(
+    ) -> Option<&IntegerOption> {
+        let ret = self.new_option(
             OptionDescription {
                 name: &settings.name,
                 option_type: OptionType::Integer,
@@ -221,25 +316,30 @@ impl ConfigSection {
             None,
         );
 
-        if ptr.is_null() {
+        let (ptr, option_pointers) = if let Some((ptr, ptrs)) = ret {
+            (ptr, ptrs)
+        } else {
             return None;
         };
 
-        Some(IntegerOption {
-            inner: IntegerOpt {
-                ptr,
-                weechat_ptr: self.weechat_ptr,
-            },
-            section: PhantomData,
-        })
+        let option_ptrs = ConfigOptionPointers::Integer(option_pointers);
+        self.option_pointers
+            .insert(settings.name.clone(), option_ptrs);
+
+        let option = ConfigOption::Integer(IntegerOption::from_ptrs(
+            ptr,
+            self.weechat_ptr,
+        ));
+        self.options.insert(settings.name.clone(), option);
+        Some(self.options[&settings.name].integer())
     }
 
     /// Create a new color Weechat configuration option.
     pub fn new_color_option(
-        &self,
+        &mut self,
         settings: ColorOptionSettings,
-    ) -> Option<ColorOption> {
-        let ptr = self.new_option(
+    ) -> Option<&ColorOption> {
+        let ret = self.new_option(
             OptionDescription {
                 name: &settings.name,
                 description: &settings.description,
@@ -253,17 +353,20 @@ impl ConfigSection {
             None,
         );
 
-        if ptr.is_null() {
+        let (ptr, option_pointers) = if let Some((ptr, ptrs)) = ret {
+            (ptr, ptrs)
+        } else {
             return None;
         };
 
-        Some(ColorOption {
-            inner: ColorOpt {
-                ptr,
-                weechat_ptr: self.weechat_ptr,
-            },
-            section: PhantomData,
-        })
+        let option_ptrs = ConfigOptionPointers::Color(option_pointers);
+        self.option_pointers
+            .insert(settings.name.clone(), option_ptrs);
+
+        let option =
+            ConfigOption::Color(ColorOption::from_ptrs(ptr, self.weechat_ptr));
+        self.options.insert(settings.name.clone(), option);
+        Some(self.options[&settings.name].color())
     }
 
     fn new_option<T>(
@@ -272,9 +375,9 @@ impl ConfigSection {
         check_cb: Option<Box<CheckCB<T>>>,
         change_cb: Option<Box<dyn FnMut(&Weechat, &T)>>,
         delete_cb: Option<Box<dyn FnMut(&Weechat, &T)>>,
-    ) -> *mut t_config_option
+    ) -> Option<(*mut t_config_option, *const c_void)>
     where
-        T: BorrowedOption,
+        T: ConfigOptions<'static>,
     {
         unsafe extern "C" fn c_check_cb<T>(
             pointer: *const c_void,
@@ -283,7 +386,7 @@ impl ConfigSection {
             value: *const c_char,
         ) -> c_int
         where
-            T: BorrowedOption,
+            T: ConfigOptions<'static>,
         {
             let value = CStr::from_ptr(value).to_string_lossy();
             let pointers: &mut OptionPointers<T> =
@@ -310,7 +413,7 @@ impl ConfigSection {
             _data: *mut c_void,
             option_pointer: *mut t_config_option,
         ) where
-            T: BorrowedOption,
+            T: ConfigOptions<'static>,
         {
             let pointers: &mut OptionPointers<T> =
                 { &mut *(pointer as *mut OptionPointers<T>) };
@@ -328,7 +431,7 @@ impl ConfigSection {
             _data: *mut c_void,
             option_pointer: *mut t_config_option,
         ) where
-            T: BorrowedOption,
+            T: ConfigOptions<'static>,
         {
             let pointers: &mut OptionPointers<T> =
                 { &mut *(pointer as *mut OptionPointers<T>) };
@@ -373,12 +476,11 @@ impl ConfigSection {
             delete_cb,
         });
 
-        // TODO this currently leaks.
         let option_pointers_ref: &OptionPointers<T> =
             Box::leak(option_pointers);
 
         let config_new_option = weechat.get().config_new_option.unwrap();
-        unsafe {
+        let ptr = unsafe {
             config_new_option(
                 self.config_ptr,
                 self.ptr,
@@ -401,6 +503,12 @@ impl ConfigSection {
                 option_pointers_ref as *const _ as *const c_void,
                 ptr::null_mut(),
             )
+        };
+
+        if ptr.is_null() {
+            None
+        } else {
+            Some((ptr, option_pointers_ref as *const _ as *const c_void))
         }
     }
 }
