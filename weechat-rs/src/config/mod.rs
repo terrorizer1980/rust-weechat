@@ -14,6 +14,8 @@ use std::io::Error as IoError;
 use std::io::ErrorKind;
 use std::os::raw::c_void;
 use std::ptr;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 pub use crate::config::boolean::{BooleanOption, BooleanOptionSettings};
 pub use crate::config::color::{ColorOption, ColorOptionSettings};
@@ -24,7 +26,7 @@ pub use crate::config::config_options::{
     BaseConfigOption, ConfigOptions, OptionType,
 };
 pub use crate::config::section::{
-    ConfigOption, ConfigSection, ConfigSectionSettings,
+    ConfigSection, ConfigOption, InternalSection, ConfigSectionSettings,
 };
 
 pub(crate) use crate::config::config_options::{
@@ -43,7 +45,7 @@ use weechat_sys::{
 pub struct Config {
     inner: Conf,
     _config_data: Box<ConfigPointers>,
-    sections: HashMap<String, ConfigSection>,
+    sections: Rc<RefCell<HashMap<String, InternalSection>>>,
 }
 
 /// The borrowed equivalent of the `Config`. Will be present in callbacks.
@@ -127,7 +129,7 @@ impl Weechat {
                 weechat_ptr: self.ptr,
             },
             _config_data: config_data,
-            sections: HashMap::new(),
+            sections: Rc::new(RefCell::new(HashMap::new())),
         })
     }
 }
@@ -138,7 +140,7 @@ impl Drop for Config {
         let config_free = weechat.get().config_free.unwrap();
 
         // Drop the sections first.
-        self.sections.clear();
+        self.sections.borrow_mut().clear();
 
         unsafe {
             // Now drop the config.
@@ -188,7 +190,7 @@ impl Config {
     pub fn new_section(
         &mut self,
         section_settings: ConfigSectionSettings,
-    ) -> Option<&mut ConfigSection> {
+    ) -> Option<ConfigSection> {
         unsafe extern "C" fn c_read_cb(
             pointer: *const c_void,
             _data: *mut c_void,
@@ -206,8 +208,13 @@ impl Config {
                 ptr: config,
                 weechat_ptr: pointers.weechat_ptr,
             };
-            let mut section =
-                &mut *(pointers.section_ptr as *mut ConfigSection);
+            let mut sections = pointers.sections.borrow_mut();
+
+            let mut section = ConfigSection {
+                inner: sections,
+                section_name: pointers.section_name.clone(),
+            };
+
             let weechat = Weechat::from_ptr(pointers.weechat_ptr);
 
             if let Some(ref mut callback) = pointers.read_cb {
@@ -296,7 +303,8 @@ impl Config {
             write_cb,
             write_default_cb,
             weechat_ptr: self.inner.weechat_ptr,
-            section_ptr: ptr::null_mut(),
+            section_name: section_settings.name.to_owned(),
+            sections: self.sections.clone(),
         });
         let section_data_ptr = Box::leak(section_data);
 
@@ -329,7 +337,7 @@ impl Config {
             return None;
         };
 
-        let mut section = ConfigSection {
+        let mut section = InternalSection {
             ptr,
             config_ptr: self.inner.ptr,
             weechat_ptr: weechat.ptr,
@@ -338,21 +346,24 @@ impl Config {
             options: HashMap::new(),
         };
 
-        let section_ptr = &mut section as *mut ConfigSection;
-        let pointers: &mut ConfigSectionPointers =
-            unsafe { &mut *(section_data_ptr as *mut ConfigSectionPointers) };
-        pointers.section_ptr = section_ptr;
+        let section_ptr = &mut section as *mut InternalSection;
 
-        self.sections.insert(section_settings.name.clone(), section);
-        self.sections.get_mut(&section_settings.name)
+        let mut sections = self.sections.borrow_mut();
+
+        sections.insert(section_settings.name.clone(), section);
+
+        Some(ConfigSection {
+            inner: sections,
+            section_name: section_settings.name,
+        })
     }
 
-    /// Search the configuration object for a section.
-    /// # Arguments
-    /// `section_name` - The name of the section that should be retrieved.
-    pub fn search_section(&self, section_name: &str) -> Option<&ConfigSection> {
-        self.sections.get(section_name)
-    }
+    // /// Search the configuration object for a section.
+    // /// # Arguments
+    // /// `section_name` - The name of the section that should be retrieved.
+    // pub fn search_section(&self, section_name: &str) -> Option<&InternalSection> {
+    //     self.sections.borrow().get(section_name)
+    // }
 
     /// Search the configuration object for a section and borrow it mutably.
     /// # Arguments
@@ -360,8 +371,17 @@ impl Config {
     pub fn search_section_mut(
         &mut self,
         section_name: &str,
-    ) -> Option<&mut ConfigSection> {
-        self.sections.get_mut(section_name)
+    ) -> Option<ConfigSection> {
+        let sections = self.sections.borrow_mut();
+
+        if !sections.contains_key(section_name) {
+            None
+        } else {
+            Some(ConfigSection {
+                inner: sections,
+                section_name: section_name.to_string(),
+            })
+        }
     }
 }
 

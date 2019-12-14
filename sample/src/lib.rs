@@ -111,17 +111,19 @@ impl WeechatPlugin for SamplePlugin {
             })
             .expect("Can't create new config");
 
-        let section_info = ConfigSectionSettings::new("sample_section");
+        {
+            let section_info = ConfigSectionSettings::new("sample_section");
 
-        let section = config
-            .new_section(section_info)
-            .expect("Can't create section");
+            let mut section = config
+                .new_section(section_info)
+                .expect("Can't create section");
 
-        let option_settings = BooleanOptionSettings::new("test_option")
-            .default_value(false)
-            .set_change_callback(SamplePlugin::option_change_cb);
+            let option_settings = BooleanOptionSettings::new("test_option")
+                .default_value(false)
+                .set_change_callback(SamplePlugin::option_change_cb);
 
-        section.new_boolean_option(option_settings);
+            section.new_boolean_option(option_settings);
+        }
 
         let item =
             weechat.new_bar_item("buffer_plugin", SamplePlugin::bar_cb, None);
