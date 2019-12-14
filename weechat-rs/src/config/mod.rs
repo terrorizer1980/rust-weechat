@@ -8,6 +8,7 @@ mod section;
 mod string;
 
 use libc::{c_char, c_int};
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ffi::CStr;
 use std::io::Error as IoError;
@@ -15,7 +16,6 @@ use std::io::ErrorKind;
 use std::os::raw::c_void;
 use std::ptr;
 use std::rc::Rc;
-use std::cell::RefCell;
 
 pub use crate::config::boolean::{BooleanOption, BooleanOptionSettings};
 pub use crate::config::color::{ColorOption, ColorOptionSettings};
@@ -26,7 +26,7 @@ pub use crate::config::config_options::{
     BaseConfigOption, ConfigOptions, OptionType,
 };
 pub use crate::config::section::{
-    ConfigSection, ConfigOption, InternalSection, ConfigSectionSettings,
+    ConfigOption, ConfigSection, ConfigSectionSettings, InternalSection,
 };
 
 pub(crate) use crate::config::config_options::{
@@ -208,14 +208,18 @@ impl Config {
                 ptr: config,
                 weechat_ptr: pointers.weechat_ptr,
             };
-            let mut sections = pointers.sections.borrow_mut();
+            let sections = pointers
+                .sections
+                .upgrade()
+                .expect("Config has been destroyed but a read callback run");
 
             let mut section = ConfigSection {
-                inner: sections,
+                inner: sections.borrow_mut(),
                 section_name: pointers.section_name.clone(),
             };
 
             let weechat = Weechat::from_ptr(pointers.weechat_ptr);
+            weechat.print(&format!("Hello world {:?}", pointers));
 
             if let Some(ref mut callback) = pointers.read_cb {
                 callback(
@@ -304,7 +308,7 @@ impl Config {
             write_default_cb,
             weechat_ptr: self.inner.weechat_ptr,
             section_name: section_settings.name.to_owned(),
-            sections: self.sections.clone(),
+            sections: Rc::downgrade(&self.sections),
         });
         let section_data_ptr = Box::leak(section_data);
 

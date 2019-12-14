@@ -1,11 +1,11 @@
 use libc::{c_char, c_int};
+use std::cell::{RefCell, RefMut};
 use std::collections::HashMap;
-use std::ops::{Deref, DerefMut};
 use std::ffi::CStr;
+use std::ops::{Deref, DerefMut};
 use std::os::raw::c_void;
 use std::ptr;
-use std::rc::Rc;
-use std::cell::{RefCell, RefMut};
+use std::rc::{Rc, Weak};
 
 use weechat_sys::{
     t_config_file, t_config_option, t_config_section, t_weechat_plugin,
@@ -106,7 +106,7 @@ pub(crate) struct ConfigSectionPointers {
     pub(crate) write_cb: Option<Box<WriteCB>>,
     pub(crate) write_default_cb: Option<Box<WriteCB>>,
     pub(crate) section_name: String,
-    pub(crate) sections: Rc<RefCell<HashMap<String, InternalSection>>>,
+    pub(crate) sections: Weak<RefCell<HashMap<String, InternalSection>>>,
     pub(crate) weechat_ptr: *mut t_weechat_plugin,
 }
 
