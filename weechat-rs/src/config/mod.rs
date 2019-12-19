@@ -45,7 +45,7 @@ use weechat_sys::{
 pub struct Config {
     inner: Conf,
     _config_data: Box<ConfigPointers>,
-    sections: Rc<RefCell<HashMap<String, InternalSection>>>,
+    sections: HashMap<String, Rc<RefCell<InternalSection>>>,
 }
 
 /// The borrowed equivalent of the `Config`. Will be present in callbacks.
@@ -129,7 +129,7 @@ impl Weechat {
                 weechat_ptr: self.ptr,
             },
             _config_data: config_data,
-            sections: Rc::new(RefCell::new(HashMap::new())),
+            sections: HashMap::new(),
         })
     }
 }
@@ -140,7 +140,7 @@ impl Drop for Config {
         let config_free = weechat.get().config_free.unwrap();
 
         // Drop the sections first.
-        self.sections.borrow_mut().clear();
+        self.sections.clear();
 
         unsafe {
             // Now drop the config.
@@ -208,14 +208,15 @@ impl Config {
                 ptr: config,
                 weechat_ptr: pointers.weechat_ptr,
             };
-            let sections = pointers
-                .sections
+            let section = pointers
+                .section
+                .as_ref()
+                .expect("Section reference wasn't set up correctly")
                 .upgrade()
                 .expect("Config has been destroyed but a read callback run");
 
             let mut section = ConfigSection {
-                inner: sections.borrow_mut(),
-                section_name: pointers.section_name.clone(),
+                inner: section.borrow_mut(),
             };
 
             let weechat = Weechat::from_ptr(pointers.weechat_ptr);
@@ -307,8 +308,7 @@ impl Config {
             write_cb,
             write_default_cb,
             weechat_ptr: self.inner.weechat_ptr,
-            section_name: section_settings.name.to_owned(),
-            sections: Rc::downgrade(&self.sections),
+            section: None,
         });
         let section_data_ptr = Box::leak(section_data);
 
@@ -341,7 +341,7 @@ impl Config {
             return None;
         };
 
-        let mut section = InternalSection {
+        let section = InternalSection {
             ptr,
             config_ptr: self.inner.ptr,
             weechat_ptr: weechat.ptr,
@@ -350,15 +350,16 @@ impl Config {
             options: HashMap::new(),
         };
 
-        let section_ptr = &mut section as *mut InternalSection;
+        let section = Rc::new(RefCell::new(section));
+        let pointers: &mut ConfigSectionPointers = unsafe { &mut *(section_data_ptr as *mut ConfigSectionPointers) };
 
-        let mut sections = self.sections.borrow_mut();
+        pointers.section = Some(Rc::downgrade(&section));
 
-        sections.insert(section_settings.name.clone(), section);
+        self.sections.insert(section_settings.name.clone(), section);
+        let section = &self.sections[&section_settings.name];
 
         Some(ConfigSection {
-            inner: sections,
-            section_name: section_settings.name,
+            inner: section.borrow_mut(),
         })
     }
 
@@ -376,14 +377,11 @@ impl Config {
         &mut self,
         section_name: &str,
     ) -> Option<ConfigSection> {
-        let sections = self.sections.borrow_mut();
-
-        if !sections.contains_key(section_name) {
+        if !self.sections.contains_key(section_name) {
             None
         } else {
             Some(ConfigSection {
-                inner: sections,
-                section_name: section_name.to_string(),
+                inner: self.sections[section_name].borrow_mut(),
             })
         }
     }

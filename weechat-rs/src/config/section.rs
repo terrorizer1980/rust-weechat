@@ -5,7 +5,7 @@ use std::ffi::CStr;
 use std::ops::{Deref, DerefMut};
 use std::os::raw::c_void;
 use std::ptr;
-use std::rc::{Rc, Weak};
+use std::rc::{Weak};
 
 use weechat_sys::{
     t_config_file, t_config_option, t_config_section, t_weechat_plugin,
@@ -69,21 +69,20 @@ pub(crate) enum ConfigOptionPointers {
 }
 
 pub struct ConfigSection<'a> {
-    pub(crate) inner: RefMut<'a, HashMap<String, InternalSection>>,
-    pub(crate) section_name: String,
+    pub(crate) inner: RefMut<'a, InternalSection>,
 }
 
 impl<'a> Deref for ConfigSection<'a> {
     type Target = InternalSection;
 
     fn deref(&self) -> &Self::Target {
-        self.inner.get(&self.section_name).unwrap()
+        &*self.inner
     }
 }
 
 impl<'a> DerefMut for ConfigSection<'a> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.inner.get_mut(&self.section_name).unwrap()
+        &mut *self.inner
     }
 }
 
@@ -105,8 +104,7 @@ pub(crate) struct ConfigSectionPointers {
     pub(crate) read_cb: Option<Box<ReadCB>>,
     pub(crate) write_cb: Option<Box<WriteCB>>,
     pub(crate) write_default_cb: Option<Box<WriteCB>>,
-    pub(crate) section_name: String,
-    pub(crate) sections: Weak<RefCell<HashMap<String, InternalSection>>>,
+    pub(crate) section: Option<Weak<RefCell<InternalSection>>>,
     pub(crate) weechat_ptr: *mut t_weechat_plugin,
 }
 
@@ -115,7 +113,7 @@ impl std::fmt::Debug for ConfigSectionPointers {
         write!(
             f,
             "ConfigSectionPointers {{ section_ptr: {:?} weechat_ptr: {:?}}}",
-            self.sections, self.weechat_ptr
+            self.section, self.weechat_ptr
         )
     }
 }
