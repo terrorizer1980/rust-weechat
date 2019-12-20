@@ -397,6 +397,7 @@ impl Config {
 
 impl Conf {
     /// Write a line in a configuration file.
+    ///
     /// # Arguments
     /// `key` - The key of the option that will be written. Can be a
     /// section name.
@@ -419,13 +420,14 @@ impl Conf {
     }
 
     /// Write a line in a configuration file with option and its value.
+    ///
     /// # Arguments
     /// `option` - The option that will be written to the configuration file.
-    pub fn write_option(&self, option: &dyn BaseConfigOption) {
+    pub fn write_option<O: AsRef<dyn BaseConfigOption>>(&self, option: O) {
         let weechat = Weechat::from_ptr(self.weechat_ptr);
         let write_option = weechat.get().config_write_option.unwrap();
         unsafe {
-            write_option(self.ptr, option.get_ptr());
+            write_option(self.ptr, option.as_ref().get_ptr());
         }
     }
 }

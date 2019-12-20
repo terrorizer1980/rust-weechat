@@ -180,6 +180,14 @@ impl ConfigSectionSettings {
     ///
     /// #Arguments
     /// `callback` - The callback for a section read operation.
+    ///
+    /// # Examples
+    /// ```
+    /// let server_section_options = ConfigSectionSettings::new("server")
+    ///     .set_read_callback(|weechat, config, section_name| {
+    ///         weechat.print("Writing section");
+    /// });
+
     pub fn set_read_callback(
         mut self,
         callback: impl FnMut(&Weechat, &Conf, &mut ConfigSection, &str, &str)
@@ -189,6 +197,18 @@ impl ConfigSectionSettings {
         self
     }
 
+    /// Set the function that will be called when the section is being written
+    /// to the file.
+    ///
+    /// #Arguments
+    /// `callback` - The callback for the section write operation.
+    ///
+    /// # Examples
+    /// ```
+    /// let server_section_options = ConfigSectionSettings::new("server")
+    ///     .set_write_callback(|weechat, config, section_name| {
+    ///         weechat.print("Writing section");
+    /// });
     pub fn set_write_callback(
         mut self,
         callback: impl FnMut(&Weechat, &Conf, &str) + 'static,
@@ -197,6 +217,10 @@ impl ConfigSectionSettings {
         self
     }
 
+    /// Set the function that will be called when default values will need to be
+    /// written to to the file.
+    ///
+    /// #Arguments
     pub fn set_write_default_callback(
         mut self,
         callback: impl FnMut(&Weechat, &Conf, &str) + 'static,
@@ -314,6 +338,12 @@ impl ConfigSection {
     }
 
     /// Create a new boolean Weechat configuration option.
+    ///
+    /// # Arguments
+    /// `settings` - Settings that decide how the option should be created.
+    ///
+    /// Returns None if the option couldn't be created, e.g. if a option with
+    /// the same name already exists.
     pub fn new_boolean_option(
         &mut self,
         settings: BooleanOptionSettings,
@@ -353,6 +383,12 @@ impl ConfigSection {
     }
 
     /// Create a new integer Weechat configuration option.
+    ///
+    /// # Arguments
+    /// `settings` - Settings that decide how the option should be created.
+    ///
+    /// Returns None if the option couldn't be created, e.g. if a option with
+    /// the same name already exists.
     pub fn new_integer_option(
         &mut self,
         settings: IntegerOptionSettings,
@@ -393,6 +429,12 @@ impl ConfigSection {
     }
 
     /// Create a new color Weechat configuration option.
+    ///
+    /// # Arguments
+    /// `settings` - Settings that decide how the option should be created.
+    ///
+    /// Returns None if the option couldn't be created, e.g. if a option with
+    /// the same name already exists.
     pub fn new_color_option(
         &mut self,
         settings: ColorOptionSettings,

@@ -4,7 +4,7 @@ use crate::config::{
 use crate::Weechat;
 use weechat_sys::{t_config_option, t_weechat_plugin};
 
-/// Settings for building a new integer option.
+/// Settings for a new integer option.
 #[derive(Default)]
 pub struct IntegerOptionSettings {
     pub(crate) name: String,
@@ -23,10 +23,9 @@ pub struct IntegerOptionSettings {
 }
 
 impl IntegerOptionSettings {
-    /// Create new settings that will create a new option with the given name.
+    /// Create new settings that can be used to create a new integer option.
     ///
     /// # Arguments
-    ///
     /// `name` - The name of the new option.
     pub fn new<N: Into<String>>(name: N) -> Self {
         IntegerOptionSettings {
@@ -38,7 +37,6 @@ impl IntegerOptionSettings {
     /// Set the description of the option.
     ///
     /// # Arguments
-    ///
     /// `description` - The description of the new option.
     pub fn description<D: Into<String>>(mut self, descritpion: D) -> Self {
         self.description = descritpion.into();
@@ -51,7 +49,6 @@ impl IntegerOptionSettings {
     /// the option is reset, the option will take this value.
     ///
     /// # Arguments
-    ///
     /// `value` - The value that should act as the default value.
     pub fn default_value<V: Into<i32>>(mut self, value: V) -> Self {
         self.default_value = value.into();
@@ -64,7 +61,6 @@ impl IntegerOptionSettings {
     /// symbolic values.
     ///
     /// # Arguments
-    ///
     /// `values` - The values that should act as the symbolic values.
     ///
     /// # Examples
@@ -88,7 +84,6 @@ impl IntegerOptionSettings {
     /// Set minimal value of the integer option.
     ///
     /// # Arguments
-    ///
     /// `value` - The values that should act as minimal valid value.
     pub fn min(mut self, value: i32) -> Self {
         self.min = value;
@@ -98,7 +93,6 @@ impl IntegerOptionSettings {
     /// Set maximum value of the integer option.
     ///
     /// # Arguments
-    ///
     /// `value` - The values that should act as maximal valid value.
     pub fn max(mut self, value: i32) -> Self {
         self.max = value;
@@ -108,8 +102,8 @@ impl IntegerOptionSettings {
     /// Set the callback that will run when the value of the option changes.
     ///
     /// # Arguments
-    ///
     /// `callback` - The callback that will be run.
+    ///
     /// # Examples
     /// ```
     /// let settings = IntegerOptionSettings::new("server_buffer")
