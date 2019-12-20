@@ -346,6 +346,7 @@ impl Config {
             config_ptr: self.inner.ptr,
             weechat_ptr: weechat.ptr,
             section_data: section_data_ptr as *const _ as *const c_void,
+            name: section_settings.name.clone(),
             option_pointers: HashMap::new(),
             options: HashMap::new(),
         };

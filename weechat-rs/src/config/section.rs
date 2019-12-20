@@ -123,6 +123,7 @@ pub struct ConfigSection {
     pub(crate) ptr: *mut t_config_section,
     pub(crate) config_ptr: *mut t_config_file,
     pub(crate) weechat_ptr: *mut t_weechat_plugin,
+    pub(crate) name: String,
     pub(crate) section_data: *const c_void,
     pub(crate) option_pointers: HashMap<String, ConfigOptionPointers>,
     pub(crate) options: HashMap<String, ConfigOption>,
@@ -294,6 +295,11 @@ type WeechatOptCheckCbT = unsafe extern "C" fn(
 ) -> c_int;
 
 impl ConfigSection {
+    /// Get the name of the section.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
     /// Create a new string Weechat configuration option.
     ///
     /// # Arguments
