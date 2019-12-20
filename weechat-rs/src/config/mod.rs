@@ -240,10 +240,15 @@ impl Config {
             config: *mut t_config_file,
             section_name: *const c_char,
         ) -> c_int {
-            let section_name = CStr::from_ptr(section_name).to_string_lossy();
-
             let pointers: &mut ConfigSectionPointers =
                 { &mut *(pointer as *mut ConfigSectionPointers) };
+
+            let section = pointers
+                .section
+                .as_ref()
+                .expect("Section reference wasn't set up correctly")
+                .upgrade()
+                .expect("Config has been destroyed but a read callback run");
 
             let conf = Conf {
                 ptr: config,
@@ -252,7 +257,7 @@ impl Config {
             let weechat = Weechat::from_ptr(pointers.weechat_ptr);
 
             if let Some(ref mut callback) = pointers.write_cb {
-                callback(&weechat, &conf, section_name.as_ref())
+                callback(&weechat, &conf, &mut section.borrow_mut())
             }
             WEECHAT_RC_OK
         }
@@ -263,10 +268,15 @@ impl Config {
             config: *mut t_config_file,
             section_name: *const c_char,
         ) -> c_int {
-            let section_name = CStr::from_ptr(section_name).to_string_lossy();
-
             let pointers: &mut ConfigSectionPointers =
                 { &mut *(pointer as *mut ConfigSectionPointers) };
+
+            let section = pointers
+                .section
+                .as_ref()
+                .expect("Section reference wasn't set up correctly")
+                .upgrade()
+                .expect("Config has been destroyed but a read callback run");
 
             let conf = Conf {
                 ptr: config,
@@ -275,7 +285,7 @@ impl Config {
             let weechat = Weechat::from_ptr(pointers.weechat_ptr);
 
             if let Some(ref mut callback) = pointers.write_default_cb {
-                callback(&weechat, &conf, section_name.as_ref())
+                callback(&weechat, &conf, &mut section.borrow_mut())
             }
             WEECHAT_RC_OK
         }

@@ -130,7 +130,7 @@ pub struct ConfigSection {
 }
 
 type ReadCB = dyn FnMut(&Weechat, &Conf, &mut ConfigSection, &str, &str);
-type WriteCB = dyn FnMut(&Weechat, &Conf, &str);
+type WriteCB = dyn FnMut(&Weechat, &Conf, &mut ConfigSection);
 
 pub(crate) struct ConfigSectionPointers {
     pub(crate) read_cb: Option<Box<ReadCB>>,
@@ -207,12 +207,12 @@ impl ConfigSectionSettings {
     /// # Examples
     /// ```
     /// let server_section_options = ConfigSectionSettings::new("server")
-    ///     .set_write_callback(|weechat, config, section_name| {
+    ///     .set_write_callback(|weechat, config, section| {
     ///         weechat.print("Writing section");
     /// });
     pub fn set_write_callback(
         mut self,
-        callback: impl FnMut(&Weechat, &Conf, &str) + 'static,
+        callback: impl FnMut(&Weechat, &Conf, &mut ConfigSection) + 'static,
     ) -> Self {
         self.write_callback = Some(Box::new(callback));
         self
@@ -224,7 +224,7 @@ impl ConfigSectionSettings {
     /// #Arguments
     pub fn set_write_default_callback(
         mut self,
-        callback: impl FnMut(&Weechat, &Conf, &str) + 'static,
+        callback: impl FnMut(&Weechat, &Conf, &mut ConfigSection) + 'static,
     ) -> Self {
         self.write_default_callback = Some(Box::new(callback));
         self
