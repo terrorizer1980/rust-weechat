@@ -310,7 +310,7 @@ impl ConfigSection {
     pub fn new_string_option(
         &mut self,
         settings: StringOptionSettings,
-    ) -> Option<&StringOption> {
+    ) -> Result<&StringOption, ()> {
         let ret = self.new_option(
             OptionDescription {
                 name: &settings.name,
@@ -328,7 +328,7 @@ impl ConfigSection {
         let (ptr, option_pointers) = if let Some((ptr, ptrs)) = ret {
             (ptr, ptrs)
         } else {
-            return None;
+            return Err(());
         };
 
         let option_ptrs = ConfigOptionPointers::String(option_pointers);
@@ -340,7 +340,7 @@ impl ConfigSection {
             self.weechat_ptr,
         ));
         self.options.insert(settings.name.clone(), option);
-        Some(self.options[&settings.name].string())
+        Ok(self.options[&settings.name].string())
     }
 
     /// Create a new boolean Weechat configuration option.
@@ -353,7 +353,7 @@ impl ConfigSection {
     pub fn new_boolean_option(
         &mut self,
         settings: BooleanOptionSettings,
-    ) -> Option<&BooleanOption> {
+    ) -> Result<&BooleanOption, ()> {
         let value = if settings.default_value { "on" } else { "off" };
         let default_value = if settings.default_value { "on" } else { "off" };
         let ret = self.new_option(
@@ -373,7 +373,7 @@ impl ConfigSection {
         let (ptr, option_pointers) = if let Some((ptr, ptrs)) = ret {
             (ptr, ptrs)
         } else {
-            return None;
+            return Err(());
         };
 
         let option_ptrs = ConfigOptionPointers::Boolean(option_pointers);
@@ -385,7 +385,7 @@ impl ConfigSection {
             self.weechat_ptr,
         ));
         self.options.insert(settings.name.clone(), option);
-        Some(self.options[&settings.name].boolean())
+        Ok(self.options[&settings.name].boolean())
     }
 
     /// Create a new integer Weechat configuration option.
@@ -398,7 +398,7 @@ impl ConfigSection {
     pub fn new_integer_option(
         &mut self,
         settings: IntegerOptionSettings,
-    ) -> Option<&IntegerOption> {
+    ) -> Result<&IntegerOption, ()> {
         let ret = self.new_option(
             OptionDescription {
                 name: &settings.name,
@@ -419,7 +419,7 @@ impl ConfigSection {
         let (ptr, option_pointers) = if let Some((ptr, ptrs)) = ret {
             (ptr, ptrs)
         } else {
-            return None;
+            return Err(());
         };
 
         let option_ptrs = ConfigOptionPointers::Integer(option_pointers);
@@ -431,7 +431,7 @@ impl ConfigSection {
             self.weechat_ptr,
         ));
         self.options.insert(settings.name.clone(), option);
-        Some(self.options[&settings.name].integer())
+        Ok(self.options[&settings.name].integer())
     }
 
     /// Create a new color Weechat configuration option.
@@ -444,7 +444,7 @@ impl ConfigSection {
     pub fn new_color_option(
         &mut self,
         settings: ColorOptionSettings,
-    ) -> Option<&ColorOption> {
+    ) -> Result<&ColorOption, ()> {
         let ret = self.new_option(
             OptionDescription {
                 name: &settings.name,
@@ -462,7 +462,7 @@ impl ConfigSection {
         let (ptr, option_pointers) = if let Some((ptr, ptrs)) = ret {
             (ptr, ptrs)
         } else {
-            return None;
+            return Err(());
         };
 
         let option_ptrs = ConfigOptionPointers::Color(option_pointers);
@@ -472,7 +472,7 @@ impl ConfigSection {
         let option =
             ConfigOption::Color(ColorOption::from_ptrs(ptr, self.weechat_ptr));
         self.options.insert(settings.name.clone(), option);
-        Some(self.options[&settings.name].color())
+        Ok(self.options[&settings.name].color())
     }
 
     fn new_option<T>(

@@ -79,7 +79,7 @@ impl Weechat {
         &self,
         name: &str,
         reload_callback: impl FnMut(&Weechat, &Conf) + 'static,
-    ) -> Option<Config> {
+    ) -> Result<Config, ()> {
         unsafe extern "C" fn c_reload_cb(
             pointer: *const c_void,
             _data: *mut c_void,
@@ -121,12 +121,12 @@ impl Weechat {
         };
 
         if config_ptr.is_null() {
-            return None;
+            return Err(());
         };
 
         let config_data = unsafe { Box::from_raw(config_pointers_ref) };
 
-        Some(Config {
+        Ok(Config {
             inner: Conf {
                 ptr: config_ptr,
                 weechat_ptr: self.ptr,
@@ -194,7 +194,7 @@ impl Config {
     pub fn new_section(
         &mut self,
         section_settings: ConfigSectionSettings,
-    ) -> Option<SectionHandleMut> {
+    ) -> Result<SectionHandleMut, ()> {
         unsafe extern "C" fn c_read_cb(
             pointer: *const c_void,
             _data: *mut c_void,
@@ -238,7 +238,7 @@ impl Config {
             pointer: *const c_void,
             _data: *mut c_void,
             config: *mut t_config_file,
-            section_name: *const c_char,
+            _section_name: *const c_char,
         ) -> c_int {
             let pointers: &mut ConfigSectionPointers =
                 { &mut *(pointer as *mut ConfigSectionPointers) };
@@ -266,7 +266,7 @@ impl Config {
             pointer: *const c_void,
             _data: *mut c_void,
             config: *mut t_config_file,
-            section_name: *const c_char,
+            _section_name: *const c_char,
         ) -> c_int {
             let pointers: &mut ConfigSectionPointers =
                 { &mut *(pointer as *mut ConfigSectionPointers) };
@@ -348,7 +348,7 @@ impl Config {
 
         if ptr.is_null() {
             unsafe { Box::from_raw(section_data_ptr) };
-            return None;
+            return Err(());
         };
 
         let section = ConfigSection {
@@ -369,7 +369,7 @@ impl Config {
         self.sections.insert(section_settings.name.clone(), section);
         let section = &self.sections[&section_settings.name];
 
-        Some(SectionHandleMut {
+        Ok(SectionHandleMut {
             inner: section.borrow_mut(),
         })
     }
