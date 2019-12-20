@@ -26,7 +26,7 @@ pub use crate::config::config_options::{
     BaseConfigOption, ConfigOptions, OptionType,
 };
 pub use crate::config::section::{
-    ConfigOption, ConfigSection, ConfigSectionSettings, InternalSection,
+    ConfigOption, SectionHandle, SectionHandleMut, ConfigSectionSettings, ConfigSection,
 };
 
 pub(crate) use crate::config::config_options::{
@@ -45,7 +45,7 @@ use weechat_sys::{
 pub struct Config {
     inner: Conf,
     _config_data: Box<ConfigPointers>,
-    sections: HashMap<String, Rc<RefCell<InternalSection>>>,
+    sections: HashMap<String, Rc<RefCell<ConfigSection>>>,
 }
 
 /// The borrowed equivalent of the `Config`. Will be present in callbacks.
@@ -62,16 +62,19 @@ struct ConfigPointers {
 impl Weechat {
     /// Create a new Weechat configuration file, returns a `Config` object.
     /// The configuration file is freed when the `Config` object is dropped.
+    ///
+    /// # Arguments
     /// * `name` - Name of the new configuration file
     /// * `reload_callback` - Callback that will be called when the
     /// configuration file is reloaded.
     ///
     /// # Examples
+    ///
     /// ```
     /// let config = weechat::new("server_buffer", |weechat, conf| {
     ///     weechat.print("Config was reloaded")
-    ///     });
-    ///
+    /// });
+    /// ```
     pub fn config_new(
         &self,
         name: &str,
@@ -150,16 +153,6 @@ impl Drop for Config {
 }
 
 impl Config {
-    /// Read the configuration file from the disk.
-    pub fn read(&self) -> std::io::Result<()> {
-        let weechat = Weechat::from_ptr(self.inner.weechat_ptr);
-        let config_read = weechat.get().config_read.unwrap();
-
-        let ret = unsafe { config_read(self.inner.ptr) };
-
-        Config::return_value_to_error(ret)
-    }
-
     fn return_value_to_error(return_value: c_int) -> std::io::Result<()> {
         match return_value {
             weechat_sys::WEECHAT_CONFIG_READ_OK => Ok(()),
@@ -173,6 +166,16 @@ impl Config {
         }
     }
 
+    /// Read the configuration file from the disk.
+    pub fn read(&self) -> std::io::Result<()> {
+        let weechat = Weechat::from_ptr(self.inner.weechat_ptr);
+        let config_read = weechat.get().config_read.unwrap();
+
+        let ret = unsafe { config_read(self.inner.ptr) };
+
+        Config::return_value_to_error(ret)
+    }
+
     /// Write the configuration file to the disk.
     pub fn write(&self) -> std::io::Result<()> {
         let weechat = Weechat::from_ptr(self.inner.weechat_ptr);
@@ -184,13 +187,14 @@ impl Config {
     }
 
     /// Create a new section in the configuration file.
+    ///
     /// # Arguments
     /// `section_settings` - Settings that decide how the section will be
     /// created.
     pub fn new_section(
         &mut self,
         section_settings: ConfigSectionSettings,
-    ) -> Option<ConfigSection> {
+    ) -> Option<SectionHandleMut> {
         unsafe extern "C" fn c_read_cb(
             pointer: *const c_void,
             _data: *mut c_void,
@@ -215,10 +219,6 @@ impl Config {
                 .upgrade()
                 .expect("Config has been destroyed but a read callback run");
 
-            let mut section = ConfigSection {
-                inner: section.borrow_mut(),
-            };
-
             let weechat = Weechat::from_ptr(pointers.weechat_ptr);
             weechat.print(&format!("Hello world {:?}", pointers));
 
@@ -226,7 +226,7 @@ impl Config {
                 callback(
                     &weechat,
                     &conf,
-                    &mut section,
+                    &mut section.borrow_mut(),
                     option_name.as_ref(),
                     value.as_ref(),
                 )
@@ -341,7 +341,7 @@ impl Config {
             return None;
         };
 
-        let section = InternalSection {
+        let section = ConfigSection {
             ptr,
             config_ptr: self.inner.ptr,
             weechat_ptr: weechat.ptr,
@@ -358,29 +358,37 @@ impl Config {
         self.sections.insert(section_settings.name.clone(), section);
         let section = &self.sections[&section_settings.name];
 
-        Some(ConfigSection {
+        Some(SectionHandleMut {
             inner: section.borrow_mut(),
         })
     }
 
-    // /// Search the configuration object for a section.
-    // /// # Arguments
-    // /// `section_name` - The name of the section that should be retrieved.
-    // pub fn search_section(&self, section_name: &str) -> Option<&InternalSection> {
-    //     self.sections.borrow().get(section_name)
-    // }
+    /// Search the configuration object for a section and borrow it.
+    ///
+    /// # Arguments
+    /// `section_name` - The name of the section that should be retrieved.
+    pub fn search_section(&self, section_name: &str) -> Option<SectionHandle> {
+        if !self.sections.contains_key(section_name) {
+            None
+        } else {
+            Some(SectionHandle {
+                inner: self.sections[section_name].borrow(),
+            })
+        }
+    }
 
     /// Search the configuration object for a section and borrow it mutably.
+    ///
     /// # Arguments
     /// `section_name` - The name of the section that should be retrieved.
     pub fn search_section_mut(
         &mut self,
         section_name: &str,
-    ) -> Option<ConfigSection> {
+    ) -> Option<SectionHandleMut> {
         if !self.sections.contains_key(section_name) {
             None
         } else {
-            Some(ConfigSection {
+            Some(SectionHandleMut {
                 inner: self.sections[section_name].borrow_mut(),
             })
         }

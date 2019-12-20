@@ -1,5 +1,5 @@
 use libc::{c_char, c_int};
-use std::cell::{RefCell, RefMut};
+use std::cell::{RefCell, Ref, RefMut};
 use std::collections::HashMap;
 use std::ffi::CStr;
 use std::ops::{Deref, DerefMut};
@@ -13,6 +13,7 @@ use weechat_sys::{
 
 use crate::config::config_options::CheckCB;
 use crate::config::{
+    BaseConfigOption,
     BooleanOption, BooleanOptionSettings, ColorOption, ColorOptionSettings,
     Conf, ConfigOptions, FromPtrs, IntegerOption, IntegerOptionSettings,
     StringOption, StringOptionSettings,
@@ -37,6 +38,7 @@ impl ConfigOption {
             panic!("Invalid option type")
         }
     }
+
     fn integer(&self) -> &IntegerOption {
         if let ConfigOption::Integer(o) = self {
             o
@@ -44,6 +46,7 @@ impl ConfigOption {
             panic!("Invalid option type")
         }
     }
+
     fn string(&self) -> &StringOption {
         if let ConfigOption::String(o) = self {
             o
@@ -51,12 +54,28 @@ impl ConfigOption {
             panic!("Invalid option type")
         }
     }
+
     fn color(&self) -> &ColorOption {
         if let ConfigOption::Color(o) = self {
             o
         } else {
             panic!("Invalid option type")
         }
+    }
+
+    fn as_base_config_option(&self) -> &(dyn BaseConfigOption + 'static) {
+        match &self {
+            ConfigOption::Color(ref o) => o,
+            ConfigOption::Boolean(ref o) => o,
+            ConfigOption::Integer(ref o) => o,
+            ConfigOption::String(ref o) => o,
+        }
+    }
+}
+
+impl AsRef<dyn BaseConfigOption> for ConfigOption {
+    fn as_ref(&self) -> &(dyn BaseConfigOption + 'static) {
+        self.as_base_config_option()
     }
 }
 
@@ -68,19 +87,31 @@ pub(crate) enum ConfigOptionPointers {
     Color(*const c_void),
 }
 
-pub struct ConfigSection<'a> {
-    pub(crate) inner: RefMut<'a, InternalSection>,
+pub struct SectionHandleMut<'a> {
+    pub(crate) inner: RefMut<'a, ConfigSection>,
 }
 
-impl<'a> Deref for ConfigSection<'a> {
-    type Target = InternalSection;
+pub struct SectionHandle<'a> {
+    pub(crate) inner: Ref<'a, ConfigSection>,
+}
+
+impl<'a> Deref for SectionHandle<'a> {
+    type Target = ConfigSection;
 
     fn deref(&self) -> &Self::Target {
         &*self.inner
     }
 }
 
-impl<'a> DerefMut for ConfigSection<'a> {
+impl<'a> Deref for SectionHandleMut<'a> {
+    type Target = ConfigSection;
+
+    fn deref(&self) -> &Self::Target {
+        &*self.inner
+    }
+}
+
+impl<'a> DerefMut for SectionHandleMut<'a> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut *self.inner
     }
@@ -88,7 +119,7 @@ impl<'a> DerefMut for ConfigSection<'a> {
 
 /// Weechat Configuration section
 #[derive(Debug)]
-pub struct InternalSection {
+pub struct ConfigSection {
     pub(crate) ptr: *mut t_config_section,
     pub(crate) config_ptr: *mut t_config_file,
     pub(crate) weechat_ptr: *mut t_weechat_plugin,
@@ -104,7 +135,7 @@ pub(crate) struct ConfigSectionPointers {
     pub(crate) read_cb: Option<Box<ReadCB>>,
     pub(crate) write_cb: Option<Box<WriteCB>>,
     pub(crate) write_default_cb: Option<Box<WriteCB>>,
-    pub(crate) section: Option<Weak<RefCell<InternalSection>>>,
+    pub(crate) section: Option<Weak<RefCell<ConfigSection>>>,
     pub(crate) weechat_ptr: *mut t_weechat_plugin,
 }
 
@@ -175,7 +206,7 @@ impl ConfigSectionSettings {
     }
 }
 
-impl Drop for InternalSection {
+impl Drop for ConfigSection {
     fn drop(&mut self) {
         let weechat = Weechat::from_ptr(self.weechat_ptr);
 
@@ -238,8 +269,14 @@ type WeechatOptCheckCbT = unsafe extern "C" fn(
     value: *const c_char,
 ) -> c_int;
 
-impl InternalSection {
+impl ConfigSection {
     /// Create a new string Weechat configuration option.
+    ///
+    /// # Arguments
+    /// `settings` - Settings that decide how the option should be created.
+    ///
+    /// Returns None if the option couldn't be created, e.g. if a option with
+    /// the same name already exists.
     pub fn new_string_option(
         &mut self,
         settings: StringOptionSettings,
