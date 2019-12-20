@@ -378,6 +378,12 @@ impl Config {
     ///
     /// # Arguments
     /// `section_name` - The name of the section that should be retrieved.
+    ///
+    /// # Panics
+    ///
+    /// This will panic if it is being called in a section read/write callback
+    /// of the same section that is being retrieved or if the section is already
+    /// mutably borrowed.
     pub fn search_section(&self, section_name: &str) -> Option<SectionHandle> {
         if !self.sections.contains_key(section_name) {
             None
@@ -392,6 +398,12 @@ impl Config {
     ///
     /// # Arguments
     /// `section_name` - The name of the section that should be retrieved.
+    ///
+    /// # Panics
+    ///
+    /// This will panic if it is being called in a section read/write callback
+    /// of the same section that is being retrieved or if the section is already
+    /// borrowed.
     pub fn search_section_mut(
         &mut self,
         section_name: &str,
