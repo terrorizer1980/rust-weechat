@@ -519,9 +519,10 @@ impl Conf {
     ///
     /// # Arguments
     /// `option` - The option that will be written to the configuration file.
-    pub fn write_option<O: AsRef<dyn BaseConfigOption>>(&self, option: O) {
+    pub fn write_option<'a, O: AsRef<dyn BaseConfigOption + 'a>>(&self, option: O) {
         let weechat = Weechat::from_ptr(self.weechat_ptr);
         let write_option = weechat.get().config_write_option.unwrap();
+
         unsafe {
             write_option(self.ptr, option.as_ref().get_ptr());
         }

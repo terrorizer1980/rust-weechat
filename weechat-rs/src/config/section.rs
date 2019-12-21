@@ -1,70 +1,37 @@
 use libc::{c_char, c_int};
-use std::cell::{RefCell, Ref, RefMut};
+use std::cell::{Ref, RefCell, RefMut};
 use std::collections::HashMap;
 use std::ffi::CStr;
 use std::ops::{Deref, DerefMut};
 use std::os::raw::c_void;
 use std::ptr;
-use std::rc::{Weak};
+use std::rc::Weak;
 
+use std::marker::PhantomData;
 use weechat_sys::{
     t_config_file, t_config_option, t_config_section, t_weechat_plugin,
 };
 
 use crate::config::config_options::CheckCB;
 use crate::config::{
-    BaseConfigOption,
-    BooleanOption, BooleanOptionSettings, ColorOption, ColorOptionSettings,
-    Conf, ConfigOptions, FromPtrs, IntegerOption, IntegerOptionSettings,
-    StringOption, StringOptionSettings,
+    BaseConfigOption, BooleanOption, BooleanOptionSettings, ColorOption,
+    ColorOptionSettings, Conf, ConfigOptions, IntegerOption,
+    IntegerOptionSettings, StringOption, StringOptionSettings,
 };
 use crate::config::{OptionDescription, OptionPointers, OptionType};
 use crate::{LossyCString, Weechat};
 
-#[derive(Debug)]
 #[allow(missing_docs)]
-pub enum ConfigOption {
-    Boolean(BooleanOption),
-    Integer(IntegerOption),
-    String(StringOption),
-    Color(ColorOption),
+pub enum ConfigOption<'a> {
+    Boolean(BooleanOption<'a>),
+    Integer(IntegerOption<'a>),
+    String(StringOption<'a>),
+    Color(ColorOption<'a>),
 }
 
-impl ConfigOption {
-    fn boolean(&self) -> &BooleanOption {
-        if let ConfigOption::Boolean(o) = self {
-            o
-        } else {
-            panic!("Invalid option type")
-        }
-    }
-
-    fn integer(&self) -> &IntegerOption {
-        if let ConfigOption::Integer(o) = self {
-            o
-        } else {
-            panic!("Invalid option type")
-        }
-    }
-
-    fn string(&self) -> &StringOption {
-        if let ConfigOption::String(o) = self {
-            o
-        } else {
-            panic!("Invalid option type")
-        }
-    }
-
-    fn color(&self) -> &ColorOption {
-        if let ConfigOption::Color(o) = self {
-            o
-        } else {
-            panic!("Invalid option type")
-        }
-    }
-
-    fn as_base_config_option(&self) -> &(dyn BaseConfigOption + 'static) {
-        match &self {
+impl<'a> ConfigOption<'a> {
+    fn as_base_config_option(&self) -> &(dyn BaseConfigOption +'a) {
+        match self {
             ConfigOption::Color(ref o) => o,
             ConfigOption::Boolean(ref o) => o,
             ConfigOption::Integer(ref o) => o,
@@ -73,8 +40,38 @@ impl ConfigOption {
     }
 }
 
-impl AsRef<dyn BaseConfigOption> for ConfigOption {
-    fn as_ref(&self) -> &(dyn BaseConfigOption + 'static) {
+impl<'a> AsRef<dyn BaseConfigOption + 'a> for dyn BaseConfigOption + 'a {
+    fn as_ref(&self) -> &(dyn BaseConfigOption + 'a) {
+        self
+    }
+}
+
+impl<'a> AsRef<dyn BaseConfigOption + 'a> for BooleanOption<'a> {
+    fn as_ref(&self) -> &(dyn BaseConfigOption + 'a) {
+        self
+    }
+}
+
+impl<'a> AsRef<dyn BaseConfigOption + 'a> for ColorOption<'a> {
+    fn as_ref(&self) -> &(dyn BaseConfigOption + 'a) {
+        self
+    }
+}
+
+impl<'a> AsRef<dyn BaseConfigOption + 'a> for IntegerOption<'a> {
+    fn as_ref(&self) -> &(dyn BaseConfigOption + 'a) {
+        self
+    }
+}
+
+impl<'a> AsRef<dyn BaseConfigOption + 'a> for StringOption<'a> {
+    fn as_ref(&self) -> &(dyn BaseConfigOption + 'a) {
+        self
+    }
+}
+
+impl<'a> AsRef<dyn BaseConfigOption + 'a> for ConfigOption<'a> {
+    fn as_ref(&self) -> &(dyn BaseConfigOption + 'a) {
         self.as_base_config_option()
     }
 }
