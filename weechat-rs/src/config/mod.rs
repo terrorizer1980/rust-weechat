@@ -484,14 +484,22 @@ impl Config {
 }
 
 impl Conf {
-    /// Write a line in a configuration file.
+    /// Write the section header to the configuration file.
+    pub fn write_section(&self, section_name: &str) {
+        self.write(section_name, None)
+    }
+
+    /// Write a line to the configuration file.
     ///
     /// # Arguments
     /// `key` - The key of the option that will be written. Can be a
     /// section name.
-    /// `value` - The value of the option that will be written. If `None` a
-    /// section will be written instead.
-    pub fn write_line(&self, key: &str, value: Option<&str>) {
+    /// `value` - The value of the option that will be written.
+    pub fn write_line(&self, key: &str, value: &str) {
+        self.write(key, Some(value))
+    }
+
+    fn write(&self, key: &str, value: Option<&str>) {
         let weechat = Weechat::from_ptr(self.weechat_ptr);
         let write_line = weechat.get().config_write_line.unwrap();
 
