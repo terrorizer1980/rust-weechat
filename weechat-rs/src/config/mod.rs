@@ -12,6 +12,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ffi::CStr;
 use std::io::Error as IoError;
+use std::borrow::Cow;
 use std::io::ErrorKind;
 use std::marker::PhantomData;
 use std::os::raw::c_void;
@@ -136,6 +137,68 @@ impl Weechat {
             _config_data: config_data,
             sections: HashMap::new(),
         })
+    }
+
+    pub(crate) fn config_option_get_string(&self, pointer: *mut t_config_option, property: &str) -> Option<Cow<str>> {
+        let get_string = self.get().config_option_get_string.unwrap();
+        let property = LossyCString::new(property);
+
+        unsafe {
+            let string = get_string(pointer, property.as_ptr());
+            if string.is_null() {
+                None
+            } else {
+                Some(CStr::from_ptr(string).to_string_lossy())
+            }
+        }
+    }
+
+    pub(crate) fn option_from_type_and_ptr<'a>(weechat_ptr: *mut t_weechat_plugin, option_ptr: *mut t_config_option, option_type: &str) -> ConfigOption<'a> {
+        match option_type {
+            "boolean" => ConfigOption::Boolean(BooleanOption {
+                ptr: option_ptr,
+                weechat_ptr,
+                _phantom: PhantomData,
+            }),
+            "integer" => ConfigOption::Integer(IntegerOption {
+                ptr: option_ptr,
+                weechat_ptr,
+                _phantom: PhantomData,
+            }),
+            "string" => ConfigOption::String(StringOption {
+                ptr: option_ptr,
+                weechat_ptr,
+                _phantom: PhantomData,
+            }),
+            "color" => ConfigOption::Color(ColorOption {
+                ptr: option_ptr,
+                weechat_ptr,
+                _phantom: PhantomData,
+            }),
+            _ => unreachable!(),
+        }
+    }
+
+    /// Search an option with a full name.
+    /// # Arguments
+    /// `option_name` - The full name of the option that should be searched for
+    /// (format: "file.section.option").
+    pub fn config_get(&self, option_name: &str) -> Option<ConfigOption> {
+        let weechat = Weechat::from_ptr(self.ptr);
+        let config_get = weechat.get().config_get.unwrap();
+        let name = LossyCString::new(option_name);
+
+        let ptr = unsafe {
+            config_get(name.as_ptr())
+        };
+
+        if ptr.is_null() {
+            return None;
+        }
+
+        let option_type = weechat.config_option_get_string(ptr, "type").unwrap();
+
+        Some(Weechat::option_from_type_and_ptr(self.ptr, ptr, option_type.as_ref()))
     }
 }
 
