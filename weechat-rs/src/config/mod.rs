@@ -13,6 +13,7 @@ use std::collections::HashMap;
 use std::ffi::CStr;
 use std::io::Error as IoError;
 use std::io::ErrorKind;
+use std::marker::PhantomData;
 use std::os::raw::c_void;
 use std::ptr;
 use std::rc::Rc;
@@ -26,7 +27,8 @@ pub use crate::config::config_options::{
     BaseConfigOption, ConfigOptions, OptionType,
 };
 pub use crate::config::section::{
-    ConfigOption, SectionHandle, SectionHandleMut, ConfigSectionSettings, ConfigSection,
+    ConfigOption, ConfigSection, ConfigSectionSettings, SectionHandle,
+    SectionHandleMut,
 };
 
 pub(crate) use crate::config::config_options::{
@@ -38,7 +40,7 @@ use crate::config::section::{
 use crate::{LossyCString, Weechat};
 
 use weechat_sys::{
-    t_config_file, t_config_section, t_weechat_plugin, WEECHAT_RC_OK,
+    t_config_file, t_config_section, t_weechat_plugin, WEECHAT_RC_OK, t_config_option
 };
 
 /// Weechat configuration file
@@ -358,11 +360,11 @@ impl Config {
             section_data: section_data_ptr as *const _ as *const c_void,
             name: section_settings.name.clone(),
             option_pointers: HashMap::new(),
-            options: HashMap::new(),
         };
 
         let section = Rc::new(RefCell::new(section));
-        let pointers: &mut ConfigSectionPointers = unsafe { &mut *(section_data_ptr as *mut ConfigSectionPointers) };
+        let pointers: &mut ConfigSectionPointers =
+            unsafe { &mut *(section_data_ptr as *mut ConfigSectionPointers) };
 
         pointers.section = Some(Rc::downgrade(&section));
 

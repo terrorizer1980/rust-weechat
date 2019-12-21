@@ -1,7 +1,9 @@
 use crate::config::{
-    BaseConfigOption, ConfigOptions, FromPtrs, HidenConfigOptionT,
+    BaseConfigOption, ConfigOptions, ConfigSection, FromPtrs,
+    HidenConfigOptionT,
 };
 use crate::Weechat;
+use std::marker::PhantomData;
 use weechat_sys::{t_config_option, t_weechat_plugin};
 
 /// Settings for a new boolean option.
@@ -71,13 +73,13 @@ impl BooleanOptionSettings {
 }
 
 /// A config option with a boolean value.
-#[derive(Debug)]
-pub struct BooleanOption {
+pub struct BooleanOption<'a> {
     pub(crate) ptr: *mut t_config_option,
     pub(crate) weechat_ptr: *mut t_weechat_plugin,
+    pub(crate) _phantom: PhantomData<&'a ConfigSection>,
 }
 
-impl FromPtrs for BooleanOption {
+impl<'a> FromPtrs for BooleanOption<'a> {
     fn from_ptrs(
         option_ptr: *mut t_config_option,
         weechat_ptr: *mut t_weechat_plugin,
@@ -85,11 +87,12 @@ impl FromPtrs for BooleanOption {
         BooleanOption {
             ptr: option_ptr,
             weechat_ptr,
+            _phantom: PhantomData,
         }
     }
 }
 
-impl HidenConfigOptionT for BooleanOption {
+impl<'a> HidenConfigOptionT for BooleanOption<'a> {
     fn get_ptr(&self) -> *mut t_config_option {
         self.ptr
     }
@@ -99,9 +102,9 @@ impl HidenConfigOptionT for BooleanOption {
     }
 }
 
-impl BaseConfigOption for BooleanOption {}
+impl<'a> BaseConfigOption for BooleanOption<'a> {}
 
-impl<'a> ConfigOptions<'a> for BooleanOption {
+impl<'a> ConfigOptions<'a> for BooleanOption<'a> {
     type R = bool;
 
     fn value(&self) -> Self::R {
@@ -112,7 +115,7 @@ impl<'a> ConfigOptions<'a> for BooleanOption {
     }
 }
 
-impl PartialEq<bool> for BooleanOption {
+impl<'a> PartialEq<bool> for BooleanOption<'a> {
     fn eq(&self, other: &bool) -> bool {
         self.value() == *other
     }

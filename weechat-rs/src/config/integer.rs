@@ -1,7 +1,9 @@
 use crate::config::{
-    BaseConfigOption, ConfigOptions, FromPtrs, HidenConfigOptionT,
+    BaseConfigOption, ConfigOptions, ConfigSection, FromPtrs,
+    HidenConfigOptionT,
 };
 use crate::Weechat;
+use std::marker::PhantomData;
 use weechat_sys::{t_config_option, t_weechat_plugin};
 
 /// Settings for a new integer option.
@@ -122,13 +124,13 @@ impl IntegerOptionSettings {
 }
 
 /// A config option with a integer value.
-#[derive(Debug)]
-pub struct IntegerOption {
+pub struct IntegerOption<'a> {
     pub(crate) ptr: *mut t_config_option,
     pub(crate) weechat_ptr: *mut t_weechat_plugin,
+    pub(crate) _phantom: PhantomData<&'a ConfigSection>,
 }
 
-impl FromPtrs for IntegerOption {
+impl<'a> FromPtrs for IntegerOption<'a> {
     fn from_ptrs(
         option_ptr: *mut t_config_option,
         weechat_ptr: *mut t_weechat_plugin,
@@ -136,11 +138,12 @@ impl FromPtrs for IntegerOption {
         IntegerOption {
             ptr: option_ptr,
             weechat_ptr,
+            _phantom: PhantomData,
         }
     }
 }
 
-impl HidenConfigOptionT for IntegerOption {
+impl<'a> HidenConfigOptionT for IntegerOption<'a> {
     fn get_ptr(&self) -> *mut t_config_option {
         self.ptr
     }
@@ -150,9 +153,9 @@ impl HidenConfigOptionT for IntegerOption {
     }
 }
 
-impl BaseConfigOption for IntegerOption {}
+impl<'a> BaseConfigOption for IntegerOption<'a> {}
 
-impl<'a> ConfigOptions<'a> for IntegerOption {
+impl<'a> ConfigOptions<'a> for IntegerOption<'a> {
     type R = i32;
 
     fn value(&self) -> Self::R {

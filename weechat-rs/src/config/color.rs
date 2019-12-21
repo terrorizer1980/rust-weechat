@@ -1,9 +1,11 @@
 use crate::config::{
-    BaseConfigOption, ConfigOptions, FromPtrs, HidenConfigOptionT,
+    BaseConfigOption, ConfigOptions, ConfigSection, FromPtrs,
+    HidenConfigOptionT,
 };
 use crate::Weechat;
 use std::borrow::Cow;
 use std::ffi::CStr;
+use std::marker::PhantomData;
 use weechat_sys::{t_config_option, t_weechat_plugin};
 
 /// Settings for a new color option.
@@ -72,13 +74,13 @@ impl ColorOptionSettings {
 }
 
 /// A config option with a color value.
-#[derive(Debug)]
-pub struct ColorOption {
+pub struct ColorOption<'a> {
     pub(crate) ptr: *mut t_config_option,
     pub(crate) weechat_ptr: *mut t_weechat_plugin,
+    pub(crate) _phantom: PhantomData<&'a ConfigSection>,
 }
 
-impl FromPtrs for ColorOption {
+impl<'a> FromPtrs for ColorOption<'a> {
     fn from_ptrs(
         option_ptr: *mut t_config_option,
         weechat_ptr: *mut t_weechat_plugin,
@@ -86,11 +88,12 @@ impl FromPtrs for ColorOption {
         ColorOption {
             ptr: option_ptr,
             weechat_ptr,
+            _phantom: PhantomData,
         }
     }
 }
 
-impl HidenConfigOptionT for ColorOption {
+impl<'a> HidenConfigOptionT for ColorOption<'a> {
     fn get_ptr(&self) -> *mut t_config_option {
         self.ptr
     }
@@ -100,9 +103,9 @@ impl HidenConfigOptionT for ColorOption {
     }
 }
 
-impl BaseConfigOption for ColorOption {}
+impl<'a> BaseConfigOption for ColorOption<'a> {}
 
-impl<'a> ConfigOptions<'a> for ColorOption {
+impl<'a> ConfigOptions<'a> for ColorOption<'a> {
     type R = Cow<'a, str>;
 
     fn value(&self) -> Self::R {

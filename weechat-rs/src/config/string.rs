@@ -1,9 +1,11 @@
 use crate::config::{
-    BaseConfigOption, ConfigOptions, FromPtrs, HidenConfigOptionT,
+    BaseConfigOption, ConfigOptions, ConfigSection, FromPtrs,
+    HidenConfigOptionT,
 };
 use crate::Weechat;
 use std::borrow::Cow;
 use std::ffi::CStr;
+use std::marker::PhantomData;
 use weechat_sys::{t_config_option, t_weechat_plugin};
 
 /// Settings for a new string option.
@@ -94,13 +96,13 @@ impl StringOptionSettings {
 }
 
 /// A config option with a string value.
-#[derive(Debug)]
-pub struct StringOption {
+pub struct StringOption<'a> {
     pub(crate) ptr: *mut t_config_option,
     pub(crate) weechat_ptr: *mut t_weechat_plugin,
+    pub(crate) _phantom: PhantomData<&'a ConfigSection>,
 }
 
-impl FromPtrs for StringOption {
+impl<'a> FromPtrs for StringOption<'a> {
     fn from_ptrs(
         option_ptr: *mut t_config_option,
         weechat_ptr: *mut t_weechat_plugin,
@@ -108,11 +110,12 @@ impl FromPtrs for StringOption {
         StringOption {
             ptr: option_ptr,
             weechat_ptr,
+            _phantom: PhantomData,
         }
     }
 }
 
-impl HidenConfigOptionT for StringOption {
+impl<'a> HidenConfigOptionT for StringOption<'a> {
     fn get_ptr(&self) -> *mut t_config_option {
         self.ptr
     }
@@ -122,9 +125,9 @@ impl HidenConfigOptionT for StringOption {
     }
 }
 
-impl BaseConfigOption for StringOption {}
+impl<'a> BaseConfigOption for StringOption<'a> {}
 
-impl<'a> ConfigOptions<'a> for StringOption {
+impl<'a> ConfigOptions<'a> for StringOption<'a> {
     type R = Cow<'a, str>;
 
     fn value(&self) -> Self::R {
