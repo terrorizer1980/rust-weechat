@@ -298,6 +298,36 @@ impl ConfigSection {
         &self.name
     }
 
+    /// Get the config options of this section.
+    pub fn options(&self) -> Vec<ConfigOption> {
+        self.option_pointers
+            .keys()
+            .map(|option_name| self.search_option(option_name).unwrap())
+            .collect()
+    }
+
+    /// Search for an option in this section.
+    /// # Arguments
+    /// `option_name` - The name of the option to search for.
+    pub fn search_option(&self, option_name: &str) -> Option<ConfigOption> {
+        let weechat = Weechat::from_ptr(self.weechat_ptr);
+        let config_search_option = weechat.get().config_search_option.unwrap();
+        let name = LossyCString::new(option_name);
+
+        let ptr = unsafe {
+            config_search_option(self.config_ptr, self.ptr, name.as_ptr())
+        };
+
+        if ptr.is_null() {
+            return None;
+        }
+
+        let option_type =
+            weechat.config_option_get_string(ptr, "type").unwrap();
+
+        Some(Weechat::option_from_type_and_ptr(self.weechat_ptr, ptr, option_type.as_ref()))
+    }
+
     /// Create a new string Weechat configuration option.
     ///
     /// # Arguments
