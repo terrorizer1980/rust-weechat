@@ -40,6 +40,13 @@ impl<'a> ConfigOption<'a> {
     }
 }
 
+impl<'a> Deref for ConfigOption<'a> {
+    type Target = dyn BaseConfigOption + 'a;
+    fn deref(&self) -> &Self::Target {
+        self.as_base_config_option()
+    }
+}
+
 impl<'a> AsRef<dyn BaseConfigOption + 'a> for dyn BaseConfigOption + 'a {
     fn as_ref(&self) -> &(dyn BaseConfigOption + 'a) {
         self
