@@ -30,7 +30,7 @@ impl ArgsWeechat {
             })
             .collect();
         ArgsWeechat {
-            iter: args.clone().into_iter(),
+            iter: args.into_iter(),
         }
     }
 }
