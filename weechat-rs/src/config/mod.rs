@@ -332,7 +332,6 @@ impl Config {
                 .expect("Config has been destroyed but a read callback run");
 
             let weechat = Weechat::from_ptr(pointers.weechat_ptr);
-            weechat.print(&format!("Hello world {:?}", pointers));
 
             if let Some(ref mut callback) = pointers.read_cb {
                 callback(
