@@ -47,7 +47,7 @@ use weechat_sys::{
 /// Weechat configuration file
 pub struct Config {
     inner: Conf,
-    _config_data: Box<ConfigPointers>,
+    _config_data: *mut ConfigPointers,
     sections: HashMap<String, Rc<RefCell<ConfigSection>>>,
 }
 
@@ -58,11 +58,26 @@ pub struct Conf {
 }
 
 struct ConfigPointers {
-    reload_cb: Box<dyn FnMut(&Weechat, &Conf)>,
+    reload_cb: Option<Box<dyn FnMut(&Weechat, &Conf)>>,
     weechat_ptr: *mut t_weechat_plugin,
 }
 
+type ReloadCB = unsafe extern "C" fn(pointer: *const c_void,
+            _data: *mut c_void,
+            config_pointer: *mut t_config_file,
+            ) -> c_int;
+
+
 impl Weechat {
+    /// Create a new Weechat configuration file, returns a `Config` object.
+    /// The configuration file is freed when the `Config` object is dropped.
+    ///
+    /// # Arguments
+    /// * `name` - Name of the new configuration file
+    pub fn config_new(&self, name: &str) -> Result<Config, ()> {
+        self.config_new_helper(name, None)
+    }
+
     /// Create a new Weechat configuration file, returns a `Config` object.
     /// The configuration file is freed when the `Config` object is dropped.
     ///
@@ -74,15 +89,22 @@ impl Weechat {
     /// # Examples
     ///
     /// ```
-    /// let config = weechat::new("server_buffer", |weechat, conf| {
-    ///     weechat.print("Config was reloaded")
-    /// });
+    /// let config = weechat.config_new_with_callback("server_buffer",
+    ///     |weechat, conf| {
+    ///         weechat.print("Config was reloaded")
+    ///     }
+    /// );
     /// ```
-    pub fn config_new(
+    pub fn config_new_with_callback(
         &self,
         name: &str,
         reload_callback: impl FnMut(&Weechat, &Conf) + 'static,
     ) -> Result<Config, ()> {
+        let callback = Box::new(reload_callback);
+        self.config_new_helper(name, Some(callback))
+    }
+
+    fn config_new_helper(&self, name: &str, callback: Option<Box<dyn FnMut(&Weechat, &Conf)>>) -> Result<Config, ()> {
         unsafe extern "C" fn c_reload_cb(
             pointer: *const c_void,
             _data: *mut c_void,
@@ -91,7 +113,7 @@ impl Weechat {
             let pointers: &mut ConfigPointers =
                 { &mut *(pointer as *mut ConfigPointers) };
 
-            let cb = &mut pointers.reload_cb;
+            let cb = &mut pointers.reload_cb.as_mut().expect("C callback was set while no rust callback");
             let conf = Conf {
                 ptr: config_pointer,
                 weechat_ptr: pointers.weechat_ptr,
@@ -106,35 +128,40 @@ impl Weechat {
 
         let c_name = LossyCString::new(name);
 
+        let c_reload_cb = match callback {
+            Some(_) => Some(c_reload_cb as ReloadCB),
+            None => None,
+        };
+
         let config_pointers = Box::new(ConfigPointers {
-            reload_cb: Box::new(reload_callback),
+            reload_cb: callback,
             weechat_ptr: self.ptr,
         });
         let config_pointers_ref = Box::leak(config_pointers);
 
         let config_new = self.get().config_new.unwrap();
+
         let config_ptr = unsafe {
             config_new(
                 self.ptr,
                 c_name.as_ptr(),
-                Some(c_reload_cb),
+                c_reload_cb,
                 config_pointers_ref as *const _ as *const c_void,
                 ptr::null_mut(),
             )
         };
 
         if config_ptr.is_null() {
+            unsafe { Box::from_raw(config_pointers_ref) };
             return Err(());
         };
-
-        let config_data = unsafe { Box::from_raw(config_pointers_ref) };
 
         Ok(Config {
             inner: Conf {
                 ptr: config_ptr,
                 weechat_ptr: self.ptr,
             },
-            _config_data: config_data,
+            _config_data: config_pointers_ref,
             sections: HashMap::new(),
         })
     }
@@ -212,6 +239,7 @@ impl Drop for Config {
 
         unsafe {
             // Now drop the config.
+            Box::from_raw(self._config_data);
             config_free(self.inner.ptr)
         };
     }
