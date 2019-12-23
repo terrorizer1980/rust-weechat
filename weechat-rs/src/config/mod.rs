@@ -30,7 +30,7 @@ mod string;
 
 pub use crate::config::boolean::{BooleanOption, BooleanOptionSettings};
 pub use crate::config::color::{ColorOption, ColorOptionSettings};
-pub use crate::config::config::{Conf, Config};
+pub use crate::config::config::{Conf, Config, OptionChanged};
 pub use crate::config::integer::{IntegerOption, IntegerOptionSettings};
 pub use crate::config::string::{StringOption, StringOptionSettings};
 

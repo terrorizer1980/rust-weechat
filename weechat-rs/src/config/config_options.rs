@@ -4,6 +4,7 @@ use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::ffi::CStr;
 use weechat_sys::{t_config_option, t_weechat_plugin};
+use crate::config::OptionChanged;
 
 #[derive(Debug, PartialEq, Clone)]
 #[allow(missing_docs)]
@@ -113,13 +114,13 @@ pub trait BaseConfigOption: HidenConfigOptionT {
     }
 
     /// Resets the option to its default value.
-    fn reset(&self, run_callback: bool) -> crate::OptionChanged {
+    fn reset(&self, run_callback: bool) -> OptionChanged {
         let weechat = self.get_weechat();
         let option_reset = weechat.get().config_option_reset.unwrap();
 
         let ret = unsafe { option_reset(self.get_ptr(), run_callback as i32) };
 
-        crate::OptionChanged::from_int(ret)
+        OptionChanged::from_int(ret)
     }
 
     /// Set the option using a string.
@@ -129,7 +130,7 @@ pub trait BaseConfigOption: HidenConfigOptionT {
     ///
     /// # Arguments
     /// `value` - The value to which the option should be set.
-    fn set(&self, value: &str, run_callback: bool) -> crate::OptionChanged {
+    fn set(&self, value: &str, run_callback: bool) -> OptionChanged {
         let value = LossyCString::new(value);
 
         let weechat = self.get_weechat();
@@ -139,7 +140,7 @@ pub trait BaseConfigOption: HidenConfigOptionT {
             option_set(self.get_ptr(), value.as_ptr(), run_callback as i32)
         };
 
-        crate::OptionChanged::from_int(ret)
+        OptionChanged::from_int(ret)
     }
 
     /// Is the option undefined/null.

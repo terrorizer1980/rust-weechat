@@ -15,6 +15,7 @@ use weechat_sys::{
 use crate::config::config_options::CheckCB;
 use crate::config::config_options::{OptionPointers, OptionType};
 use crate::config::{
+    OptionChanged,
     BaseConfigOption, BooleanOption, BooleanOptionSettings, ColorOption,
     ColorOptionSettings, Conf, ConfigOptions, IntegerOption,
     IntegerOptionSettings, StringOption, StringOptionSettings,
@@ -151,7 +152,7 @@ type ReadCB = dyn FnMut(
     &mut ConfigSection,
     &str,
     &str,
-) -> crate::OptionChanged;
+) -> OptionChanged;
 type WriteCB = dyn FnMut(&Weechat, &Conf, &mut ConfigSection);
 
 pub(crate) struct ConfigSectionPointers {
@@ -218,7 +219,7 @@ impl ConfigSectionSettings {
                 &mut ConfigSection,
                 &str,
                 &str,
-            ) -> crate::OptionChanged
+            ) -> OptionChanged
             + 'static,
     ) -> Self {
         self.read_callback = Some(Box::new(callback));

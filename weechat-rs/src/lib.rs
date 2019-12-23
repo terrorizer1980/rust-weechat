@@ -11,7 +11,7 @@ pub mod weechat;
 
 pub use weechat_macro::weechat_plugin;
 
-pub use weechat::{ArgsWeechat, OptionChanged, Weechat};
+pub use weechat::{ArgsWeechat, Weechat};
 
 pub use bar::{BarItem, LightBarItem};
 pub use buffer::{Buffer, Nick, NickArgs};

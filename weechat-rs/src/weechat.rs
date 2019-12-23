@@ -57,32 +57,6 @@ impl DoubleEndedIterator for ArgsWeechat {
     }
 }
 
-/// Status for updating options
-#[derive(Debug)]
-pub enum OptionChanged {
-    /// The option was successfully changed.
-    Changed = weechat_sys::WEECHAT_CONFIG_OPTION_SET_OK_CHANGED as isize,
-    /// The options value has not changed.
-    Unchanged = weechat_sys::WEECHAT_CONFIG_OPTION_SET_OK_SAME_VALUE as isize,
-    /// The option was not found.
-    NotFound = weechat_sys::WEECHAT_CONFIG_OPTION_SET_OPTION_NOT_FOUND as isize,
-    /// An error occurred changing the value.
-    Error = weechat_sys::WEECHAT_CONFIG_OPTION_SET_ERROR as isize,
-}
-
-impl OptionChanged {
-    pub(crate) fn from_int(v: i32) -> OptionChanged {
-        use OptionChanged::*;
-        match v {
-            weechat_sys::WEECHAT_CONFIG_OPTION_SET_OK_CHANGED => Changed,
-            weechat_sys::WEECHAT_CONFIG_OPTION_SET_OK_SAME_VALUE => Unchanged,
-            weechat_sys::WEECHAT_CONFIG_OPTION_SET_OPTION_NOT_FOUND => NotFound,
-            weechat_sys::WEECHAT_CONFIG_OPTION_SET_ERROR => Error,
-            _ => unreachable!(),
-        }
-    }
-}
-
 /// Main Weechat struct that encapsulates common weechat API functions.
 /// It has a similar API as the weechat script API.
 pub struct Weechat {
@@ -200,44 +174,6 @@ impl Weechat {
             } else {
                 Some(CStr::from_ptr(info).to_string_lossy())
             }
-        }
-    }
-
-    /// Get value of a plugin option
-    pub fn get_plugin_option(&self, option: &str) -> Option<Cow<str>> {
-        let config_get_plugin = self.get().config_get_plugin.unwrap();
-
-        let option_name = LossyCString::new(option);
-
-        unsafe {
-            let option = config_get_plugin(self.ptr, option_name.as_ptr());
-            if option.is_null() {
-                None
-            } else {
-                Some(CStr::from_ptr(option).to_string_lossy())
-            }
-        }
-    }
-
-    /// Set the value of a plugin option
-    pub fn set_plugin_option(
-        &self,
-        option: &str,
-        value: &str,
-    ) -> OptionChanged {
-        let config_set_plugin = self.get().config_set_plugin.unwrap();
-
-        let option_name = LossyCString::new(option);
-        let value = LossyCString::new(value);
-
-        unsafe {
-            let result = config_set_plugin(
-                self.ptr,
-                option_name.as_ptr(),
-                value.as_ptr(),
-            );
-
-            OptionChanged::from_int(result as i32)
         }
     }
 
