@@ -132,7 +132,7 @@ pub struct ConfigSection {
     pub(crate) option_pointers: HashMap<String, ConfigOptionPointers>,
 }
 
-type ReadCB = dyn FnMut(&Weechat, &Conf, &mut ConfigSection, &str, &str);
+type ReadCB = dyn FnMut(&Weechat, &Conf, &mut ConfigSection, &str, &str) -> crate::OptionChanged;
 type WriteCB = dyn FnMut(&Weechat, &Conf, &mut ConfigSection);
 
 pub(crate) struct ConfigSectionPointers {
@@ -193,7 +193,7 @@ impl ConfigSectionSettings {
     /// });
     pub fn set_read_callback(
         mut self,
-        callback: impl FnMut(&Weechat, &Conf, &mut ConfigSection, &str, &str)
+        callback: impl FnMut(&Weechat, &Conf, &mut ConfigSection, &str, &str) -> crate::OptionChanged
             + 'static,
     ) -> Self {
         self.read_callback = Some(Box::new(callback));

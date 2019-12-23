@@ -352,16 +352,20 @@ impl Config {
 
             let weechat = Weechat::from_ptr(pointers.weechat_ptr);
 
-            if let Some(ref mut callback) = pointers.read_cb {
-                callback(
-                    &weechat,
-                    &conf,
-                    &mut section.borrow_mut(),
-                    option_name.as_ref(),
-                    value.as_ref(),
-                )
-            }
-            WEECHAT_RC_OK
+            let callback = pointers
+                .read_cb
+                .as_mut()
+                .expect("C read callback was called but no ruts callback");
+
+            let ret = callback(
+                &weechat,
+                &conf,
+                &mut section.borrow_mut(),
+                option_name.as_ref(),
+                value.as_ref(),
+            );
+
+            ret as i32
         }
 
         unsafe extern "C" fn c_write_cb(
