@@ -27,11 +27,11 @@ mod section;
 mod string;
 
 use libc::{c_char, c_int};
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ffi::CStr;
 use std::io::Error as IoError;
-use std::borrow::Cow;
 use std::io::ErrorKind;
 use std::marker::PhantomData;
 use std::os::raw::c_void;
@@ -60,7 +60,8 @@ use crate::config::section::{
 use crate::{LossyCString, Weechat};
 
 use weechat_sys::{
-    t_config_file, t_config_section, t_weechat_plugin, WEECHAT_RC_OK, t_config_option
+    t_config_file, t_config_option, t_config_section, t_weechat_plugin,
+    WEECHAT_CONFIG_READ_OK, WEECHAT_RC_OK,
 };
 
 /// Weechat configuration file
@@ -81,11 +82,11 @@ struct ConfigPointers {
     weechat_ptr: *mut t_weechat_plugin,
 }
 
-type ReloadCB = unsafe extern "C" fn(pointer: *const c_void,
-            _data: *mut c_void,
-            config_pointer: *mut t_config_file,
-            ) -> c_int;
-
+type ReloadCB = unsafe extern "C" fn(
+    pointer: *const c_void,
+    _data: *mut c_void,
+    config_pointer: *mut t_config_file,
+) -> c_int;
 
 impl Weechat {
     /// Create a new Weechat configuration file, returns a `Config` object.
@@ -123,7 +124,11 @@ impl Weechat {
         self.config_new_helper(name, Some(callback))
     }
 
-    fn config_new_helper(&self, name: &str, callback: Option<Box<dyn FnMut(&Weechat, &Conf)>>) -> Result<Config, ()> {
+    fn config_new_helper(
+        &self,
+        name: &str,
+        callback: Option<Box<dyn FnMut(&Weechat, &Conf)>>,
+    ) -> Result<Config, ()> {
         unsafe extern "C" fn c_reload_cb(
             pointer: *const c_void,
             _data: *mut c_void,
@@ -132,7 +137,10 @@ impl Weechat {
             let pointers: &mut ConfigPointers =
                 { &mut *(pointer as *mut ConfigPointers) };
 
-            let cb = &mut pointers.reload_cb.as_mut().expect("C callback was set while no rust callback");
+            let cb = &mut pointers
+                .reload_cb
+                .as_mut()
+                .expect("C callback was set while no rust callback");
             let conf = Conf {
                 ptr: config_pointer,
                 weechat_ptr: pointers.weechat_ptr,
@@ -185,7 +193,11 @@ impl Weechat {
         })
     }
 
-    pub(crate) fn config_option_get_string(&self, pointer: *mut t_config_option, property: &str) -> Option<Cow<str>> {
+    pub(crate) fn config_option_get_string(
+        &self,
+        pointer: *mut t_config_option,
+        property: &str,
+    ) -> Option<Cow<str>> {
         let get_string = self.get().config_option_get_string.unwrap();
         let property = LossyCString::new(property);
 
@@ -199,7 +211,11 @@ impl Weechat {
         }
     }
 
-    pub(crate) fn option_from_type_and_ptr<'a>(weechat_ptr: *mut t_weechat_plugin, option_ptr: *mut t_config_option, option_type: &str) -> ConfigOption<'a> {
+    pub(crate) fn option_from_type_and_ptr<'a>(
+        weechat_ptr: *mut t_weechat_plugin,
+        option_ptr: *mut t_config_option,
+        option_type: &str,
+    ) -> ConfigOption<'a> {
         match option_type {
             "boolean" => ConfigOption::Boolean(BooleanOption {
                 ptr: option_ptr,
@@ -234,17 +250,20 @@ impl Weechat {
         let config_get = weechat.get().config_get.unwrap();
         let name = LossyCString::new(option_name);
 
-        let ptr = unsafe {
-            config_get(name.as_ptr())
-        };
+        let ptr = unsafe { config_get(name.as_ptr()) };
 
         if ptr.is_null() {
             return None;
         }
 
-        let option_type = weechat.config_option_get_string(ptr, "type").unwrap();
+        let option_type =
+            weechat.config_option_get_string(ptr, "type").unwrap();
 
-        Some(Weechat::option_from_type_and_ptr(self.ptr, ptr, option_type.as_ref()))
+        Some(Weechat::option_from_type_and_ptr(
+            self.ptr,
+            ptr,
+            option_type.as_ref(),
+        ))
     }
 }
 
@@ -565,7 +584,10 @@ impl Conf {
     ///
     /// # Arguments
     /// `option` - The option that will be written to the configuration file.
-    pub fn write_option<'a, O: AsRef<dyn BaseConfigOption + 'a>>(&self, option: O) {
+    pub fn write_option<'a, O: AsRef<dyn BaseConfigOption + 'a>>(
+        &self,
+        option: O,
+    ) {
         let weechat = Weechat::from_ptr(self.weechat_ptr);
         let write_option = weechat.get().config_write_option.unwrap();
 

@@ -30,7 +30,7 @@ pub enum ConfigOption<'a> {
 }
 
 impl<'a> ConfigOption<'a> {
-    fn as_base_config_option(&self) -> &(dyn BaseConfigOption +'a) {
+    fn as_base_config_option(&self) -> &(dyn BaseConfigOption + 'a) {
         match self {
             ConfigOption::Color(ref o) => o,
             ConfigOption::Boolean(ref o) => o,
@@ -329,7 +329,11 @@ impl ConfigSection {
         let option_type =
             weechat.config_option_get_string(ptr, "type").unwrap();
 
-        Some(Weechat::option_from_type_and_ptr(self.weechat_ptr, ptr, option_type.as_ref()))
+        Some(Weechat::option_from_type_and_ptr(
+            self.weechat_ptr,
+            ptr,
+            option_type.as_ref(),
+        ))
     }
 
     /// Create a new string Weechat configuration option.
