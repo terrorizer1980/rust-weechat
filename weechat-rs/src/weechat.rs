@@ -58,6 +58,7 @@ impl DoubleEndedIterator for ArgsWeechat {
 }
 
 /// Status for updating options
+#[derive(Debug)]
 pub enum OptionChanged {
     /// The option was successfully changed.
     Changed = weechat_sys::WEECHAT_CONFIG_OPTION_SET_OK_CHANGED as isize,
