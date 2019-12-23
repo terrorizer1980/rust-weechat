@@ -77,6 +77,16 @@ pub struct BooleanOption<'a> {
     pub(crate) _phantom: PhantomData<&'a ConfigSection>,
 }
 
+impl<'a> BooleanOption<'a> {
+    /// Get the value of the option.
+    pub fn value(&self) -> bool {
+        let weechat = self.get_weechat();
+        let config_boolean = weechat.get().config_boolean.unwrap();
+        let ret = unsafe { config_boolean(self.get_ptr()) };
+        ret != 0
+    }
+}
+
 impl<'a> FromPtrs for BooleanOption<'a> {
     fn from_ptrs(
         option_ptr: *mut t_config_option,
@@ -101,17 +111,7 @@ impl<'a> HidenConfigOptionT for BooleanOption<'a> {
 }
 
 impl<'a> BaseConfigOption for BooleanOption<'a> {}
-
-impl<'a> ConfigOptions<'a> for BooleanOption<'a> {
-    type R = bool;
-
-    fn value(&self) -> Self::R {
-        let weechat = self.get_weechat();
-        let config_boolean = weechat.get().config_boolean.unwrap();
-        let ret = unsafe { config_boolean(self.get_ptr()) };
-        ret != 0
-    }
-}
+impl<'a> ConfigOptions for BooleanOption<'_> {}
 
 impl<'a> PartialEq<bool> for BooleanOption<'a> {
     fn eq(&self, other: &bool) -> bool {

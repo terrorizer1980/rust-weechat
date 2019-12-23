@@ -15,10 +15,9 @@ use weechat_sys::{
 use crate::config::config_options::CheckCB;
 use crate::config::config_options::{OptionPointers, OptionType};
 use crate::config::{
-    OptionChanged,
     BaseConfigOption, BooleanOption, BooleanOptionSettings, ColorOption,
     ColorOptionSettings, Conf, ConfigOptions, IntegerOption,
-    IntegerOptionSettings, StringOption, StringOptionSettings,
+    IntegerOptionSettings, OptionChanged, StringOption, StringOptionSettings,
 };
 use crate::{LossyCString, Weechat};
 
@@ -146,13 +145,8 @@ pub struct ConfigSection {
     pub(crate) option_pointers: HashMap<String, ConfigOptionPointers>,
 }
 
-type ReadCB = dyn FnMut(
-    &Weechat,
-    &Conf,
-    &mut ConfigSection,
-    &str,
-    &str,
-) -> OptionChanged;
+type ReadCB =
+    dyn FnMut(&Weechat, &Conf, &mut ConfigSection, &str, &str) -> OptionChanged;
 type WriteCB = dyn FnMut(&Weechat, &Conf, &mut ConfigSection);
 
 pub(crate) struct ConfigSectionPointers {
@@ -548,7 +542,7 @@ impl ConfigSection {
         delete_cb: Option<Box<dyn FnMut(&Weechat, &T)>>,
     ) -> Option<(*mut t_config_option, *const c_void)>
     where
-        T: ConfigOptions<'static>,
+        T: ConfigOptions,
     {
         unsafe extern "C" fn c_check_cb<T>(
             pointer: *const c_void,
@@ -557,7 +551,7 @@ impl ConfigSection {
             value: *const c_char,
         ) -> c_int
         where
-            T: ConfigOptions<'static>,
+            T: ConfigOptions,
         {
             let value = CStr::from_ptr(value).to_string_lossy();
             let pointers: &mut OptionPointers<T> =
@@ -580,7 +574,7 @@ impl ConfigSection {
             _data: *mut c_void,
             option_pointer: *mut t_config_option,
         ) where
-            T: ConfigOptions<'static>,
+            T: ConfigOptions,
         {
             let pointers: &mut OptionPointers<T> =
                 { &mut *(pointer as *mut OptionPointers<T>) };
@@ -598,7 +592,7 @@ impl ConfigSection {
             _data: *mut c_void,
             option_pointer: *mut t_config_option,
         ) where
-            T: ConfigOptions<'static>,
+            T: ConfigOptions,
         {
             let pointers: &mut OptionPointers<T> =
                 { &mut *(pointer as *mut OptionPointers<T>) };

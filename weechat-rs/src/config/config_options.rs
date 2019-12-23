@@ -1,10 +1,10 @@
+use crate::config::OptionChanged;
 use crate::LossyCString;
 use crate::Weechat;
 use std::borrow::Cow;
 use std::convert::TryFrom;
 use std::ffi::CStr;
 use weechat_sys::{t_config_option, t_weechat_plugin};
-use crate::config::OptionChanged;
 
 #[derive(Debug, PartialEq, Clone)]
 #[allow(missing_docs)]
@@ -154,14 +154,7 @@ pub trait BaseConfigOption: HidenConfigOptionT {
     }
 }
 
-/// A trait that defines common behavior for the different data types of config options.
-pub trait ConfigOptions<'a>: BaseConfigOption + FromPtrs {
-    /// The return type of the config option.
-    type R;
-
-    /// Get the value of the option.
-    fn value(&self) -> Self::R;
-}
+pub trait ConfigOptions: BaseConfigOption + FromPtrs {}
 
 pub(crate) type CheckCB<T> = dyn FnMut(&Weechat, &T, Cow<str>) -> bool;
 

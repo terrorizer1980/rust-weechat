@@ -1,5 +1,7 @@
-use crate::config::config_options::{FromPtrs, HidenConfigOptionT};
-use crate::config::{BaseConfigOption, ConfigOptions, ConfigSection};
+use crate::config::config_options::{
+    ConfigOptions, FromPtrs, HidenConfigOptionT,
+};
+use crate::config::{BaseConfigOption, ConfigSection};
 use crate::Weechat;
 use std::borrow::Cow;
 use std::ffi::CStr;
@@ -78,6 +80,18 @@ pub struct ColorOption<'a> {
     pub(crate) _phantom: PhantomData<&'a ConfigSection>,
 }
 
+impl<'a> ColorOption<'a> {
+    /// Get the value of the option.
+    pub fn value(&self) -> Cow<str> {
+        let weechat = self.get_weechat();
+        let config_string = weechat.get().config_string.unwrap();
+        unsafe {
+            let string = config_string(self.get_ptr());
+            CStr::from_ptr(string).to_string_lossy()
+        }
+    }
+}
+
 impl<'a> FromPtrs for ColorOption<'a> {
     fn from_ptrs(
         option_ptr: *mut t_config_option,
@@ -102,16 +116,4 @@ impl<'a> HidenConfigOptionT for ColorOption<'a> {
 }
 
 impl<'a> BaseConfigOption for ColorOption<'a> {}
-
-impl<'a> ConfigOptions<'a> for ColorOption<'a> {
-    type R = Cow<'a, str>;
-
-    fn value(&self) -> Self::R {
-        let weechat = self.get_weechat();
-        let config_string = weechat.get().config_string.unwrap();
-        unsafe {
-            let string = config_string(self.get_ptr());
-            CStr::from_ptr(string).to_string_lossy()
-        }
-    }
-}
+impl<'a> ConfigOptions for ColorOption<'_> {}

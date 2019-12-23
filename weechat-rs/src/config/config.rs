@@ -64,7 +64,6 @@ impl OptionChanged {
     }
 }
 
-
 struct ConfigPointers {
     reload_cb: Option<Box<dyn FnMut(&Weechat, &Conf)>>,
     weechat_ptr: *mut t_weechat_plugin,
@@ -576,7 +575,6 @@ impl Config {
             })
         }
     }
-
 }
 
 impl Conf {
