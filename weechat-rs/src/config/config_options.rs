@@ -135,6 +135,26 @@ pub trait BaseConfigOption: HidenConfigOptionT {
         crate::OptionChanged::from_int(ret)
     }
 
+    /// Set the option using a string.
+    ///
+    /// Weechat will parse the string and turn it into a appropriate value
+    /// depending on the option type.
+    ///
+    /// # Arguments
+    /// `value` - The value to which the option should be set.
+    fn set(&self, value: &str, run_callback: bool) -> crate::OptionChanged {
+        let value = LossyCString::new(value);
+
+        let weechat = self.get_weechat();
+        let option_set = weechat.get().config_option_set.unwrap();
+
+        let ret = unsafe {
+            option_set(self.get_ptr(), value.as_ptr(), run_callback as i32)
+        };
+
+        crate::OptionChanged::from_int(ret)
+    }
+
     /// Is the option undefined/null.
     fn is_null(&self) -> bool {
         let weechat = self.get_weechat();
