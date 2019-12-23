@@ -546,11 +546,7 @@ impl ConfigSection {
                 true
             };
 
-            if ret {
-                1
-            } else {
-                0
-            }
+            ret as i32
         }
 
         unsafe extern "C" fn c_change_cb<T>(
