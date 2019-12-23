@@ -1,7 +1,5 @@
-use crate::config::{
-    BaseConfigOption, ConfigOptions, ConfigSection, FromPtrs,
-    HidenConfigOptionT,
-};
+use crate::config::config_options::{FromPtrs, HidenConfigOptionT};
+use crate::config::{BaseConfigOption, ConfigOptions, ConfigSection};
 use crate::Weechat;
 use std::borrow::Cow;
 use std::ffi::CStr;

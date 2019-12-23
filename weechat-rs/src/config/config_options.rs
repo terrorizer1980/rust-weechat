@@ -5,19 +5,6 @@ use std::convert::TryFrom;
 use std::ffi::CStr;
 use weechat_sys::{t_config_option, t_weechat_plugin};
 
-#[derive(Default)]
-pub(crate) struct OptionDescription<'a> {
-    pub name: &'a str,
-    pub option_type: OptionType,
-    pub description: &'a str,
-    pub string_values: &'a str,
-    pub min: i32,
-    pub max: i32,
-    pub default_value: &'a str,
-    pub value: &'a str,
-    pub null_allowed: bool,
-}
-
 #[derive(Debug, PartialEq, Clone)]
 #[allow(missing_docs)]
 pub enum OptionType {

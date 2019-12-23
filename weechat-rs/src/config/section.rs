@@ -13,13 +13,26 @@ use weechat_sys::{
 };
 
 use crate::config::config_options::CheckCB;
+use crate::config::config_options::{OptionPointers, OptionType};
 use crate::config::{
     BaseConfigOption, BooleanOption, BooleanOptionSettings, ColorOption,
     ColorOptionSettings, Conf, ConfigOptions, IntegerOption,
     IntegerOptionSettings, StringOption, StringOptionSettings,
 };
-use crate::config::{OptionDescription, OptionPointers, OptionType};
 use crate::{LossyCString, Weechat};
+
+#[derive(Default)]
+struct OptionDescription<'a> {
+    pub name: &'a str,
+    pub option_type: OptionType,
+    pub description: &'a str,
+    pub string_values: &'a str,
+    pub min: i32,
+    pub max: i32,
+    pub default_value: &'a str,
+    pub value: &'a str,
+    pub null_allowed: bool,
+}
 
 #[allow(missing_docs)]
 pub enum ConfigOption<'a> {
@@ -132,7 +145,13 @@ pub struct ConfigSection {
     pub(crate) option_pointers: HashMap<String, ConfigOptionPointers>,
 }
 
-type ReadCB = dyn FnMut(&Weechat, &Conf, &mut ConfigSection, &str, &str) -> crate::OptionChanged;
+type ReadCB = dyn FnMut(
+    &Weechat,
+    &Conf,
+    &mut ConfigSection,
+    &str,
+    &str,
+) -> crate::OptionChanged;
 type WriteCB = dyn FnMut(&Weechat, &Conf, &mut ConfigSection);
 
 pub(crate) struct ConfigSectionPointers {
@@ -193,7 +212,13 @@ impl ConfigSectionSettings {
     /// });
     pub fn set_read_callback(
         mut self,
-        callback: impl FnMut(&Weechat, &Conf, &mut ConfigSection, &str, &str) -> crate::OptionChanged
+        callback: impl FnMut(
+                &Weechat,
+                &Conf,
+                &mut ConfigSection,
+                &str,
+                &str,
+            ) -> crate::OptionChanged
             + 'static,
     ) -> Self {
         self.read_callback = Some(Box::new(callback));
