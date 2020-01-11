@@ -83,8 +83,8 @@ impl StringOptionSettings {
     /// # Examples
     /// ```
     /// let settings = StringOptionSettings::new("address")
-    ///     .set_change_callback(|weechat, option| {
-    ///         if option.value()
+    ///     .set_check_callback(|weechat, option, value| {
+    ///         value.starts_with("http")
     ///     });
     pub fn set_check_callback(
         mut self,
