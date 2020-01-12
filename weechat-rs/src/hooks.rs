@@ -264,7 +264,7 @@ impl Weechat {
         mode: FdHookMode,
         callback: fn(data: &T, fd_object: &mut F),
         callback_data: Option<T>,
-    ) -> FdHook<T, F>
+    ) -> Result<FdHook<T, F>, ()>
     where
         T: Default,
         F: AsRawFd,
@@ -309,16 +309,22 @@ impl Weechat {
                 ptr::null_mut(),
             )
         };
+
+        if hook_ptr.is_null() {
+            unsafe { Box::from_raw(data_ref) };
+            return Err(());
+        };
+
         let hook_data = unsafe { Box::from_raw(data_ref) };
         let hook = Hook {
             ptr: hook_ptr,
             weechat_ptr: self.ptr,
         };
 
-        FdHook::<T, F> {
+        Ok(FdHook::<T, F> {
             _hook: hook,
             _hook_data: hook_data,
-        }
+        })
     }
 
     /// Create a timer that will repeatedly fire.
