@@ -330,6 +330,32 @@ impl ConfigSection {
             .collect()
     }
 
+    /// Free a config option that belongs to this section.
+    ///
+    /// # Arguments
+    /// `option_name` - The name of the option that should be freed.
+    ///
+    /// Returns an Err if the option can't be found in this section.
+    pub fn free_option(&mut self, option_name: &str) -> Result<(), ()> {
+        let weechat = Weechat::from_ptr(self.weechat_ptr);
+
+        let option_pointers = self.option_pointers.remove(option_name);
+        if option_pointers.is_none() {
+            // TODO Return a better error value here.
+            return Err(());
+        }
+
+        let option = self
+            .search_option(option_name)
+            .expect("No option found even though option pointers are there");
+
+        let config_option_free = weechat.get().config_option_free.unwrap();
+
+        unsafe { config_option_free(option.get_ptr()) }
+
+        Ok(())
+    }
+
     /// Search for an option in this section.
     /// # Arguments
     /// `option_name` - The name of the option to search for.
