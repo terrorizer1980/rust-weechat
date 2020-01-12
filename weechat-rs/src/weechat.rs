@@ -124,18 +124,37 @@ impl Weechat {
     }
 
     /// Return a string color code for display.
-    /// * `color_name` - name the color
-    pub fn color(&self, color_name: &str) -> Cow<str> {
+    ///
+    /// # Arguments
+    ///
+    /// `color_name` - name of the color
+    pub fn color(&self, color_name: &str) -> &str {
         let weechat_color = self.get().color.unwrap();
 
         let color_name = LossyCString::new(color_name);
         unsafe {
             let color = weechat_color(color_name.as_ptr());
-            CStr::from_ptr(color).to_string_lossy()
+            CStr::from_ptr(color).to_str()
+                .expect("Weechat returned a non UTF-8 string")
         }
     }
 
     /// Retrieve a prefix value
+    ///
+    /// # Arguments:
+    ///
+    /// `prefix` - The name of the prefix.
+    ///
+    /// This is an alias for the `prefix()` method.
+    pub fn get_prefix(&self, prefix: &str) -> &str {
+        self.prefix(prefix)
+    }
+
+    /// Retrieve a prefix value
+    ///
+    /// # Arguments:
+    ///
+    /// `prefix` - The name of the prefix.
     ///
     /// Valid prefixes are:
     /// * error
@@ -145,12 +164,15 @@ impl Weechat {
     /// * quit
     ///
     /// An empty string will be returned if the prefix is not found
-    pub fn get_prefix(&self, prefix: &str) -> Cow<str> {
+    pub fn prefix(&self, prefix: &str) -> &str {
         let prefix_fn = self.get().prefix.unwrap();
-
         let prefix = LossyCString::new(prefix);
 
-        unsafe { CStr::from_ptr(prefix_fn(prefix.as_ptr())).to_string_lossy() }
+        unsafe {
+            CStr::from_ptr(prefix_fn(prefix.as_ptr()))
+                .to_str()
+                .expect("Weechat returned a non UTF-8 string")
+        }
     }
 
     /// Get some info from Weechat or a plugin.
