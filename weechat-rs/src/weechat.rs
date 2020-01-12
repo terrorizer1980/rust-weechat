@@ -67,7 +67,14 @@ static mut WEECHAT: Option<Weechat> = None;
 
 impl Weechat {
     /// Create a Weechat object from a C t_weechat_plugin pointer.
+    ///
+    /// # Arguments
+    ///
     /// * `ptr` - Pointer of the weechat plugin.
+    ///
+    /// # Safety
+    ///
+    /// This should never be called by the user. This is called internally.
     pub unsafe fn init_from_ptr(ptr: *mut t_weechat_plugin) -> Weechat {
         assert!(!ptr.is_null());
         if WEECHAT.is_none() {
@@ -76,6 +83,17 @@ impl Weechat {
         Weechat { ptr }
     }
 
+    /// Free internal plugin data.
+    /// # Safety
+    ///
+    /// This should never be called by the user. This is called internally.
+    pub unsafe fn free() {
+        WEECHAT.take();
+    }
+
+    /// # Safety
+    ///
+    /// This should never be called by the user. This is called internally.
     pub(crate) fn from_ptr(ptr: *mut t_weechat_plugin) -> Weechat {
         assert!(!ptr.is_null());
         Weechat { ptr }

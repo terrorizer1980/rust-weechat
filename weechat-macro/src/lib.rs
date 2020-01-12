@@ -159,6 +159,7 @@ pub fn weechat_plugin(input: proc_macro::TokenStream) -> proc_macro::TokenStream
         pub unsafe extern "C" fn weechat_plugin_end(_plugin: *mut weechat_sys::t_weechat_plugin) -> ::libc::c_int {
             unsafe {
                 __PLUGIN = None;
+                Weechat::free();
             }
             weechat_sys::WEECHAT_RC_OK
         }
