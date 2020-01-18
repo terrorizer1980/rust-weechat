@@ -8,6 +8,13 @@ use std::borrow::Cow;
 use std::ffi::CStr;
 use std::{ptr, vec};
 
+#[cfg(feature = "async-executor")]
+use crate::executor::WeechatExecutor;
+#[cfg(feature = "async-executor")]
+pub use async_task::JoinHandle;
+#[cfg(feature = "async-executor")]
+use std::future::Future;
+
 /// An iterator over the arguments of a command, yielding a String value for
 /// each argument.
 pub struct ArgsWeechat {
@@ -80,6 +87,8 @@ impl Weechat {
         if WEECHAT.is_none() {
             WEECHAT = Some(Weechat { ptr });
         }
+        #[cfg(feature = "async-executor")]
+        WeechatExecutor::start();
         Weechat { ptr }
     }
 
@@ -88,6 +97,9 @@ impl Weechat {
     ///
     /// This should never be called by the user. This is called internally.
     pub unsafe fn free() {
+        #[cfg(feature = "async-executor")]
+        WeechatExecutor::free();
+
         WEECHAT.take();
     }
 
@@ -152,7 +164,8 @@ impl Weechat {
         let color_name = LossyCString::new(color_name);
         unsafe {
             let color = weechat_color(color_name.as_ptr());
-            CStr::from_ptr(color).to_str()
+            CStr::from_ptr(color)
+                .to_str()
                 .expect("Weechat returned a non UTF-8 string")
         }
     }
@@ -239,5 +252,14 @@ impl Weechat {
                 Some(CStr::from_ptr(result).to_string_lossy())
             }
         }
+    }
+
+    #[cfg(feature = "async-executor")]
+    pub fn spawn<F, R>(future: F) -> JoinHandle<R, ()>
+    where
+        F: Future<Output = R> + 'static,
+        R: 'static,
+    {
+        WeechatExecutor::spawn(future)
     }
 }

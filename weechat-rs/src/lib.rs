@@ -2,6 +2,9 @@
 
 use libc::c_int;
 
+#[cfg(feature = "async-executor")]
+mod executor;
+
 pub mod bar;
 pub mod buffer;
 pub mod completion;
@@ -11,6 +14,8 @@ pub mod weechat;
 
 pub use weechat_macro::weechat_plugin;
 
+#[cfg(feature = "async-executor")]
+pub use executor::JoinHandle;
 pub use weechat::{ArgsWeechat, Weechat};
 
 pub use bar::{BarItem, LightBarItem};
