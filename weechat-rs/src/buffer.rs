@@ -8,7 +8,7 @@ use std::ptr;
 use crate::{LossyCString, Weechat};
 use libc::{c_char, c_int};
 use weechat_sys::{
-    t_gui_buffer, t_gui_nick, t_gui_nick_group, t_weechat_plugin, WEECHAT_RC_OK,
+    t_gui_buffer, t_gui_nick, t_gui_nick_group, t_weechat_plugin, WEECHAT_RC_OK, WEECHAT_RC_ERROR
 };
 
 /// A high level Buffer type encapsulating weechats C buffer pointer.
@@ -26,12 +26,36 @@ impl PartialEq for Buffer<'_> {
     }
 }
 
-pub(crate) struct BufferPointers<A, B> {
+pub(crate) struct BufferPointers {
     pub(crate) weechat: *mut t_weechat_plugin,
-    pub(crate) input_cb: Option<fn(&mut A, &Buffer, Cow<str>)>,
-    pub(crate) input_data: A,
-    pub(crate) close_cb: Option<fn(&B, &Buffer)>,
-    pub(crate) close_cb_data: B,
+    pub(crate) input_cb: Option<BufferInputCallback>,
+    pub(crate) close_cb: Option<BufferCloseCallback>,
+}
+
+pub type BufferInputCallback = Box<dyn FnMut(&Weechat, &Buffer, Cow<str>) -> Result<(), ()>>;
+pub type BufferCloseCallback = Box<dyn FnMut(&Weechat, &Buffer) -> Result<(), ()>>;
+
+#[derive(Default)]
+pub struct BufferSettings {
+    pub(crate) name: String,
+    pub(crate) input_callback: Option<BufferInputCallback>,
+    pub(crate) close_callback: Option<BufferCloseCallback>,
+}
+
+impl BufferSettings {
+    pub fn new(name: &str) -> Self {
+        BufferSettings { name: name.to_owned(), ..Default::default() }
+    }
+
+    pub fn input_callback(mut self, callback: impl FnMut(&Weechat, &Buffer, Cow<str>) -> Result<(), ()> + 'static) -> Self {
+        self.input_callback = Some(Box::new(callback));
+        self
+    }
+
+    pub fn close_callback(mut self, callback: impl FnMut(&Weechat, &Buffer) -> Result<(), ()> + 'static) -> Self {
+        self.close_callback = Some(Box::new(callback));
+        self
+    }
 }
 
 impl Weechat {
@@ -96,15 +120,11 @@ impl Weechat {
     /// * `close_cb` - Callback that will be called when the buffer is closed.
     /// * `close_cb_data` - Reference to some data that will be passed to the
     ///     close callback.
-    pub fn buffer_new<A: Default, B: Default>(
+    pub fn buffer_new(
         &self,
-        name: &str,
-        input_cb: Option<fn(&mut A, &Buffer, Cow<str>)>,
-        input_data: Option<A>,
-        close_cb: Option<fn(&B, &Buffer)>,
-        close_cb_data: Option<B>,
-    ) -> Buffer {
-        unsafe extern "C" fn c_input_cb<A, B>(
+        settings: BufferSettings,
+    ) -> Result<Buffer, ()> {
+        unsafe extern "C" fn c_input_cb(
             pointer: *const c_void,
             _data: *mut c_void,
             buffer: *mut t_gui_buffer,
@@ -112,58 +132,66 @@ impl Weechat {
         ) -> c_int {
             let input_data = CStr::from_ptr(input_data).to_string_lossy();
 
-            let pointers: &mut BufferPointers<A, B> =
-                { &mut *(pointer as *mut BufferPointers<A, B>) };
+            let pointers: &mut BufferPointers =
+                { &mut *(pointer as *mut BufferPointers) };
 
             let weechat = Weechat::from_ptr(pointers.weechat);
             let buffer = weechat.buffer_from_ptr(buffer);
-            let data = &mut pointers.input_data;
 
-            if let Some(callback) = pointers.input_cb {
-                callback(data, &buffer, input_data)
+            let ret = if let Some(callback) = pointers.input_cb.as_mut() {
+                callback(&weechat, &buffer, input_data).is_ok()
+            } else {
+                true
+            };
+
+            if ret {
+                WEECHAT_RC_OK
+            } else {
+                WEECHAT_RC_ERROR
             }
-
-            WEECHAT_RC_OK
         }
 
-        unsafe extern "C" fn c_close_cb<A, B>(
+        unsafe extern "C" fn c_close_cb(
             pointer: *const c_void,
             _data: *mut c_void,
             buffer: *mut t_gui_buffer,
         ) -> c_int {
             // We use from_raw() here so that the box get's freed at the end
             // of this scope.
-            let pointers = Box::from_raw(pointer as *mut BufferPointers<A, B>);
+            let pointers = Box::from_raw(pointer as *mut BufferPointers);
             let weechat = Weechat::from_ptr(pointers.weechat);
             let buffer = weechat.buffer_from_ptr(buffer);
-            let data = &pointers.close_cb_data;
 
-            if let Some(callback) = pointers.close_cb {
-                callback(data, &buffer)
+            let ret = if let Some(mut callback) = pointers.close_cb {
+                callback(&weechat, &buffer).is_ok()
+            } else {
+                true
+            };
+
+            if ret {
+                WEECHAT_RC_OK
+            } else {
+                WEECHAT_RC_ERROR
             }
-            WEECHAT_RC_OK
         }
+
+        let c_input_cb: Option<WeechatInputCbT> = match settings.input_callback {
+            Some(_) => Some(c_input_cb),
+            None => None,
+        };
 
         // We create a box and use leak to stop rust from freeing our data,
         // we are giving weechat ownership over the data and will free it in
         // the buffer close callback.
-        let buffer_pointers = Box::new(BufferPointers::<A, B> {
+        let buffer_pointers = Box::new(BufferPointers {
             weechat: self.ptr,
-            input_cb,
-            input_data: input_data.unwrap_or_default(),
-            close_cb,
-            close_cb_data: close_cb_data.unwrap_or_default(),
+            input_cb: settings.input_callback,
+            close_cb: settings.close_callback,
         });
-        let buffer_pointers_ref: &BufferPointers<A, B> =
-            Box::leak(buffer_pointers);
+        let buffer_pointers_ref: &BufferPointers = Box::leak(buffer_pointers);
 
         let buf_new = self.get().buffer_new.unwrap();
-        let c_name = LossyCString::new(name);
-
-        let c_input_cb: Option<WeechatInputCbT> = match input_cb {
-            Some(_) => Some(c_input_cb::<A, B>),
-            None => None,
-        };
+        let c_name = LossyCString::new(settings.name);
 
         // TODO this can fail, return a Option type
         let buf_ptr = unsafe {
@@ -173,17 +201,21 @@ impl Weechat {
                 c_input_cb,
                 buffer_pointers_ref as *const _ as *const c_void,
                 ptr::null_mut(),
-                Some(c_close_cb::<A, B>),
+                Some(c_close_cb),
                 buffer_pointers_ref as *const _ as *const c_void,
                 ptr::null_mut(),
             )
         };
 
-        Buffer {
+        if buf_ptr.is_null() {
+            return Err(());
+        }
+
+        Ok(Buffer {
             weechat: self.ptr,
             ptr: buf_ptr,
             weechat_phantom: PhantomData,
-        }
+        })
     }
 }
 

@@ -5,7 +5,7 @@ use weechat::config::{
 };
 use weechat::{
     weechat_plugin, ArgsWeechat, Buffer, CommandDescription, CommandHook,
-    NickArgs, Weechat, WeechatPlugin, WeechatResult,
+    NickArgs, Weechat, WeechatPlugin, WeechatResult, BufferSettings,
 };
 use weechat::{BarItem, LightBarItem};
 
@@ -16,15 +16,14 @@ struct SamplePlugin {
 }
 
 impl SamplePlugin {
-    fn input_cb(data: &mut String, buffer: &Buffer, _input: Cow<str>) {
-        buffer.print(data);
-        if data == "Hello" {
-            data.push_str(" world.");
-        }
+    fn input_cb(weechat: &Weechat, buffer: &Buffer, input: Cow<str>) -> Result<(), ()> {
+        buffer.print(&input);
+        Ok(())
     }
 
-    fn close_cb(_data: &(), buffer: &Buffer) {
-        // weechat.print("Closing buffer")
+    fn close_cb(weechat: &Weechat, buffer: &Buffer) -> Result<(), ()> {
+        weechat.print("Closing buffer");
+        Ok(())
     }
 
     fn rust_command_cb(data: &String, buffer: Buffer, args: ArgsWeechat) {
@@ -51,13 +50,11 @@ impl WeechatPlugin for SamplePlugin {
     fn init(weechat: &Weechat, _args: ArgsWeechat) -> WeechatResult<Self> {
         weechat.print("Hello Rust!");
 
-        let buffer = weechat.buffer_new(
-            "Test buffer",
-            Some(SamplePlugin::input_cb),
-            Some("Hello".to_owned()),
-            Some(SamplePlugin::close_cb),
-            None,
-        );
+        let buffer_settings = BufferSettings::new("Test buffer")
+            .input_callback(SamplePlugin::input_cb)
+            .close_callback(SamplePlugin::close_cb);
+
+        let buffer = weechat.buffer_new(buffer_settings).expect("Can't create buffer");
 
         buffer.print("Hello test buffer");
 
@@ -106,7 +103,7 @@ impl WeechatPlugin for SamplePlugin {
         );
 
         let mut config = weechat
-            .config_new("rust_sample", |weechat, _config| {
+            .config_new_with_callback("rust_sample", |weechat, _config| {
                 weechat.print("Reloaded config");
             })
             .expect("Can't create new config");
