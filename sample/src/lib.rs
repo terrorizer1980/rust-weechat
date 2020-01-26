@@ -22,7 +22,7 @@ impl SamplePlugin {
     }
 
     fn close_cb(weechat: &Weechat, buffer: &Buffer) -> Result<(), ()> {
-        weechat.print("Closing buffer");
+        Weechat::print("Closing buffer");
         Ok(())
     }
 
@@ -34,7 +34,7 @@ impl SamplePlugin {
     }
 
     fn option_change_cb(weechat: &Weechat, option: &BooleanOption) {
-        weechat.print("Changing rust option");
+        Weechat::print("Changing rust option");
     }
 
     fn bar_cb(
@@ -48,7 +48,7 @@ impl SamplePlugin {
 
 impl WeechatPlugin for SamplePlugin {
     fn init(weechat: &Weechat, _args: ArgsWeechat) -> WeechatResult<Self> {
-        weechat.print("Hello Rust!");
+        Weechat::print("Hello Rust!");
 
         let buffer_settings = BufferSettings::new("Test buffer")
             .input_callback(SamplePlugin::input_cb)
@@ -74,7 +74,7 @@ impl WeechatPlugin for SamplePlugin {
             Some(&op_group),
         );
 
-        weechat.print(&format!("Nick name getting test: {}", emma.get_name()));
+        Weechat::print(&format!("Nick name getting test: {}", emma.get_name()));
 
         for nick_number in 0..n {
             let nick = NickArgs {
@@ -104,7 +104,7 @@ impl WeechatPlugin for SamplePlugin {
 
         let mut config = weechat
             .config_new_with_callback("rust_sample", |weechat, _config| {
-                weechat.print("Reloaded config");
+                Weechat::print("Reloaded config");
             })
             .expect("Can't create new config");
 
@@ -134,7 +134,9 @@ impl WeechatPlugin for SamplePlugin {
 }
 
 impl Drop for SamplePlugin {
-    fn drop(&mut self) {}
+    fn drop(&mut self) {
+        Weechat::print("Bye rust");
+    }
 }
 
 weechat_plugin!(

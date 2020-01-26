@@ -71,6 +71,7 @@ pub struct Weechat {
 }
 
 static mut WEECHAT: Option<Weechat> = None;
+static mut WEECHAT_THREAD_ID: Option<std::thread::ThreadId> = None;
 
 impl Weechat {
     /// Create a Weechat object from a C t_weechat_plugin pointer.
@@ -85,6 +86,7 @@ impl Weechat {
     pub unsafe fn init_from_ptr(ptr: *mut t_weechat_plugin) -> Weechat {
         assert!(!ptr.is_null());
         if WEECHAT.is_none() {
+            WEECHAT_THREAD_ID = Some(std::thread::current().id());
             WEECHAT = Some(Weechat { ptr });
         }
         #[cfg(feature = "async-executor")]
@@ -100,6 +102,7 @@ impl Weechat {
         #[cfg(feature = "async-executor")]
         WeechatExecutor::free();
 
+        WEECHAT_THREAD_ID.take();
         WEECHAT.take();
     }
 
@@ -124,8 +127,10 @@ impl Weechat {
     }
 
     /// Write a message in WeeChat log file (weechat.log).
-    pub fn log(&self, msg: &str) {
-        let log_printf = self.get().log_printf.unwrap();
+    pub fn log(msg: &str) {
+        Weechat::check_thread();
+        let weechat = unsafe { Weechat::weechat() };
+        let log_printf = weechat.get().log_printf.unwrap();
 
         let fmt = LossyCString::new("%s");
         let msg = LossyCString::new(msg);
@@ -136,8 +141,11 @@ impl Weechat {
     }
 
     /// Display a message on the core weechat buffer.
-    pub fn print(&self, msg: &str) {
-        let printf_date_tags = self.get().printf_date_tags.unwrap();
+    pub fn print(msg: &str) {
+        Weechat::check_thread();
+        let weechat = unsafe { Weechat::weechat() };
+
+        let printf_date_tags = weechat.get().printf_date_tags.unwrap();
 
         let fmt = LossyCString::new("%s");
         let msg = LossyCString::new(msg);
@@ -153,13 +161,28 @@ impl Weechat {
         }
     }
 
+    fn check_thread() {
+        let weechat_thread_id = unsafe { WEECHAT_THREAD_ID
+            .as_ref()
+            .expect("Weechat main thread ID wasn't found, plugin \
+                     wasn't correctly initialized")
+        };
+
+        if std::thread::current().id() != *weechat_thread_id {
+            panic!("Weechat methods can be only called from the main Weechat \
+                    thread.")
+        }
+    }
+
     /// Return a string color code for display.
     ///
     /// # Arguments
     ///
     /// `color_name` - name of the color
-    pub fn color(&self, color_name: &str) -> &str {
-        let weechat_color = self.get().color.unwrap();
+    pub fn color(color_name: &str) -> &str {
+        Weechat::check_thread();
+        let weechat = unsafe { Weechat::weechat() };
+        let weechat_color = weechat.get().color.unwrap();
 
         let color_name = LossyCString::new(color_name);
         unsafe {
@@ -176,17 +199,6 @@ impl Weechat {
     ///
     /// `prefix` - The name of the prefix.
     ///
-    /// This is an alias for the `prefix()` method.
-    pub fn get_prefix(&self, prefix: &str) -> &str {
-        self.prefix(prefix)
-    }
-
-    /// Retrieve a prefix value
-    ///
-    /// # Arguments:
-    ///
-    /// `prefix` - The name of the prefix.
-    ///
     /// Valid prefixes are:
     /// * error
     /// * network
@@ -195,8 +207,10 @@ impl Weechat {
     /// * quit
     ///
     /// An empty string will be returned if the prefix is not found
-    pub fn prefix(&self, prefix: &str) -> &str {
-        let prefix_fn = self.get().prefix.unwrap();
+    pub fn prefix(prefix: &str) -> &str {
+        Weechat::check_thread();
+        let weechat = unsafe { Weechat::weechat() };
+        let prefix_fn = weechat.get().prefix.unwrap();
         let prefix = LossyCString::new(prefix);
 
         unsafe {

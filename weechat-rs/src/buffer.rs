@@ -189,7 +189,6 @@ impl Weechat {
 
             if let Some(callback) = pointers.input_cb.as_mut() {
                 let future = callback(data, input_data.to_string());
-                weechat.print("HELLOO RUNNING input CB");
                 Weechat::spawn_buffer_cb(&buffer.get_full_name(), future);
             }
 
