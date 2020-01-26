@@ -83,7 +83,7 @@ impl WeechatExecutor {
                         } else {
                             t.cancel();
                         }
-                    },
+                    }
                 }
             }
         }
@@ -142,7 +142,10 @@ impl WeechatExecutor {
         handle
     }
 
-    pub(crate) fn spawn_buffer_cb<F, R>(buffer_name: &str, future: F) -> JoinHandle<R, String>
+    pub(crate) fn spawn_buffer_cb<F, R>(
+        buffer_name: &str,
+        future: F,
+    ) -> JoinHandle<R, String>
     where
         F: Future<Output = R> + 'static,
         R: 'static,
@@ -175,7 +178,8 @@ impl WeechatExecutor {
             }
         };
 
-        let (task, handle) = async_task::spawn_local(future, schedule, buffer_name.to_owned());
+        let (task, handle) =
+            async_task::spawn_local(future, schedule, buffer_name.to_owned());
 
         task.schedule();
 

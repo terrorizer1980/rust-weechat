@@ -19,7 +19,7 @@ pub use executor::JoinHandle;
 pub use weechat::{ArgsWeechat, Weechat};
 
 pub use bar::{BarItem, LightBarItem};
-pub use buffer::{Buffer, Nick, NickArgs, BufferSettings};
+pub use buffer::{Buffer, BufferSettings, Nick, NickArgs};
 
 pub use hooks::{
     CommandDescription, CommandHook, CommandRunHook, FdHook, FdHookMode,

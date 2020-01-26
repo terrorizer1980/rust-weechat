@@ -4,8 +4,8 @@ use weechat::config::{
     BooleanOption, BooleanOptionSettings, Config, ConfigSectionSettings,
 };
 use weechat::{
-    weechat_plugin, ArgsWeechat, Buffer, CommandDescription, CommandHook,
-    NickArgs, Weechat, WeechatPlugin, WeechatResult, BufferSettings,
+    weechat_plugin, ArgsWeechat, Buffer, BufferSettings, CommandDescription,
+    CommandHook, NickArgs, Weechat, WeechatPlugin, WeechatResult,
 };
 use weechat::{BarItem, LightBarItem};
 
@@ -16,7 +16,11 @@ struct SamplePlugin {
 }
 
 impl SamplePlugin {
-    fn input_cb(weechat: &Weechat, buffer: &Buffer, input: Cow<str>) -> Result<(), ()> {
+    fn input_cb(
+        weechat: &Weechat,
+        buffer: &Buffer,
+        input: Cow<str>,
+    ) -> Result<(), ()> {
         buffer.print(&input);
         Ok(())
     }
@@ -54,7 +58,9 @@ impl WeechatPlugin for SamplePlugin {
             .input_callback(SamplePlugin::input_cb)
             .close_callback(SamplePlugin::close_cb);
 
-        let buffer = weechat.buffer_new(buffer_settings).expect("Can't create buffer");
+        let buffer = weechat
+            .buffer_new(buffer_settings)
+            .expect("Can't create buffer");
 
         buffer.print("Hello test buffer");
 

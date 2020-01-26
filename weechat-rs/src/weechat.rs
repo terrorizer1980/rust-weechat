@@ -162,15 +162,18 @@ impl Weechat {
     }
 
     fn check_thread() {
-        let weechat_thread_id = unsafe { WEECHAT_THREAD_ID
-            .as_ref()
-            .expect("Weechat main thread ID wasn't found, plugin \
-                     wasn't correctly initialized")
+        let weechat_thread_id = unsafe {
+            WEECHAT_THREAD_ID.as_ref().expect(
+                "Weechat main thread ID wasn't found, plugin \
+                 wasn't correctly initialized",
+            )
         };
 
         if std::thread::current().id() != *weechat_thread_id {
-            panic!("Weechat methods can be only called from the main Weechat \
-                    thread.")
+            panic!(
+                "Weechat methods can be only called from the main Weechat \
+                 thread."
+            )
         }
     }
 
@@ -278,7 +281,10 @@ impl Weechat {
     }
 
     #[cfg(feature = "async-executor")]
-    pub(crate) fn spawn_buffer_cb<F, R>(buffer_name: &str, future: F) -> JoinHandle<R, String>
+    pub(crate) fn spawn_buffer_cb<F, R>(
+        buffer_name: &str,
+        future: F,
+    ) -> JoinHandle<R, String>
     where
         F: Future<Output = R> + 'static,
         R: 'static,
