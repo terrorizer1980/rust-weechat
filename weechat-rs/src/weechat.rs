@@ -262,4 +262,13 @@ impl Weechat {
     {
         WeechatExecutor::spawn(future)
     }
+
+    #[cfg(feature = "async-executor")]
+    pub(crate) fn spawn_buffer_cb<F, R>(buffer_name: &str, future: F) -> JoinHandle<R, String>
+    where
+        F: Future<Output = R> + 'static,
+        R: 'static,
+    {
+        WeechatExecutor::spawn_buffer_cb(buffer_name, future)
+    }
 }
