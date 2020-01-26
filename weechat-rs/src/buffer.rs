@@ -5,6 +5,9 @@ use std::marker::PhantomData;
 use std::os::raw::c_void;
 use std::ptr;
 
+#[cfg(feature = "async-executor")]
+use futures::future::{LocalBoxFuture, Future, FutureExt};
+
 use crate::{LossyCString, Weechat};
 use libc::{c_char, c_int};
 use weechat_sys::{
@@ -26,25 +29,73 @@ impl PartialEq for Buffer<'_> {
     }
 }
 
+#[cfg(feature = "async-executor")]
+pub(crate) struct BufferPointers<T: Clone> {
+    pub(crate) weechat: *mut t_weechat_plugin,
+    pub(crate) input_cb: Option<BufferInputCallback<T>>,
+    pub(crate) close_cb: Option<BufferCloseCallback>,
+    pub(crate) input_data: Option<T>
+}
+
+#[cfg(not(feature = "async-executor"))]
 pub(crate) struct BufferPointers {
     pub(crate) weechat: *mut t_weechat_plugin,
     pub(crate) input_cb: Option<BufferInputCallback>,
     pub(crate) close_cb: Option<BufferCloseCallback>,
 }
 
+#[cfg(not(feature = "async-executor"))]
 pub type BufferInputCallback = Box<dyn FnMut(&Weechat, &Buffer, Cow<str>) -> Result<(), ()>>;
+
+#[cfg(feature = "async-executor")]
+pub type BufferInputCallback<T> = Box<dyn FnMut(Option<T>, String) -> LocalBoxFuture<'static, ()>>;
+
 pub type BufferCloseCallback = Box<dyn FnMut(&Weechat, &Buffer) -> Result<(), ()>>;
 
-#[derive(Default)]
+#[cfg(feature = "async-executor")]
+pub struct BufferSettings<T: Clone> {
+    pub(crate) name: String,
+    pub(crate) input_callback: Option<BufferInputCallback<T>>,
+    pub(crate) input_data: Option<T>,
+    pub(crate) close_callback: Option<BufferCloseCallback>,
+}
+
+#[cfg(not(feature = "async-executor"))]
 pub struct BufferSettings {
     pub(crate) name: String,
     pub(crate) input_callback: Option<BufferInputCallback>,
     pub(crate) close_callback: Option<BufferCloseCallback>,
 }
 
+#[cfg(feature = "async-executor")]
+impl<T: Clone> BufferSettings<T> {
+    pub fn new(name: &str) -> Self {
+        BufferSettings { name: name.to_owned(), input_callback: None, input_data: None, close_callback: None }
+    }
+
+    pub fn input_callback<C: 'static>(mut self, mut callback: impl FnMut(Option<T>, String) -> C + 'static) -> Self
+        where C: Future<Output = ()>
+    {
+        let future = move |data, input| callback(data, input).boxed_local();
+        self.input_callback = Some(Box::new(future));
+        self
+    }
+
+    pub fn input_data(mut self, data: T) -> Self {
+        self.input_data = Some(data);
+        self
+    }
+
+    pub fn close_callback(mut self, callback: impl FnMut(&Weechat, &Buffer) -> Result<(), ()> + 'static) -> Self {
+        self.close_callback = Some(Box::new(callback));
+        self
+    }
+}
+
+#[cfg(not(feature = "async-executor"))]
 impl BufferSettings {
     pub fn new(name: &str) -> Self {
-        BufferSettings { name: name.to_owned(), ..Default::default() }
+        BufferSettings { name: name.to_owned(), input_callback: None, close_callback: None }
     }
 
     pub fn input_callback(mut self, callback: impl FnMut(&Weechat, &Buffer, Cow<str>) -> Result<(), ()> + 'static) -> Self {
@@ -112,14 +163,113 @@ impl Weechat {
     }
 
     /// Create a new Weechat buffer
-    /// * `name` - Name of the new buffer
-    /// * `input_cb` - Callback that will be called when something is entered
-    ///     into the input bar of the buffer
-    /// * `input_data` - Data that will be taken over by weechat and passed to
-    ///     the input callback, this data will be freed when the buffer closes
-    /// * `close_cb` - Callback that will be called when the buffer is closed.
-    /// * `close_cb_data` - Reference to some data that will be passed to the
-    ///     close callback.
+    ///
+    /// * `settings` - Settings for the new buffer.
+    ///
+    /// Returns a Buffer if one has been created, otherwise an empty Error.
+    #[cfg(feature = "async-executor")]
+    pub fn buffer_new<T: Clone>(
+        &self,
+        settings: BufferSettings<T>,
+    ) -> Result<Buffer, ()> {
+        unsafe extern "C" fn c_input_cb<T: Clone>(
+            pointer: *const c_void,
+            _data: *mut c_void,
+            buffer: *mut t_gui_buffer,
+            input_data: *const c_char,
+        ) -> c_int {
+            let input_data = CStr::from_ptr(input_data).to_string_lossy();
+
+            let pointers: &mut BufferPointers<T> =
+                { &mut *(pointer as *mut BufferPointers<T>) };
+
+            let weechat = Weechat::from_ptr(pointers.weechat);
+            let buffer = weechat.buffer_from_ptr(buffer);
+            let data = pointers.input_data.clone();
+
+            if let Some(callback) = pointers.input_cb.as_mut() {
+                let future = callback(data, input_data.to_string());
+                weechat.print("HELLOO RUNNING input CB");
+                Weechat::spawn_buffer_cb(&buffer.get_full_name(), future);
+            }
+
+            WEECHAT_RC_OK
+        }
+
+        unsafe extern "C" fn c_close_cb<T: Clone>(
+            pointer: *const c_void,
+            _data: *mut c_void,
+            buffer: *mut t_gui_buffer,
+        ) -> c_int {
+            // We use from_raw() here so that the box get's freed at the end
+            // of this scope.
+            let pointers = Box::from_raw(pointer as *mut BufferPointers<T>);
+            let weechat = Weechat::from_ptr(pointers.weechat);
+            let buffer = weechat.buffer_from_ptr(buffer);
+
+            let ret = if let Some(mut callback) = pointers.close_cb {
+                callback(&weechat, &buffer).is_ok()
+            } else {
+                true
+            };
+
+            if ret {
+                WEECHAT_RC_OK
+            } else {
+                WEECHAT_RC_ERROR
+            }
+        }
+
+        let c_input_cb: Option<WeechatInputCbT> = match settings.input_callback {
+            Some(_) => Some(c_input_cb::<T>),
+            None => None,
+        };
+
+        // We create a box and use leak to stop rust from freeing our data,
+        // we are giving weechat ownership over the data and will free it in
+        // the buffer close callback.
+        let buffer_pointers = Box::new(BufferPointers::<T> {
+            weechat: self.ptr,
+            input_cb: settings.input_callback,
+            input_data: settings.input_data,
+            close_cb: settings.close_callback,
+        });
+        let buffer_pointers_ref: &BufferPointers<T> = Box::leak(buffer_pointers);
+
+        let buf_new = self.get().buffer_new.unwrap();
+        let c_name = LossyCString::new(settings.name);
+
+        // TODO this can fail, return a Option type
+        let buf_ptr = unsafe {
+            buf_new(
+                self.ptr,
+                c_name.as_ptr(),
+                c_input_cb,
+                buffer_pointers_ref as *const _ as *const c_void,
+                ptr::null_mut(),
+                Some(c_close_cb::<T>),
+                buffer_pointers_ref as *const _ as *const c_void,
+                ptr::null_mut(),
+            )
+        };
+
+        if buf_ptr.is_null() {
+            return Err(());
+        }
+
+        Ok(Buffer {
+            weechat: self.ptr,
+            ptr: buf_ptr,
+            weechat_phantom: PhantomData,
+        })
+    }
+
+    /// Create a new Weechat buffer
+    ///
+    /// * `settings` - Settings for the new buffer.
+    ///
+    /// Returns a Buffer if one has been created, otherwise an empty Error.
+    #[cfg(not(feature = "async-executor"))]
     pub fn buffer_new(
         &self,
         settings: BufferSettings,
