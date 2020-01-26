@@ -216,7 +216,7 @@ impl Weechat {
 
             if let Some(callback) = pointers.input_cb.as_mut() {
                 let future = callback(data, input_data.to_string());
-                Weechat::spawn_buffer_cb(&buffer.get_full_name(), future);
+                Weechat::spawn_buffer_cb(&buffer.full_name(), future);
             }
 
             WEECHAT_RC_OK
@@ -702,7 +702,7 @@ impl Buffer<'_> {
     }
 
     /// Get the full name of the buffer.
-    pub fn get_full_name(&self) -> Cow<str> {
+    pub fn full_name(&self) -> Cow<str> {
         self.get_string("full_name").unwrap()
     }
 
@@ -712,7 +712,7 @@ impl Buffer<'_> {
     }
 
     /// Get the name of the buffer.
-    pub fn get_name(&self) -> Cow<str> {
+    pub fn name(&self) -> Cow<str> {
         self.get_string("name").unwrap()
     }
 
@@ -722,7 +722,7 @@ impl Buffer<'_> {
     }
 
     /// Get the short_name of the buffer.
-    pub fn get_short_name(&self) -> Cow<str> {
+    pub fn short_name(&self) -> Cow<str> {
         self.get_string("short_name").unwrap()
     }
 
@@ -749,6 +749,11 @@ impl Buffer<'_> {
     /// Enable the nicklist for this buffer.
     pub fn enable_nicklist(&self) {
         self.set("nicklist", "1")
+    }
+
+    /// Get the title of the buffer
+    pub fn title(&self) {
+        self.get_string("title");
     }
 
     /// Set the title of the buffer.
