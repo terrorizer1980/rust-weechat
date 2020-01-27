@@ -1,4 +1,7 @@
 //! Weechat Buffer module containing Buffer and Nick types.
+
+mod nick;
+
 use std::borrow::Cow;
 use std::ffi::CStr;
 use std::marker::PhantomData;
@@ -14,9 +17,11 @@ use futures::future::{Future, FutureExt, LocalBoxFuture};
 use crate::{LossyCString, Weechat};
 use libc::{c_char, c_int};
 use weechat_sys::{
-    t_gui_buffer, t_gui_nick, t_gui_nick_group, t_weechat_plugin,
+    t_gui_buffer, t_gui_nick_group, t_weechat_plugin,
     WEECHAT_RC_ERROR, WEECHAT_RC_OK,
 };
+
+pub use crate::buffer::nick::{Nick, NickArgs};
 
 /// A high level Buffer type encapsulating weechats C buffer pointer.
 /// The buffer won't be closed if the object is destroyed.
@@ -481,98 +486,10 @@ pub(crate) type WeechatInputCbT = unsafe extern "C" fn(
     input_data: *const c_char,
 ) -> c_int;
 
-/// Nick creation arguments
-pub struct NickArgs<'a> {
-    /// Name of the new nick.
-    pub name: &'a str,
-    /// Color for the nick.
-    pub color: &'a str,
-    /// Prefix that will be shown before the name.
-    pub prefix: &'a str,
-    /// Color of the prefix.
-    pub prefix_color: &'a str,
-    /// Should the nick be visible in the nicklist.
-    pub visible: bool,
-}
-
-/// Weechat Nick type
-pub struct Nick {
-    ptr: *mut t_gui_nick,
-    buf_ptr: *mut t_gui_buffer,
-    weechat_ptr: *mut t_weechat_plugin,
-}
-
-impl Nick {
-    /// Create a high level Nick object from C nick and buffer pointers.
-    pub(crate) fn from_ptr(
-        ptr: *mut t_gui_nick,
-        buf_ptr: *mut t_gui_buffer,
-        weechat_ptr: *mut t_weechat_plugin,
-    ) -> Nick {
-        Nick {
-            ptr,
-            buf_ptr,
-            weechat_ptr,
-        }
-    }
-
-    /// Get a Weechat object out of the nick.
-    fn get_weechat(&self) -> Weechat {
-        Weechat::from_ptr(self.weechat_ptr)
-    }
-
-    /// Get a string property of the nick.
-    /// * `property` - The name of the property to get the value for, this can
-    ///     be one of name, color, prefix or prefix_color. If a unknown
-    ///     property is requested an empty string is returned.
-    pub fn get_string(&self, property: &str) -> Option<Cow<str>> {
-        let weechat = self.get_weechat();
-        let get_string = weechat.get().nicklist_nick_get_string.unwrap();
-        let c_property = LossyCString::new(property);
-        unsafe {
-            let ret = get_string(self.buf_ptr, self.ptr, c_property.as_ptr());
-
-            if ret.is_null() {
-                None
-            } else {
-                Some(CStr::from_ptr(ret).to_string_lossy())
-            }
-        }
-    }
-
-    /// Get the name property of the nick.
-    pub fn get_name(&self) -> Cow<str> {
-        self.get_string("name").unwrap()
-    }
-
-    /// Removes the nick from it's nicklist
-    pub fn remove(&self) {
-        let weechat = self.get_weechat();
-
-        let nicklist_remove_nick = weechat.get().nicklist_remove_nick.unwrap();
-
-        unsafe {
-            nicklist_remove_nick(self.buf_ptr, self.ptr);
-        }
-    }
-}
-
 /// Weechat nicklist Group type.
 pub struct NickGroup {
     pub(crate) ptr: *mut t_gui_nick_group,
     _buf_ptr: *mut t_gui_buffer,
-}
-
-impl<'a> Default for NickArgs<'a> {
-    fn default() -> NickArgs<'a> {
-        NickArgs {
-            name: "",
-            color: "",
-            prefix: "",
-            prefix_color: "",
-            visible: true,
-        }
-    }
 }
 
 impl Buffer<'_> {
