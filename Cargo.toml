@@ -1,0 +1,8 @@
+[workspace]
+
+members = [
+    "weechat-sys",
+    "weechat-macro",
+    "weechat-rs",
+    "sample",
+]
