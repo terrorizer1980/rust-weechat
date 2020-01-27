@@ -356,7 +356,7 @@ impl Weechat {
 
         Ok(BufferHandle {
             weechat: self.ptr,
-            buffer_ptr: Rc::new(RefCell::new(buf_ptr)),
+            buffer_ptr: buffer_cell,
         })
     }
 
@@ -474,7 +474,7 @@ impl Weechat {
 
         Ok(BufferHandle {
             weechat: self.ptr,
-            buffer_ptr: Rc::new(RefCell::new(buf_ptr)),
+            buffer_ptr: buffer_cell,
         })
     }
 }
