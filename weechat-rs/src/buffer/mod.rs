@@ -446,7 +446,6 @@ impl Weechat {
         let buf_new = self.get().buffer_new.unwrap();
         let c_name = LossyCString::new(settings.name);
 
-        // TODO this can fail, return a Option type
         let buf_ptr = unsafe {
             buf_new(
                 self.ptr,
