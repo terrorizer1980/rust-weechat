@@ -143,7 +143,7 @@ impl WeechatExecutor {
     }
 
     pub(crate) fn spawn_buffer_cb<F, R>(
-        buffer_name: &str,
+        buffer_name: String,
         future: F,
     ) -> JoinHandle<R, String>
     where
@@ -179,7 +179,7 @@ impl WeechatExecutor {
         };
 
         let (task, handle) =
-            async_task::spawn_local(future, schedule, buffer_name.to_owned());
+            async_task::spawn_local(future, schedule, buffer_name);
 
         task.schedule();
 

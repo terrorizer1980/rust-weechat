@@ -282,7 +282,7 @@ impl Weechat {
 
     #[cfg(feature = "async-executor")]
     pub(crate) fn spawn_buffer_cb<F, R>(
-        buffer_name: &str,
+        buffer_name: String,
         future: F,
     ) -> JoinHandle<R, String>
     where

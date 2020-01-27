@@ -85,7 +85,7 @@ pub struct CompletionHook<T> {
 }
 
 struct CompletionHookData<T> {
-    callback: fn(&T, Buffer, Cow<str>, Completion) -> ReturnCode,
+    callback: fn(&T, &Buffer, Cow<str>, Completion) -> ReturnCode,
     callback_data: T,
     weechat_ptr: *mut t_weechat_plugin,
 }
@@ -105,7 +105,7 @@ impl Weechat {
         description: &str,
         callback: fn(
             data: &T,
-            buffer: Buffer,
+            buffer: &Buffer,
             item: Cow<str>,
             completion: Completion,
         ) -> ReturnCode,
@@ -133,7 +133,7 @@ impl Weechat {
 
             callback(
                 callback_data,
-                buffer,
+                &buffer,
                 completion_item,
                 Completion::from_raw(hook_data.weechat_ptr, completion),
             ) as i32

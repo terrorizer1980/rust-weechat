@@ -58,9 +58,11 @@ impl WeechatPlugin for SamplePlugin {
             .input_callback(SamplePlugin::input_cb)
             .close_callback(SamplePlugin::close_cb);
 
-        let buffer = weechat
+        let buffer_handle = weechat
             .buffer_new(buffer_settings)
             .expect("Can't create buffer");
+
+        let buffer = buffer_handle.upgrade().expect("Buffer already closed?");
 
         buffer.print("Hello test buffer");
 

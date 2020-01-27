@@ -5,6 +5,9 @@ use std::marker::PhantomData;
 use std::os::raw::c_void;
 use std::ptr;
 
+use std::rc::Rc;
+use std::cell::RefCell;
+
 #[cfg(feature = "async-executor")]
 use futures::future::{Future, FutureExt, LocalBoxFuture};
 
@@ -17,16 +20,50 @@ use weechat_sys::{
 
 /// A high level Buffer type encapsulating weechats C buffer pointer.
 /// The buffer won't be closed if the object is destroyed.
-#[derive(Eq)]
 pub struct Buffer<'a> {
+    inner: InnerBuffers<'a>
+}
+
+enum InnerBuffers<'a> {
+    BorrowedBuffer(InnerBuffer<'a, Weechat>),
+    OwnedBuffer(InnerBuffer<'a, BufferHandle>),
+}
+
+struct InnerBuffer<'a, T> {
     pub(crate) weechat: *mut t_weechat_plugin,
     pub(crate) ptr: *mut t_gui_buffer,
-    weechat_phantom: PhantomData<&'a Weechat>,
+    weechat_phantom: PhantomData<&'a T>,
 }
 
 impl PartialEq for Buffer<'_> {
     fn eq(&self, other: &Buffer) -> bool {
-        self.ptr == other.ptr
+        self.ptr() == other.ptr()
+    }
+}
+
+pub struct BufferHandle {
+    pub(crate) weechat: *mut t_weechat_plugin,
+    pub(crate) buffer_ptr: Rc<RefCell<*mut t_gui_buffer>>
+}
+
+impl BufferHandle {
+    pub fn upgrade(&self) -> Result<Buffer<'_>, ()> {
+        let ptr_borrow = self.buffer_ptr.borrow();
+
+        if ptr_borrow.is_null() {
+            Err(())
+        } else {
+            let buffer = Buffer {
+                inner:
+                InnerBuffers::OwnedBuffer(
+                InnerBuffer {
+                    weechat: self.weechat,
+                    ptr: *ptr_borrow,
+                    weechat_phantom: PhantomData,
+                })
+            };
+            Ok(buffer)
+        }
     }
 }
 
@@ -36,6 +73,7 @@ pub(crate) struct BufferPointers<T: Clone> {
     pub(crate) input_cb: Option<BufferInputCallback<T>>,
     pub(crate) close_cb: Option<BufferCloseCallback>,
     pub(crate) input_data: Option<T>,
+    pub(crate) buffer_cell: Option<Rc<RefCell<*mut t_gui_buffer>>>,
 }
 
 #[cfg(not(feature = "async-executor"))]
@@ -43,6 +81,7 @@ pub(crate) struct BufferPointers {
     pub(crate) weechat: *mut t_weechat_plugin,
     pub(crate) input_cb: Option<BufferInputCallback>,
     pub(crate) close_cb: Option<BufferCloseCallback>,
+    pub(crate) buffer_cell: Option<Rc<RefCell<*mut t_gui_buffer>>>,
 }
 
 #[cfg(not(feature = "async-executor"))]
@@ -51,7 +90,7 @@ pub type BufferInputCallback =
 
 #[cfg(feature = "async-executor")]
 pub type BufferInputCallback<T> =
-    Box<dyn FnMut(Option<T>, String) -> LocalBoxFuture<'static, ()>>;
+    Box<dyn FnMut(Option<T>, BufferHandle, String) -> LocalBoxFuture<'static, ()>>;
 
 pub type BufferCloseCallback =
     Box<dyn FnMut(&Weechat, &Buffer) -> Result<(), ()>>;
@@ -84,12 +123,12 @@ impl<T: Clone> BufferSettings<T> {
 
     pub fn input_callback<C: 'static>(
         mut self,
-        mut callback: impl FnMut(Option<T>, String) -> C + 'static,
+        mut callback: impl FnMut(Option<T>, BufferHandle, String) -> C + 'static,
     ) -> Self
     where
         C: Future<Output = ()>,
     {
-        let future = move |data, input| callback(data, input).boxed_local();
+        let future = move |data, buffer, input| callback(data, buffer, input).boxed_local();
         self.input_callback = Some(Box::new(future));
         self
     }
@@ -170,9 +209,12 @@ impl Weechat {
         buffer_ptr: *mut t_gui_buffer,
     ) -> Buffer {
         Buffer {
+            inner: InnerBuffers::BorrowedBuffer(
+            InnerBuffer {
             weechat: self.ptr,
             ptr: buffer_ptr,
             weechat_phantom: PhantomData,
+        })
         }
     }
 
@@ -198,7 +240,7 @@ impl Weechat {
     pub fn buffer_new<T: Clone>(
         &self,
         settings: BufferSettings<T>,
-    ) -> Result<Buffer, ()> {
+    ) -> Result<BufferHandle, ()> {
         unsafe extern "C" fn c_input_cb<T: Clone>(
             pointer: *const c_void,
             _data: *mut c_void,
@@ -212,11 +254,17 @@ impl Weechat {
 
             let weechat = Weechat::from_ptr(pointers.weechat);
             let buffer = weechat.buffer_from_ptr(buffer);
+            let buffer_cell = pointers.buffer_cell
+                .as_ref()
+                .expect("Buffer cell wasn't initialized properly")
+                .clone();
+
+            let buffer_handle = BufferHandle { weechat: pointers.weechat, buffer_ptr: buffer_cell };
             let data = pointers.input_data.clone();
 
             if let Some(callback) = pointers.input_cb.as_mut() {
-                let future = callback(data, input_data.to_string());
-                Weechat::spawn_buffer_cb(&buffer.full_name(), future);
+                let future = callback(data, buffer_handle, input_data.to_string());
+                Weechat::spawn_buffer_cb(buffer.full_name().to_string(), future);
             }
 
             WEECHAT_RC_OK
@@ -239,6 +287,14 @@ impl Weechat {
                 true
             };
 
+            let mut cell = pointers.buffer_cell
+                .as_ref()
+                .expect("Buffer cell wasn't initialized properly")
+                .borrow_mut();
+
+            // Invalidate the buffer pointer now.
+            *cell = ptr::null_mut();
+
             if ret {
                 WEECHAT_RC_OK
             } else {
@@ -260,14 +316,14 @@ impl Weechat {
             input_cb: settings.input_callback,
             input_data: settings.input_data,
             close_cb: settings.close_callback,
+            buffer_cell: None,
         });
-        let buffer_pointers_ref: &BufferPointers<T> =
-            Box::leak(buffer_pointers);
+
+        let buffer_pointers_ref = Box::leak(buffer_pointers);
 
         let buf_new = self.get().buffer_new.unwrap();
         let c_name = LossyCString::new(settings.name);
 
-        // TODO this can fail, return a Option type
         let buf_ptr = unsafe {
             buf_new(
                 self.ptr,
@@ -282,13 +338,20 @@ impl Weechat {
         };
 
         if buf_ptr.is_null() {
+            unsafe { Box::from_raw(buffer_pointers_ref) };
             return Err(());
         }
 
-        Ok(Buffer {
+        let pointers: &mut BufferPointers<T> = unsafe
+            { &mut *(buffer_pointers_ref as *mut BufferPointers<T>) };
+
+        let buffer_cell = Rc::new(RefCell::new(buf_ptr));
+
+        pointers.buffer_cell = Some(buffer_cell.clone());
+
+        Ok(BufferHandle {
             weechat: self.ptr,
-            ptr: buf_ptr,
-            weechat_phantom: PhantomData,
+            buffer_ptr: Rc::new(RefCell::new(buf_ptr)),
         })
     }
 
@@ -298,7 +361,7 @@ impl Weechat {
     ///
     /// Returns a Buffer if one has been created, otherwise an empty Error.
     #[cfg(not(feature = "async-executor"))]
-    pub fn buffer_new(&self, settings: BufferSettings) -> Result<Buffer, ()> {
+    pub fn buffer_new(&self, settings: BufferSettings) -> Result<BufferHandle, ()> {
         unsafe extern "C" fn c_input_cb(
             pointer: *const c_void,
             _data: *mut c_void,
@@ -343,6 +406,14 @@ impl Weechat {
                 true
             };
 
+            let mut cell = pointers.buffer_cell
+                .as_ref()
+                .expect("Buffer cell wasn't initialized properly")
+                .borrow_mut();
+
+            // Invalidate the buffer pointer now.
+            *cell = ptr::null_mut();
+
             if ret {
                 WEECHAT_RC_OK
             } else {
@@ -363,8 +434,9 @@ impl Weechat {
             weechat: self.ptr,
             input_cb: settings.input_callback,
             close_cb: settings.close_callback,
+            buffer_cell: None,
         });
-        let buffer_pointers_ref: &BufferPointers = Box::leak(buffer_pointers);
+        let buffer_pointers_ref = Box::leak(buffer_pointers);
 
         let buf_new = self.get().buffer_new.unwrap();
         let c_name = LossyCString::new(settings.name);
@@ -384,13 +456,20 @@ impl Weechat {
         };
 
         if buf_ptr.is_null() {
+            unsafe { Box::from_raw(buffer_pointers_ref) };
             return Err(());
         }
 
-        Ok(Buffer {
+        let pointers: &mut BufferPointers = unsafe
+            { &mut *(buffer_pointers_ref as *mut BufferPointers) };
+
+        let buffer_cell = Rc::new(RefCell::new(buf_ptr));
+
+        pointers.buffer_cell = Some(buffer_cell.clone());
+
+        Ok(BufferHandle {
             weechat: self.ptr,
-            ptr: buf_ptr,
-            weechat_phantom: PhantomData,
+            buffer_ptr: Rc::new(RefCell::new(buf_ptr)),
         })
     }
 }
@@ -497,9 +576,25 @@ impl<'a> Default for NickArgs<'a> {
 }
 
 impl Buffer<'_> {
+    fn weechat(&self) -> Weechat {
+        let ptr = match &self.inner {
+            InnerBuffers::BorrowedBuffer(b) => b.weechat,
+            InnerBuffers::OwnedBuffer(b) => b.weechat,
+        };
+
+        Weechat::from_ptr(ptr)
+    }
+
+    fn ptr (&self) -> *mut t_gui_buffer {
+        match &self.inner {
+            InnerBuffers::BorrowedBuffer(b) => b.ptr,
+            InnerBuffers::OwnedBuffer(b) => b.ptr,
+        }
+    }
+
     /// Display a message on the buffer.
     pub fn print(&self, message: &str) {
-        let weechat = Weechat::from_ptr(self.weechat);
+        let weechat = self.weechat();
         let printf_date_tags = weechat.get().printf_date_tags.unwrap();
 
         let fmt_str = LossyCString::new("%s");
@@ -507,7 +602,7 @@ impl Buffer<'_> {
 
         unsafe {
             printf_date_tags(
-                self.ptr,
+                self.ptr(),
                 0,
                 ptr::null(),
                 fmt_str.as_ptr(),
@@ -518,7 +613,7 @@ impl Buffer<'_> {
 
     /// Display a message on the buffer with attached date and tags
     pub fn print_date_tags(&self, date: i64, tags: &[&str], message: &str) {
-        let weechat = Weechat::from_ptr(self.weechat);
+        let weechat = self.weechat();
         let printf_date_tags = weechat.get().printf_date_tags.unwrap();
 
         let fmt_str = LossyCString::new("%s");
@@ -528,7 +623,7 @@ impl Buffer<'_> {
 
         unsafe {
             printf_date_tags(
-                self.ptr,
+                self.ptr(),
                 date,
                 tags.as_ptr(),
                 fmt_str.as_ptr(),
@@ -539,7 +634,7 @@ impl Buffer<'_> {
 
     /// Search for a nicklist group by name
     pub fn search_nicklist_group(&self, name: &str) -> Option<NickGroup> {
-        let weechat = Weechat::from_ptr(self.weechat);
+        let weechat = self.weechat();
 
         let nicklist_search_group =
             weechat.get().nicklist_search_group.unwrap();
@@ -548,14 +643,14 @@ impl Buffer<'_> {
 
         unsafe {
             let group =
-                nicklist_search_group(self.ptr, ptr::null_mut(), name.as_ptr());
+                nicklist_search_group(self.ptr(), ptr::null_mut(), name.as_ptr());
 
             if group.is_null() {
                 None
             } else {
                 Some(NickGroup {
                     ptr: group,
-                    _buf_ptr: self.ptr,
+                    _buf_ptr: self.ptr(),
                 })
             }
         }
@@ -567,7 +662,7 @@ impl Buffer<'_> {
         nick: &str,
         group: Option<&NickGroup>,
     ) -> Option<Nick> {
-        let weechat = Weechat::from_ptr(self.weechat);
+        let weechat = self.weechat();
 
         let nicklist_search_nick = weechat.get().nicklist_search_nick.unwrap();
 
@@ -575,12 +670,12 @@ impl Buffer<'_> {
         let group_ptr = group.map(|g| g.ptr).unwrap_or(ptr::null_mut());
 
         unsafe {
-            let nick = nicklist_search_nick(self.ptr, group_ptr, nick.as_ptr());
+            let nick = nicklist_search_nick(self.ptr(), group_ptr, nick.as_ptr());
 
             if nick.is_null() {
                 None
             } else {
-                Some(Nick::from_ptr(nick, self.ptr, self.weechat))
+                Some(Nick::from_ptr(nick, self.ptr(), self.weechat().ptr))
             }
         }
     }
@@ -593,7 +688,7 @@ impl Buffer<'_> {
     /// * `group` - Nicklist group that the nick should be added to. If no
     ///     group is provided the nick is added to the root group.
     pub fn add_nick(&self, nick: NickArgs, group: Option<&NickGroup>) -> Nick {
-        let weechat = Weechat::from_ptr(self.weechat);
+        let weechat = self.weechat();
 
         // TODO this conversions can fail if any of those strings contain a
         // null byte.
@@ -610,7 +705,7 @@ impl Buffer<'_> {
 
         let nick_ptr = unsafe {
             add_nick(
-                self.ptr,
+                self.ptr(),
                 group_ptr,
                 c_nick.as_ptr(),
                 color.as_ptr(),
@@ -620,7 +715,7 @@ impl Buffer<'_> {
             )
         };
 
-        Nick::from_ptr(nick_ptr, self.ptr, self.weechat)
+        Nick::from_ptr(nick_ptr, self.ptr(), weechat.ptr)
     }
 
     /// Create and add a new nicklist group to the buffers nicklist.
@@ -638,7 +733,7 @@ impl Buffer<'_> {
         visible: bool,
         parent_group: Option<&NickGroup>,
     ) -> NickGroup {
-        let weechat = Weechat::from_ptr(self.weechat);
+        let weechat = self.weechat();
         let add_group = weechat.get().nicklist_add_group.unwrap();
 
         let c_name = LossyCString::new(name);
@@ -651,7 +746,7 @@ impl Buffer<'_> {
 
         let group_ptr = unsafe {
             add_group(
-                self.ptr,
+                self.ptr(),
                 group_ptr,
                 c_name.as_ptr(),
                 c_color.as_ptr(),
@@ -661,28 +756,28 @@ impl Buffer<'_> {
 
         NickGroup {
             ptr: group_ptr,
-            _buf_ptr: self.ptr,
+            _buf_ptr: self.ptr(),
         }
     }
 
     fn set(&self, property: &str, value: &str) {
-        let weechat = Weechat::from_ptr(self.weechat);
+        let weechat = self.weechat();
 
         let buffer_set = weechat.get().buffer_set.unwrap();
         let option = LossyCString::new(property);
         let value = LossyCString::new(value);
 
-        unsafe { buffer_set(self.ptr, option.as_ptr(), value.as_ptr()) };
+        unsafe { buffer_set(self.ptr(), option.as_ptr(), value.as_ptr()) };
     }
 
     fn get_string(&self, property: &str) -> Option<Cow<str>> {
-        let weechat = Weechat::from_ptr(self.weechat);
+        let weechat = self.weechat();
 
         let buffer_get = weechat.get().buffer_get_string.unwrap();
         let property = LossyCString::new(property);
 
         unsafe {
-            let value = buffer_get(self.ptr, property.as_ptr());
+            let value = buffer_get(self.ptr(), property.as_ptr());
             if value.is_null() {
                 None
             } else {
@@ -769,10 +864,10 @@ impl Buffer<'_> {
 
     /// Clear buffer contents
     pub fn clear(&self) {
-        let weechat = Weechat::from_ptr(self.weechat);
+        let weechat = self.weechat();
 
         let buffer_clear = weechat.get().buffer_clear.unwrap();
-        unsafe { buffer_clear(self.ptr) }
+        unsafe { buffer_clear(self.ptr()) }
     }
 
     /// Get the contents of the input
