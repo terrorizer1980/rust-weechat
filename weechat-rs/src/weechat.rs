@@ -78,17 +78,17 @@ impl Weechat {
     ///
     /// # Arguments
     ///
-    /// * `ptr` - Pointer of the weechat plugin.
+    /// * `ptr` - C pointer of the weechat plugin.
     ///
     /// # Safety
     ///
     /// This should never be called by the user. This is called internally.
     pub unsafe fn init_from_ptr(ptr: *mut t_weechat_plugin) -> Weechat {
         assert!(!ptr.is_null());
-        if WEECHAT.is_none() {
-            WEECHAT_THREAD_ID = Some(std::thread::current().id());
-            WEECHAT = Some(Weechat { ptr });
-        }
+
+        WEECHAT = Some(Weechat { ptr });
+        WEECHAT_THREAD_ID = Some(std::thread::current().id());
+
         #[cfg(feature = "async-executor")]
         WeechatExecutor::start();
         Weechat { ptr }

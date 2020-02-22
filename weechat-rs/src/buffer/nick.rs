@@ -1,8 +1,57 @@
 use std::borrow::Cow;
 use std::ffi::CStr;
+use std::marker::PhantomData;
 
-use crate::{LossyCString, Weechat};
+use crate::{Buffer, LossyCString, Weechat};
 use weechat_sys::{t_gui_buffer, t_gui_nick, t_weechat_plugin};
+
+pub struct NickSettings<'a> {
+    /// Name of the new nick.
+    pub(crate) name: &'a str,
+    /// Color for the nick.
+    pub(crate) color: &'a str,
+    /// Prefix that will be shown before the name.
+    pub(crate) prefix: &'a str,
+    /// Color of the prefix.
+    pub(crate) prefix_color: &'a str,
+    /// Should the nick be visible in the nicklist.
+    pub(crate) visible: bool,
+}
+
+impl<'a> NickSettings<'a> {
+    pub fn new(name: &str) -> NickSettings {
+        NickSettings {
+            name,
+            color: "",
+            prefix: "",
+            prefix_color: "",
+            visible: true,
+        }
+    }
+
+    pub fn set_color(mut self, color: &'a str) -> NickSettings<'a> {
+        self.color = color;
+        self
+    }
+
+    pub fn set_prefix(mut self, prefix: &'a str) -> NickSettings<'a> {
+        self.prefix = prefix;
+        self
+    }
+
+    pub fn set_prefix_color(
+        mut self,
+        prefix_color: &'a str,
+    ) -> NickSettings<'a> {
+        self.prefix_color = prefix_color;
+        self
+    }
+
+    pub fn set_visible(mut self, visible: bool) -> NickSettings<'a> {
+        self.visible = visible;
+        self
+    }
+}
 
 /// Nick creation arguments
 pub struct NickArgs<'a> {
@@ -31,26 +80,14 @@ impl<'a> Default for NickArgs<'a> {
 }
 
 /// Weechat Nick type
-pub struct Nick {
-    ptr: *mut t_gui_nick,
-    buf_ptr: *mut t_gui_buffer,
-    weechat_ptr: *mut t_weechat_plugin,
+pub struct Nick<'a> {
+    pub(crate) ptr: *mut t_gui_nick,
+    pub(crate) buf_ptr: *mut t_gui_buffer,
+    pub(crate) weechat_ptr: *mut t_weechat_plugin,
+    pub(crate) buffer: PhantomData<&'a Buffer<'a>>,
 }
 
-impl Nick {
-    /// Create a high level Nick object from C nick and buffer pointers.
-    pub(crate) fn from_ptr(
-        ptr: *mut t_gui_nick,
-        buf_ptr: *mut t_gui_buffer,
-        weechat_ptr: *mut t_weechat_plugin,
-    ) -> Nick {
-        Nick {
-            ptr,
-            buf_ptr,
-            weechat_ptr,
-        }
-    }
-
+impl<'a> Nick<'a> {
     /// Get a Weechat object out of the nick.
     fn get_weechat(&self) -> Weechat {
         Weechat::from_ptr(self.weechat_ptr)

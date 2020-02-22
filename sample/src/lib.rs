@@ -5,8 +5,10 @@ use weechat::config::{
 };
 use weechat::{
     weechat_plugin, ArgsWeechat, Buffer, BufferSettings, CommandDescription,
-    CommandHook, NickArgs, Weechat, WeechatPlugin, WeechatResult,
+    CommandHook, Weechat, WeechatPlugin, WeechatResult,
 };
+
+use weechat::buffer::NickSettings;
 use weechat::{BarItem, LightBarItem};
 
 struct SamplePlugin {
@@ -72,23 +74,18 @@ impl WeechatPlugin for SamplePlugin {
 
         let op_group = buffer.add_group("operators", "blue", true, None);
         let emma = buffer.add_nick(
-            NickArgs {
-                name: "Emma",
-                color: "magenta",
-                prefix: "&",
-                prefix_color: "green",
-                ..Default::default()
-            },
+            NickSettings::new("Emma")
+                .set_color("magenta")
+                .set_prefix("&")
+                .set_prefix_color("green"),
             Some(&op_group),
         );
 
         Weechat::print(&format!("Nick name getting test: {}", emma.get_name()));
 
         for nick_number in 0..n {
-            let nick = NickArgs {
-                name: &format!("nick_{}", nick_number),
-                ..Default::default()
-            };
+            let name = &format!("nick_{}", nick_number);
+            let nick = NickSettings::new(name);
             let _ = buffer.add_nick(nick, None);
         }
 
@@ -127,7 +124,7 @@ impl WeechatPlugin for SamplePlugin {
                 .default_value(false)
                 .set_change_callback(SamplePlugin::option_change_cb);
 
-            section.new_boolean_option(option_settings);
+            section.new_boolean_option(option_settings).expect("Can't create option");
         }
 
         let item =
