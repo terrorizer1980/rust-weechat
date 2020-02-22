@@ -53,32 +53,6 @@ impl<'a> NickSettings<'a> {
     }
 }
 
-/// Nick creation arguments
-pub struct NickArgs<'a> {
-    /// Name of the new nick.
-    pub name: &'a str,
-    /// Color for the nick.
-    pub color: &'a str,
-    /// Prefix that will be shown before the name.
-    pub prefix: &'a str,
-    /// Color of the prefix.
-    pub prefix_color: &'a str,
-    /// Should the nick be visible in the nicklist.
-    pub visible: bool,
-}
-
-impl<'a> Default for NickArgs<'a> {
-    fn default() -> NickArgs<'a> {
-        NickArgs {
-            name: "",
-            color: "",
-            prefix: "",
-            prefix_color: "",
-            visible: true,
-        }
-    }
-}
-
 /// Weechat Nick type
 pub struct Nick<'a> {
     pub(crate) ptr: *mut t_gui_nick,
