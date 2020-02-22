@@ -101,9 +101,6 @@ impl Weechat {
     pub unsafe fn free() {
         #[cfg(feature = "async-executor")]
         WeechatExecutor::free();
-
-        WEECHAT_THREAD_ID.take();
-        WEECHAT.take();
     }
 
     /// # Safety
