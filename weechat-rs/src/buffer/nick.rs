@@ -2,9 +2,11 @@ use std::borrow::Cow;
 use std::ffi::CStr;
 use std::marker::PhantomData;
 
-use crate::{Buffer, LossyCString, Weechat};
+use crate::{LossyCString, Weechat};
+use crate::buffer::Buffer;
 use weechat_sys::{t_gui_buffer, t_gui_nick, t_weechat_plugin};
 
+/// Settings to create a new nick.
 pub struct NickSettings<'a> {
     /// Name of the new nick.
     pub(crate) name: &'a str,
@@ -19,6 +21,11 @@ pub struct NickSettings<'a> {
 }
 
 impl<'a> NickSettings<'a> {
+    /// Create new empyt nick creation settings.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the new nick.
     pub fn new(name: &str) -> NickSettings {
         NickSettings {
             name,
@@ -29,16 +36,31 @@ impl<'a> NickSettings<'a> {
         }
     }
 
+    /// Set the color of the nick.
+    /// 
+    /// # Arguments
+    ///
+    /// * `color` - The color that the nick should have.
     pub fn set_color(mut self, color: &'a str) -> NickSettings<'a> {
         self.color = color;
         self
     }
 
+    /// Set the prefix of the nick.
+    ///
+    /// # Arguments
+    ///
+    /// * `prefix` - The prefix displayed before the nick in the nicklist.
     pub fn set_prefix(mut self, prefix: &'a str) -> NickSettings<'a> {
         self.prefix = prefix;
         self
     }
 
+    /// Set the color of the nick prefix.
+    ///
+    /// # Arguments
+    ///
+    /// * `prefix_color` - The color that the prefix should have.
     pub fn set_prefix_color(
         mut self,
         prefix_color: &'a str,
@@ -47,6 +69,12 @@ impl<'a> NickSettings<'a> {
         self
     }
 
+    /// Set the visibility of the nick.
+    ///
+    /// # Arguments
+    ///
+    /// * `visible` - Should the nick be visible in the nicklist, `true` if it
+    ///     should be visible, false otherwise. Defaults to `true`.
     pub fn set_visible(mut self, visible: bool) -> NickSettings<'a> {
         self.visible = visible;
         self

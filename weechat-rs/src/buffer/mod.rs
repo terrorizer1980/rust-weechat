@@ -21,10 +21,11 @@ use weechat_sys::{
     WEECHAT_RC_OK,
 };
 
-pub use crate::buffer::nick::{Nick, NickArgs, NickSettings};
+pub use crate::buffer::nick::{Nick, NickSettings};
 
-/// A high level Buffer type encapsulating weechats C buffer pointer.
-/// The buffer won't be closed if the object is destroyed.
+/// A Weechat buffer.
+///
+/// A buffer contains the data displayed on the screen.
 pub struct Buffer<'a> {
     inner: InnerBuffers<'a>,
 }
@@ -46,12 +47,23 @@ impl PartialEq for Buffer<'_> {
     }
 }
 
+/// A handle to a buffer that was created in the current plugin.
+///
+/// This means that the plugin owns this buffer. Nevertheless Weechat can
+/// invalidate the buffer between callbacks at any point in time.
+///
+/// The buffer handle can be upgraded to a buffer which can then manipulate the
+/// buffer state using the `upgrade()` method.
 pub struct BufferHandle {
     pub(crate) weechat: *mut t_weechat_plugin,
     pub(crate) buffer_ptr: Rc<RefCell<*mut t_gui_buffer>>,
 }
 
 impl BufferHandle {
+    /// Upgrade the buffer handle into a `Buffer`.
+    ///
+    /// This is necessary to do because the handle can be invalidated by Weechat
+    /// between callbacks.
     pub fn upgrade(&self) -> Result<Buffer<'_>, ()> {
         let ptr_borrow = self.buffer_ptr.borrow();
 
@@ -88,18 +100,24 @@ pub(crate) struct BufferPointers {
 }
 
 #[cfg(not(feature = "async-executor"))]
+/// Callback that will be called if the user inputs something into the buffer
+/// input field. This is the normal version of the callback.
 pub type BufferInputCallback =
     Box<dyn FnMut(&Weechat, &Buffer, Cow<str>) -> Result<(), ()>>;
 
 #[cfg(feature = "async-executor")]
+/// Callback that will be called if the user inputs something into the buffer
+/// input field. This is the async/await enabled version of the callback.
 pub type BufferInputCallback<T> = Box<
     dyn FnMut(Option<T>, BufferHandle, String) -> LocalBoxFuture<'static, ()>,
 >;
 
+/// Callback that will be called if the buffer gets closed.
 pub type BufferCloseCallback =
     Box<dyn FnMut(&Weechat, &Buffer) -> Result<(), ()>>;
 
 #[cfg(feature = "async-executor")]
+/// Settings for the creation of a buffer.
 pub struct BufferSettings<T: Clone> {
     pub(crate) name: String,
     pub(crate) input_callback: Option<BufferInputCallback<T>>,
@@ -108,6 +126,7 @@ pub struct BufferSettings<T: Clone> {
 }
 
 #[cfg(not(feature = "async-executor"))]
+/// Settings for the creation of a buffer.
 pub struct BufferSettings {
     pub(crate) name: String,
     pub(crate) input_callback: Option<BufferInputCallback>,
@@ -116,6 +135,12 @@ pub struct BufferSettings {
 
 #[cfg(feature = "async-executor")]
 impl<T: Clone> BufferSettings<T> {
+    /// Create new default buffer creation settings.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the new buffer. Needs to be unique across a
+    /// plugin, otherwise the buffer creation will fail.
     pub fn new(name: &str) -> Self {
         BufferSettings {
             name: name.to_owned(),
@@ -125,6 +150,12 @@ impl<T: Clone> BufferSettings<T> {
         }
     }
 
+    /// Set the buffer input callback.
+    ///
+    /// # Arguments
+    ///
+    /// * `callback` - An async function that will be called once a user inputs
+    ///     data into the buffer input line.
     pub fn input_callback<C: 'static>(
         mut self,
         mut callback: impl FnMut(Option<T>, BufferHandle, String) -> C + 'static,
@@ -139,11 +170,23 @@ impl<T: Clone> BufferSettings<T> {
         self
     }
 
+    /// Set some additional data that will be passed to the input callback on
+    /// every invocation.
+    ///
+    /// # Arguments
+    ///
+    /// * `data` - The data that should be passed to the input callback.
     pub fn input_data(mut self, data: T) -> Self {
         self.input_data = Some(data);
         self
     }
 
+    /// Set the close callback.
+    ///
+    /// # Arguments
+    ///
+    /// * `callback` - The callback that should be called before a buffer is
+    ///     closed.
     pub fn close_callback(
         mut self,
         callback: impl FnMut(&Weechat, &Buffer) -> Result<(), ()> + 'static,
@@ -155,6 +198,12 @@ impl<T: Clone> BufferSettings<T> {
 
 #[cfg(not(feature = "async-executor"))]
 impl BufferSettings {
+    /// Create new default buffer creation settings.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the new buffer. Needs to be unique across a
+    /// plugin, otherwise the buffer creation will fail.
     pub fn new(name: &str) -> Self {
         BufferSettings {
             name: name.to_owned(),
@@ -163,6 +212,12 @@ impl BufferSettings {
         }
     }
 
+    /// Set the buffer input callback.
+    ///
+    /// # Arguments
+    ///
+    /// * `callback` - An async function that will be called once a user inputs
+    ///     data into the buffer input line.
     pub fn input_callback(
         mut self,
         callback: impl FnMut(&Weechat, &Buffer, Cow<str>) -> Result<(), ()>
@@ -172,6 +227,11 @@ impl BufferSettings {
         self
     }
 
+    /// Set the close callback.
+    ///
+    /// # Arguments
+    ///
+    /// * `callback` - The callback that should be called before a buffer is
     pub fn close_callback(
         mut self,
         callback: impl FnMut(&Weechat, &Buffer) -> Result<(), ()> + 'static,
@@ -288,8 +348,8 @@ impl Weechat {
             _data: *mut c_void,
             buffer: *mut t_gui_buffer,
         ) -> c_int {
-            // We use from_raw() here so that the box get's freed at the end
-            // of this scope.
+            // We use from_raw() here so that the box gets deallocated at the
+            // end of this scope.
             let pointers = Box::from_raw(pointer as *mut BufferPointers<T>);
             let weechat = Weechat::from_ptr(pointers.weechat);
             let buffer = weechat.buffer_from_ptr(buffer);
@@ -323,7 +383,7 @@ impl Weechat {
         };
 
         // We create a box and use leak to stop rust from freeing our data,
-        // we are giving weechat ownership over the data and will free it in
+        // we are giving Weechat ownership over the data and will free it in
         // the buffer close callback.
         let buffer_pointers = Box::new(BufferPointers::<T> {
             weechat: self.ptr,
@@ -411,7 +471,7 @@ impl Weechat {
             _data: *mut c_void,
             buffer: *mut t_gui_buffer,
         ) -> c_int {
-            // We use from_raw() here so that the box get's freed at the end
+            // We use from_raw() here so that the box gets freed at the end
             // of this scope.
             let pointers = Box::from_raw(pointer as *mut BufferPointers);
             let weechat = Weechat::from_ptr(pointers.weechat);
@@ -541,6 +601,13 @@ impl Buffer<'_> {
     }
 
     /// Display a message on the buffer with attached date and tags
+    ///
+    /// # Arguments
+    ///
+    /// * `date` - A unix time-stamp representing the date of the message, 0
+    ///     means now.
+    /// * `tags` - A list of tags that will be applied to the printed line.
+    /// * `message` - The message that will be displayed.
     pub fn print_date_tags(&self, date: i64, tags: &[&str], message: &str) {
         let weechat = self.weechat();
         let printf_date_tags = weechat.get().printf_date_tags.unwrap();

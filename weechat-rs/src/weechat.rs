@@ -8,6 +8,8 @@ use std::borrow::Cow;
 use std::ffi::CStr;
 use std::{ptr, vec};
 
+use crate::Weechat;
+
 #[cfg(feature = "async-executor")]
 use crate::executor::WeechatExecutor;
 #[cfg(feature = "async-executor")]
@@ -64,12 +66,6 @@ impl DoubleEndedIterator for ArgsWeechat {
     }
 }
 
-/// Main Weechat struct that encapsulates common weechat API functions.
-/// It has a similar API as the weechat script API.
-pub struct Weechat {
-    pub(crate) ptr: *mut t_weechat_plugin,
-}
-
 static mut WEECHAT: Option<Weechat> = None;
 static mut WEECHAT_THREAD_ID: Option<std::thread::ThreadId> = None;
 
@@ -111,6 +107,17 @@ impl Weechat {
         Weechat { ptr }
     }
 
+    /// Get the Weechat plugin.
+    ///
+    /// # Safety
+    ///
+    /// It is generally safe to call this method, the plugin pointer is valid
+    /// for the durration of the plugin lifetime. The problem is that many
+    /// Weechat objects need to have a lifetime bound to a Weechat context
+    /// object that is only valid for the duration of a callback.
+    ///
+    /// Since this one will have a static lifetime objects that are fetched from
+    /// this object will have a too long lifetime.
     pub unsafe fn weechat() -> &'static mut Weechat {
         match WEECHAT {
             Some(ref mut w) => w,
@@ -269,6 +276,7 @@ impl Weechat {
     }
 
     #[cfg(feature = "async-executor")]
+    /// Spawn a new `Future` on the main Weechat thread.
     pub fn spawn<F, R>(future: F) -> JoinHandle<R, ()>
     where
         F: Future<Output = R> + 'static,

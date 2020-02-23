@@ -7,7 +7,8 @@ use std::ptr;
 use weechat_sys::{t_gui_buffer, t_gui_completion, t_weechat_plugin};
 
 use crate::hooks::Hook;
-use crate::{Buffer, LossyCString, ReturnCode, Weechat};
+use crate::{LossyCString, ReturnCode, Weechat};
+use crate::buffer::Buffer;
 
 /// A handle to a completion item.
 pub struct Completion {
@@ -20,9 +21,9 @@ pub struct Completion {
 pub enum CompletionPosition {
     /// Insert the item in a way that keeps the list sorted.
     Sorted,
-    // Insert the item at the beginning of the list.
+    /// Insert the item at the beginning of the list.
     Beginning,
-    // Insert the item at the end of the list.
+    /// Insert the item at the end of the list.
     End,
 }
 

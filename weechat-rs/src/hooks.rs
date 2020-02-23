@@ -13,7 +13,8 @@ use std::time::Duration;
 
 use weechat_sys::{t_gui_buffer, t_hook, t_weechat_plugin, WEECHAT_RC_OK};
 
-use crate::{ArgsWeechat, Buffer, LossyCString, ReturnCode, Weechat};
+use crate::{ArgsWeechat, LossyCString, ReturnCode, Weechat};
+use crate::buffer::Buffer;
 
 /// Weechat Hook type. The hook is unhooked automatically when the object is
 /// dropped.

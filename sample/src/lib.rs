@@ -1,15 +1,12 @@
 use std::borrow::Cow;
 use std::time::Instant;
+use weechat::bar::{BarItem, LightBarItem};
+use weechat::buffer::{Buffer, BufferSettings, NickSettings};
 use weechat::config::{
     BooleanOption, BooleanOptionSettings, Config, ConfigSectionSettings,
 };
-use weechat::{
-    weechat_plugin, ArgsWeechat, Buffer, BufferSettings, CommandDescription,
-    CommandHook, Weechat, WeechatPlugin, WeechatResult,
-};
-
-use weechat::buffer::NickSettings;
-use weechat::{BarItem, LightBarItem};
+use weechat::hooks::{CommandDescription, CommandHook};
+use weechat::{weechat_plugin, ArgsWeechat, Weechat, WeechatPlugin};
 
 struct SamplePlugin {
     _rust_hook: CommandHook<String>,
@@ -19,7 +16,7 @@ struct SamplePlugin {
 
 impl SamplePlugin {
     fn input_cb(
-        weechat: &Weechat,
+        _weechat: &Weechat,
         buffer: &Buffer,
         input: Cow<str>,
     ) -> Result<(), ()> {
@@ -27,7 +24,7 @@ impl SamplePlugin {
         Ok(())
     }
 
-    fn close_cb(weechat: &Weechat, buffer: &Buffer) -> Result<(), ()> {
+    fn close_cb(_weechat: &Weechat, _buffer: &Buffer) -> Result<(), ()> {
         Weechat::print("Closing buffer");
         Ok(())
     }
@@ -39,7 +36,7 @@ impl SamplePlugin {
         }
     }
 
-    fn option_change_cb(weechat: &Weechat, option: &BooleanOption) {
+    fn option_change_cb(_weechat: &Weechat, _option: &BooleanOption) {
         Weechat::print("Changing rust option");
     }
 
@@ -53,7 +50,7 @@ impl SamplePlugin {
 }
 
 impl WeechatPlugin for SamplePlugin {
-    fn init(weechat: &Weechat, _args: ArgsWeechat) -> WeechatResult<Self> {
+    fn init(weechat: &Weechat, _args: ArgsWeechat) -> Result<Self, ()> {
         Weechat::print("Hello Rust!");
 
         let buffer_settings = BufferSettings::new("Test buffer")
@@ -108,7 +105,7 @@ impl WeechatPlugin for SamplePlugin {
         );
 
         let mut config = weechat
-            .config_new_with_callback("rust_sample", |weechat, _config| {
+            .config_new_with_callback("rust_sample", |_weechat, _config| {
                 Weechat::print("Reloaded config");
             })
             .expect("Can't create new config");
@@ -124,7 +121,9 @@ impl WeechatPlugin for SamplePlugin {
                 .default_value(false)
                 .set_change_callback(SamplePlugin::option_change_cb);
 
-            section.new_boolean_option(option_settings).expect("Can't create option");
+            section
+                .new_boolean_option(option_settings)
+                .expect("Can't create option");
         }
 
         let item =
