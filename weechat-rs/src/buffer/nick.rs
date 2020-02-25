@@ -119,6 +119,21 @@ impl<'a> Nick<'a> {
         self.get_string("name").unwrap()
     }
 
+    /// Get the color of the nick.
+    pub fn color(&self) -> Cow<str> {
+        self.get_string("color").unwrap()
+    }
+
+    /// Get the prefix of the nick.
+    pub fn prefix(&self) -> Cow<str> {
+        self.get_string("prefix").unwrap()
+    }
+
+    /// Get the color of the nick prefix.
+    pub fn prefix_color(&self) -> Cow<str> {
+        self.get_string("prefix_color").unwrap()
+    }
+
     /// Removes the nick from it's nicklist
     pub fn remove(&self) {
         let weechat = self.get_weechat();
