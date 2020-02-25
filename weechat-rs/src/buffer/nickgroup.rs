@@ -78,8 +78,8 @@ impl<'a> NickGroup<'a> {
     /// * `nick_settings` - Nick arguments struct for the nick that should be
     ///     added.
     ///
-    /// Returns a reference to the newly created nick if one is created
-    /// successfully, an empty error otherwise.
+    /// Returns the newly created nick if one is created successfully, an empty
+    /// error otherwise.
     pub fn add_nick(&self, nick_settings: NickSettings) -> Result<Nick, ()> {
         let weechat = self.get_weechat();
         let nick_ptr = Buffer::add_nick_helper(

@@ -624,6 +624,12 @@ impl Buffer<'_> {
     }
 
     /// Search for a nicklist group by name
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the nicklist that should be searched for.
+    ///
+    /// Returns a NickGroup if one is found, None otherwise.
     pub fn search_nicklist_group(&self, name: &str) -> Option<NickGroup> {
         let weechat = self.weechat();
 
@@ -694,8 +700,8 @@ impl Buffer<'_> {
     /// * `nick_settings` - Nick arguments struct for the nick that should be
     ///     added.
     ///
-    /// Returns a reference to the newly created nick if one is created
-    /// successfully, an empty error otherwise.
+    /// Returns the newly created nick if one is created successfully, an empty
+    /// error otherwise.
     pub fn add_nick(&self, nick_settings: NickSettings) -> Result<Nick, ()> {
         let weechat = self.weechat();
         let nick_ptr =
