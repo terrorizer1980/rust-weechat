@@ -33,7 +33,7 @@ pub struct Weechat {
 
 #[cfg(feature = "async-executor")]
 pub use executor::JoinHandle;
-pub use weechat::{ArgsWeechat};
+pub use weechat::ArgsWeechat;
 
 /// Status values for Weechat callbacks
 pub enum ReturnCode {

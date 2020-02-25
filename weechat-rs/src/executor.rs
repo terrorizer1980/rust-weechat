@@ -4,8 +4,8 @@ use std::collections::VecDeque;
 use std::future::Future;
 use std::sync::{Arc, Mutex, Weak};
 
-use crate::Weechat;
 use crate::hooks::{FdHook, FdHookMode};
+use crate::Weechat;
 
 static mut _EXECUTOR: Option<WeechatExecutor> = None;
 

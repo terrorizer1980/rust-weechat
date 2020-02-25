@@ -6,9 +6,9 @@ use std::ptr;
 
 use weechat_sys::{t_gui_buffer, t_gui_completion, t_weechat_plugin};
 
+use crate::buffer::Buffer;
 use crate::hooks::Hook;
 use crate::{LossyCString, ReturnCode, Weechat};
-use crate::buffer::Buffer;
 
 /// A handle to a completion item.
 pub struct Completion {
