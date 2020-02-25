@@ -5,6 +5,7 @@ use std::marker::PhantomData;
 use weechat_sys::{t_gui_buffer, t_gui_nick_group, t_weechat_plugin};
 
 use crate::buffer::Buffer;
+use crate::buffer::{Nick, NickSettings};
 use crate::{LossyCString, Weechat};
 
 /// Weechat nicklist Group type.
@@ -68,5 +69,59 @@ impl<'a> NickGroup<'a> {
     /// group.
     pub fn level(&self) -> u32 {
         self.get_integer("level") as u32
+    }
+
+    /// Create and add a new nick to the buffer nicklist under this group.
+    ///
+    /// # Arguments
+    ///
+    /// * `nick_settings` - Nick arguments struct for the nick that should be
+    ///     added.
+    ///
+    /// Returns a reference to the newly created nick if one is created
+    /// successfully, an empty error otherwise.
+    pub fn add_nick(&self, nick_settings: NickSettings) -> Result<Nick, ()> {
+        let weechat = self.get_weechat();
+        let nick_ptr = Buffer::add_nick_helper(
+            &weechat,
+            self.buf_ptr,
+            nick_settings,
+            Some(self),
+        );
+
+        if nick_ptr.is_null() {
+            return Err(());
+        }
+
+        Ok(Nick {
+            ptr: nick_ptr,
+            buf_ptr: self.buf_ptr,
+            weechat_ptr: self.get_weechat().ptr,
+            buffer: PhantomData,
+        })
+    }
+
+    /// Search for a nick in this nick group.
+    ///
+    /// # Arguments
+    ///
+    /// * `nick` - The name of the nick that should be found.
+    ///
+    /// Returns a `Nick` if one is found, None otherwise.
+    pub fn search_nick(&self, nick: &str) -> Option<Nick> {
+        let weechat = self.get_weechat();
+        let nick =
+            Buffer::search_nick_helper(&weechat, self.buf_ptr, nick, None);
+
+        if nick.is_null() {
+            None
+        } else {
+            Some(Nick {
+                ptr: nick,
+                buf_ptr: self.buf_ptr,
+                weechat_ptr: weechat.ptr,
+                buffer: PhantomData,
+            })
+        }
     }
 }

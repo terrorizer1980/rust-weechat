@@ -5,8 +5,8 @@ use weechat_sys::{
     t_gui_bar_item, t_gui_buffer, t_gui_window, t_hashtable, t_weechat_plugin,
 };
 
-use crate::{LossyCString, Weechat};
 use crate::buffer::Buffer;
+use crate::{LossyCString, Weechat};
 
 struct BarItemCbData<T> {
     callback: fn(&T, &LightBarItem, &Buffer) -> String,

@@ -18,7 +18,7 @@ use futures::future::{Future, FutureExt, LocalBoxFuture};
 use crate::{LossyCString, Weechat};
 use libc::{c_char, c_int};
 use weechat_sys::{
-    t_gui_buffer, t_weechat_plugin, WEECHAT_RC_ERROR, WEECHAT_RC_OK,
+    t_gui_buffer, t_gui_nick, t_weechat_plugin, WEECHAT_RC_ERROR, WEECHAT_RC_OK,
 };
 
 pub use crate::buffer::nick::{Nick, NickSettings};
@@ -648,73 +648,58 @@ impl Buffer<'_> {
         }
     }
 
-    /// Search for a nick in a group
-    pub fn search_nick(
-        &self,
+    /// Search for a nick in the whole nicklist.
+    ///
+    /// # Arguments
+    ///
+    /// * `nick` - The name of the nick that should be found.
+    ///
+    /// Returns a `Nick` if one is found, None otherwise.
+    pub fn search_nick(&self, nick: &str) -> Option<Nick> {
+        let weechat = self.weechat();
+        let nick = Buffer::search_nick_helper(&weechat, self.ptr(), nick, None);
+
+        if nick.is_null() {
+            None
+        } else {
+            Some(Nick {
+                ptr: nick,
+                buf_ptr: self.ptr(),
+                weechat_ptr: weechat.ptr,
+                buffer: PhantomData,
+            })
+        }
+    }
+
+    fn search_nick_helper(
+        weechat: &Weechat,
+        buffer_ptr: *mut t_gui_buffer,
         nick: &str,
         group: Option<&NickGroup>,
-    ) -> Option<Nick> {
-        let weechat = self.weechat();
-
+    ) -> *mut t_gui_nick {
         let nicklist_search_nick = weechat.get().nicklist_search_nick.unwrap();
 
         let nick = LossyCString::new(nick);
         let group_ptr = group.map(|g| g.ptr).unwrap_or(ptr::null_mut());
 
-        unsafe {
-            let nick =
-                nicklist_search_nick(self.ptr(), group_ptr, nick.as_ptr());
-
-            if nick.is_null() {
-                None
-            } else {
-                Some(Nick {
-                    ptr: nick,
-                    buf_ptr: self.ptr(),
-                    weechat_ptr: self.weechat().ptr,
-                    buffer: PhantomData,
-                })
-            }
-        }
+        unsafe { nicklist_search_nick(buffer_ptr, group_ptr, nick.as_ptr()) }
     }
 
-    /// Create and add a new nick to the buffer nicklist. Returns the newly
-    /// created nick.
-    /// The nick won't be removed from the nicklist if the returned nick is
-    /// dropped.
-    /// * `nick` - Nick arguments struct for the nick that should be added.
-    /// * `group` - Nicklist group that the nick should be added to. If no
-    ///     group is provided the nick is added to the root group.
-    pub fn add_nick(
-        &self,
-        nick: NickSettings,
-        group: Option<&NickGroup>,
-    ) -> Result<Nick, ()> {
+    /// Create and add a new nick to the buffer nicklist.
+    ///
+    /// This will add the nick to the root nick group.
+    ///
+    /// # Arguments
+    ///
+    /// * `nick_settings` - Nick arguments struct for the nick that should be
+    ///     added.
+    ///
+    /// Returns a reference to the newly created nick if one is created
+    /// successfully, an empty error otherwise.
+    pub fn add_nick(&self, nick_settings: NickSettings) -> Result<Nick, ()> {
         let weechat = self.weechat();
-
-        let c_nick = LossyCString::new(nick.name);
-        let color = LossyCString::new(nick.color);
-        let prefix = LossyCString::new(nick.prefix);
-        let prefix_color = LossyCString::new(nick.prefix_color);
-
-        let add_nick = weechat.get().nicklist_add_nick.unwrap();
-
-        let group_ptr = match group {
-            Some(g) => g.ptr,
-            None => ptr::null_mut(),
-        };
-
-        let nick_ptr = unsafe {
-            add_nick(
-                self.ptr(),
-                group_ptr,
-                c_nick.as_ptr(),
-                color.as_ptr(),
-                prefix.as_ptr(),
-                prefix_color.as_ptr(),
-                nick.visible as i32,
-            )
-        };
+        let nick_ptr =
+            Buffer::add_nick_helper(&weechat, self.ptr(), nick_settings, None);
 
         if nick_ptr.is_null() {
             return Err(());
@@ -728,6 +713,37 @@ impl Buffer<'_> {
         })
     }
 
+    fn add_nick_helper(
+        weechat: &Weechat,
+        buffer_ptr: *mut t_gui_buffer,
+        nick_settings: NickSettings,
+        group: Option<&NickGroup>,
+    ) -> *mut t_gui_nick {
+        let c_nick = LossyCString::new(nick_settings.name);
+        let color = LossyCString::new(nick_settings.color);
+        let prefix = LossyCString::new(nick_settings.prefix);
+        let prefix_color = LossyCString::new(nick_settings.prefix_color);
+
+        let add_nick = weechat.get().nicklist_add_nick.unwrap();
+
+        let group_ptr = match group {
+            Some(g) => g.ptr,
+            None => ptr::null_mut(),
+        };
+
+        unsafe {
+            add_nick(
+                buffer_ptr,
+                group_ptr,
+                c_nick.as_ptr(),
+                color.as_ptr(),
+                prefix.as_ptr(),
+                prefix_color.as_ptr(),
+                nick_settings.visible as i32,
+            )
+        }
+    }
+
     /// Create and add a new nicklist group to the buffers nicklist.
     /// * `name` - Name of the new group.
     /// * `color` - Color of the new group.
@@ -736,7 +752,7 @@ impl Buffer<'_> {
     ///     If no group is provided the group is added to the root group.
     /// Returns the new nicklist group. The group is not removed if the object
     /// is dropped.
-    pub fn add_group(
+    pub fn add_nicklist_group(
         &self,
         name: &str,
         color: &str,
