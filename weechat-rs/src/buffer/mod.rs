@@ -1,6 +1,7 @@
 //! Weechat Buffer module containing Buffer and Nick types.
 
 mod nick;
+mod nickgroup;
 
 use std::borrow::Cow;
 use std::ffi::CStr;
@@ -22,6 +23,7 @@ use weechat_sys::{
 };
 
 pub use crate::buffer::nick::{Nick, NickSettings};
+pub use crate::buffer::nickgroup::{NickGroup};
 
 /// A Weechat buffer.
 ///
@@ -558,12 +560,6 @@ pub(crate) type WeechatInputCbT = unsafe extern "C" fn(
     input_data: *const c_char,
 ) -> c_int;
 
-/// Weechat nicklist Group type.
-pub struct NickGroup {
-    pub(crate) ptr: *mut t_gui_nick_group,
-    _buf_ptr: *mut t_gui_buffer,
-}
-
 impl Buffer<'_> {
     fn weechat(&self) -> Weechat {
         let ptr = match &self.inner {
@@ -649,7 +645,7 @@ impl Buffer<'_> {
             } else {
                 Some(NickGroup {
                     ptr: group,
-                    _buf_ptr: self.ptr(),
+                    buf_ptr: self.ptr(),
                 })
             }
         }
@@ -769,7 +765,7 @@ impl Buffer<'_> {
 
         NickGroup {
             ptr: group_ptr,
-            _buf_ptr: self.ptr(),
+            buf_ptr: self.ptr(),
         }
     }
 
