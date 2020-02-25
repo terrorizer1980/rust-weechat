@@ -719,6 +719,31 @@ impl Buffer<'_> {
         })
     }
 
+    /// Removes a nick from the nicklist.
+    ///
+    /// # Arguments
+    ///
+    /// * `nick` - The name of the nick that should be removed.
+    ///
+    /// Returns `true` if a nick was found and removed, `false` otherwise.
+    pub fn remove(&mut self, nick: &str) -> bool {
+        let weechat = self.weechat();
+
+        let nick = self.search_nick(nick);
+
+        match nick {
+            Some(nick) => {
+                let nicklist_remove_nick = weechat.get().nicklist_remove_nick.unwrap();
+
+                unsafe {
+                    nicklist_remove_nick(self.ptr(), nick.ptr);
+                }
+                true
+            },
+            None => false
+        }
+    }
+
     fn add_nick_helper(
         weechat: &Weechat,
         buffer_ptr: *mut t_gui_buffer,
