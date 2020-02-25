@@ -18,12 +18,11 @@ use futures::future::{Future, FutureExt, LocalBoxFuture};
 use crate::{LossyCString, Weechat};
 use libc::{c_char, c_int};
 use weechat_sys::{
-    t_gui_buffer, t_gui_nick_group, t_weechat_plugin, WEECHAT_RC_ERROR,
-    WEECHAT_RC_OK,
+    t_gui_buffer, t_weechat_plugin, WEECHAT_RC_ERROR, WEECHAT_RC_OK,
 };
 
 pub use crate::buffer::nick::{Nick, NickSettings};
-pub use crate::buffer::nickgroup::{NickGroup};
+pub use crate::buffer::nickgroup::NickGroup;
 
 /// A Weechat buffer.
 ///
@@ -633,21 +632,19 @@ impl Buffer<'_> {
 
         let name = LossyCString::new(name);
 
-        unsafe {
-            let group = nicklist_search_group(
-                self.ptr(),
-                ptr::null_mut(),
-                name.as_ptr(),
-            );
+        let group = unsafe {
+            nicklist_search_group(self.ptr(), ptr::null_mut(), name.as_ptr())
+        };
 
-            if group.is_null() {
-                None
-            } else {
-                Some(NickGroup {
-                    ptr: group,
-                    buf_ptr: self.ptr(),
-                })
-            }
+        if group.is_null() {
+            None
+        } else {
+            Some(NickGroup {
+                ptr: group,
+                buf_ptr: self.ptr(),
+                weechat_ptr: self.weechat().ptr,
+                buffer: PhantomData,
+            })
         }
     }
 
@@ -692,7 +689,7 @@ impl Buffer<'_> {
         &self,
         nick: NickSettings,
         group: Option<&NickGroup>,
-    ) -> Nick {
+    ) -> Result<Nick, ()> {
         let weechat = self.weechat();
 
         let c_nick = LossyCString::new(nick.name);
@@ -719,12 +716,16 @@ impl Buffer<'_> {
             )
         };
 
-        Nick {
+        if nick_ptr.is_null() {
+            return Err(());
+        }
+
+        Ok(Nick {
             ptr: nick_ptr,
             buf_ptr: self.ptr(),
             weechat_ptr: self.weechat().ptr,
             buffer: PhantomData,
-        }
+        })
     }
 
     /// Create and add a new nicklist group to the buffers nicklist.
@@ -741,7 +742,7 @@ impl Buffer<'_> {
         color: &str,
         visible: bool,
         parent_group: Option<&NickGroup>,
-    ) -> NickGroup {
+    ) -> Result<NickGroup, ()> {
         let weechat = self.weechat();
         let add_group = weechat.get().nicklist_add_group.unwrap();
 
@@ -763,10 +764,16 @@ impl Buffer<'_> {
             )
         };
 
-        NickGroup {
+        if group_ptr.is_null() {
+            return Err(());
+        }
+
+        Ok(NickGroup {
             ptr: group_ptr,
             buf_ptr: self.ptr(),
-        }
+            weechat_ptr: self.weechat().ptr,
+            buffer: PhantomData,
+        })
     }
 
     fn set(&self, property: &str, value: &str) {

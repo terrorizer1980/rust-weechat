@@ -2,8 +2,8 @@ use std::borrow::Cow;
 use std::ffi::CStr;
 use std::marker::PhantomData;
 
-use crate::{LossyCString, Weechat};
 use crate::buffer::Buffer;
+use crate::{LossyCString, Weechat};
 use weechat_sys::{t_gui_buffer, t_gui_nick, t_weechat_plugin};
 
 /// Settings to create a new nick.
@@ -37,7 +37,7 @@ impl<'a> NickSettings<'a> {
     }
 
     /// Set the color of the nick.
-    /// 
+    ///
     /// # Arguments
     ///
     /// * `color` - The color that the nick should have.
@@ -99,7 +99,7 @@ impl<'a> Nick<'a> {
     /// * `property` - The name of the property to get the value for, this can
     ///     be one of name, color, prefix or prefix_color. If a unknown
     ///     property is requested an empty string is returned.
-    pub fn get_string(&self, property: &str) -> Option<Cow<str>> {
+    fn get_string(&self, property: &str) -> Option<Cow<str>> {
         let weechat = self.get_weechat();
         let get_string = weechat.get().nicklist_nick_get_string.unwrap();
         let c_property = LossyCString::new(property);
@@ -115,7 +115,7 @@ impl<'a> Nick<'a> {
     }
 
     /// Get the name property of the nick.
-    pub fn get_name(&self) -> Cow<str> {
+    pub fn name(&self) -> Cow<str> {
         self.get_string("name").unwrap()
     }
 
