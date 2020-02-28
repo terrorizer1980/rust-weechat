@@ -726,7 +726,7 @@ impl Buffer<'_> {
     /// * `nick` - The name of the nick that should be removed.
     ///
     /// Returns `true` if a nick was found and removed, `false` otherwise.
-    pub fn remove(&mut self, nick: &str) -> bool {
+    pub fn remove_nick(&mut self, nick: &str) -> bool {
         let weechat = self.weechat();
 
         let nick = self.search_nick(nick);
