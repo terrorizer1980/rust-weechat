@@ -725,6 +725,32 @@ impl Buffer<'_> {
         })
     }
 
+    /// Removes a group from the nicklist.
+    ///
+    /// # Arguments
+    ///
+    /// * `group_name` - The name of the group that should be removed.
+    ///
+    /// Returns `true` if a group was found and removed, `false` otherwise.
+    pub fn remove_nicklist_group(&mut self, group_name: &str) -> bool {
+        let weechat = self.weechat();
+
+        let group = self.search_nicklist_group(group_name);
+
+        match group {
+            Some(group) => {
+                let nicklist_remove_group =
+                    weechat.get().nicklist_remove_group.unwrap();
+
+                unsafe {
+                    nicklist_remove_group(self.ptr(), group.ptr);
+                }
+                true
+            }
+            None => false,
+        }
+    }
+
     /// Removes a nick from the nicklist.
     ///
     /// # Arguments
@@ -739,14 +765,15 @@ impl Buffer<'_> {
 
         match nick {
             Some(nick) => {
-                let nicklist_remove_nick = weechat.get().nicklist_remove_nick.unwrap();
+                let nicklist_remove_nick =
+                    weechat.get().nicklist_remove_nick.unwrap();
 
                 unsafe {
                     nicklist_remove_nick(self.ptr(), nick.ptr);
                 }
                 true
-            },
-            None => false
+            }
+            None => false,
         }
     }
 
