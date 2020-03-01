@@ -302,9 +302,12 @@ impl Weechat {
     /// * `settings` - Settings for the new buffer.
     ///
     /// Returns a Buffer if one has been created, otherwise an empty Error.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the method is not called from the main Weechat thread.
     #[cfg(feature = "async-executor")]
     pub fn buffer_new<T: Clone>(
-        &self,
         settings: BufferSettings<T>,
     ) -> Result<BufferHandle, ()> {
         unsafe extern "C" fn c_input_cb<T: Clone>(
@@ -383,11 +386,14 @@ impl Weechat {
             None => None,
         };
 
+        Weechat::check_thread();
+        let weechat = unsafe { Weechat::weechat() };
+
         // We create a box and use leak to stop rust from freeing our data,
         // we are giving Weechat ownership over the data and will free it in
         // the buffer close callback.
         let buffer_pointers = Box::new(BufferPointers::<T> {
-            weechat: self.ptr,
+            weechat: weechat.ptr,
             input_cb: settings.input_callback,
             input_data: settings.input_data,
             close_cb: settings.close_callback,
@@ -396,12 +402,12 @@ impl Weechat {
 
         let buffer_pointers_ref = Box::leak(buffer_pointers);
 
-        let buf_new = self.get().buffer_new.unwrap();
+        let buf_new = weechat.get().buffer_new.unwrap();
         let c_name = LossyCString::new(settings.name);
 
         let buf_ptr = unsafe {
             buf_new(
-                self.ptr,
+                weechat.ptr,
                 c_name.as_ptr(),
                 c_input_cb,
                 buffer_pointers_ref as *const _ as *const c_void,
@@ -425,7 +431,7 @@ impl Weechat {
         pointers.buffer_cell = Some(buffer_cell.clone());
 
         Ok(BufferHandle {
-            weechat: self.ptr,
+            weechat: weechat.ptr,
             buffer_ptr: buffer_cell,
         })
     }
@@ -436,10 +442,7 @@ impl Weechat {
     ///
     /// Returns a Buffer if one has been created, otherwise an empty Error.
     #[cfg(not(feature = "async-executor"))]
-    pub fn buffer_new(
-        &self,
-        settings: BufferSettings,
-    ) -> Result<BufferHandle, ()> {
+    pub fn buffer_new(settings: BufferSettings) -> Result<BufferHandle, ()> {
         unsafe extern "C" fn c_input_cb(
             pointer: *const c_void,
             _data: *mut c_void,
@@ -506,23 +509,26 @@ impl Weechat {
             None => None,
         };
 
+        Weechat::check_thread();
+        let weechat = unsafe { Weechat::weechat() };
+
         // We create a box and use leak to stop rust from freeing our data,
         // we are giving weechat ownership over the data and will free it in
         // the buffer close callback.
         let buffer_pointers = Box::new(BufferPointers {
-            weechat: self.ptr,
+            weechat: weechat.ptr,
             input_cb: settings.input_callback,
             close_cb: settings.close_callback,
             buffer_cell: None,
         });
         let buffer_pointers_ref = Box::leak(buffer_pointers);
 
-        let buf_new = self.get().buffer_new.unwrap();
+        let buf_new = weechat.get().buffer_new.unwrap();
         let c_name = LossyCString::new(settings.name);
 
         let buf_ptr = unsafe {
             buf_new(
-                self.ptr,
+                weechat.ptr,
                 c_name.as_ptr(),
                 c_input_cb,
                 buffer_pointers_ref as *const _ as *const c_void,
@@ -546,7 +552,7 @@ impl Weechat {
         pointers.buffer_cell = Some(buffer_cell.clone());
 
         Ok(BufferHandle {
-            weechat: self.ptr,
+            weechat: weechat.ptr,
             buffer_ptr: buffer_cell,
         })
     }
