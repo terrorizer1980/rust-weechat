@@ -1,3 +1,104 @@
+//! # `rust-weechat`
+//!
+//! rust-weechat implements high level bindings for the Weechat plugin API.
+//!
+//! The bindings make it possible to create powerful Weechat plugins using rust.
+//!
+//! ```noexecute
+//! use std::borrow::Cow;
+//! use std::time::Instant;
+//! use weechat::bar::{BarItem, LightBarItem};
+//! use weechat::buffer::{Buffer, BufferSettings, NickSettings};
+//! use weechat::config::{
+//!     BooleanOption, BooleanOptionSettings, Config, ConfigSectionSettings,
+//! };
+//! use weechat::hooks::{CommandDescription, CommandHook};
+//! use weechat::{weechat_plugin, ArgsWeechat, Weechat, WeechatPlugin};
+//!
+//! struct SamplePlugin {
+//!     _rust_hook: CommandHook<String>,
+//! }
+//!
+//! impl SamplePlugin {
+//!     fn input_cb(
+//!         _weechat: &Weechat,
+//!         buffer: &Buffer,
+//!         input: Cow<str>,
+//!     ) -> Result<(), ()> {
+//!         buffer.print(&input);
+//!         Ok(())
+//!     }
+//!
+//!     fn close_cb(_weechat: &Weechat, _buffer: &Buffer) -> Result<(), ()> {
+//!         Weechat::print("Closing buffer");
+//!         Ok(())
+//!     }
+//!
+//!     fn rust_command_cb(data: &String, buffer: Buffer, args: ArgsWeechat) {
+//!         buffer.print(data);
+//!         for arg in args {
+//!             buffer.print(&arg)
+//!         }
+//!     }
+//! }
+//!
+//! impl WeechatPlugin for SamplePlugin {
+//!     fn init(weechat: &Weechat, _args: ArgsWeechat) -> Result<Self, ()> {
+//!         Weechat::print("Hello Rust!");
+//!
+//!         let buffer_settings = BufferSettings::new("Test buffer")
+//!             .input_callback(SamplePlugin::input_cb)
+//!             .close_callback(SamplePlugin::close_cb);
+//!
+//!         let buffer_handle =
+//!             Weechat::buffer_new(buffer_settings).expect("Can't create buffer");
+//!
+//!         let buffer = buffer_handle.upgrade().expect("Buffer already closed?");
+//!
+//!         let op_group = buffer
+//!             .add_nicklist_group("operators", "blue", true, None)
+//!             .expect("Can't create nick group");
+//!         let emma = op_group
+//!             .add_nick(
+//!                 NickSettings::new("Emma")
+//!                     .set_color("magenta")
+//!                     .set_prefix("&")
+//!                     .set_prefix_color("green"),
+//!             )
+//!             .expect("Can't add nick to group");
+//!
+//!         let sample_command = CommandDescription {
+//!             name: "rustcommand",
+//!             ..Default::default()
+//!         };
+//!
+//!         let command = weechat.hook_command(
+//!             sample_command,
+//!             SamplePlugin::rust_command_cb,
+//!             Some("Hello rust command".to_owned()),
+//!         );
+//!
+//!         Ok(SamplePlugin {
+//!             _rust_hook: command,
+//!         })
+//!     }
+//! }
+//!
+//! impl Drop for SamplePlugin {
+//!     fn drop(&mut self) {
+//!         Weechat::print("Bye rust");
+//!     }
+//! }
+//!
+//! weechat_plugin!(
+//!     SamplePlugin,
+//!     name: "rust_sample",
+//!     author: "poljar",
+//!     description: "",
+//!     version: "0.1.0",
+//!     license: "MIT"
+//! );
+//! ```
 #![warn(missing_docs)]
 
 use std::ffi::CString;

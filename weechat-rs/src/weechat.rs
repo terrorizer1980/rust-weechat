@@ -128,6 +128,10 @@ impl Weechat {
     }
 
     /// Write a message in WeeChat log file (weechat.log).
+    ///
+    /// # Panics
+    ///
+    /// Panics if the method is not called from the main Weechat thread.
     pub fn log(msg: &str) {
         Weechat::check_thread();
         let weechat = unsafe { Weechat::weechat() };
@@ -142,6 +146,10 @@ impl Weechat {
     }
 
     /// Display a message on the core weechat buffer.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the method is not called from the main Weechat thread.
     pub fn print(msg: &str) {
         Weechat::check_thread();
         let weechat = unsafe { Weechat::weechat() };
@@ -162,7 +170,7 @@ impl Weechat {
         }
     }
 
-    fn check_thread() {
+    pub(crate) fn check_thread() {
         let weechat_thread_id = unsafe {
             WEECHAT_THREAD_ID.as_ref().expect(
                 "Weechat main thread ID wasn't found, plugin \
@@ -183,6 +191,10 @@ impl Weechat {
     /// # Arguments
     ///
     /// `color_name` - name of the color
+    ///
+    /// # Panics
+    ///
+    /// Panics if the method is not called from the main Weechat thread.
     pub fn color(color_name: &str) -> &str {
         Weechat::check_thread();
         let weechat = unsafe { Weechat::weechat() };
@@ -211,6 +223,10 @@ impl Weechat {
     /// * quit
     ///
     /// An empty string will be returned if the prefix is not found
+    ///
+    /// # Panics
+    ///
+    /// Panics if the method is not called from the main Weechat thread.
     pub fn prefix(prefix: &str) -> &str {
         Weechat::check_thread();
         let weechat = unsafe { Weechat::weechat() };
@@ -274,6 +290,10 @@ impl Weechat {
 
     #[cfg(feature = "async-executor")]
     /// Spawn a new `Future` on the main Weechat thread.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the method is not called from the main Weechat thread.
     pub fn spawn<F, R>(future: F) -> JoinHandle<R, ()>
     where
         F: Future<Output = R> + 'static,
