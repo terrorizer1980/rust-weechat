@@ -57,9 +57,8 @@ impl WeechatPlugin for SamplePlugin {
             .input_callback(SamplePlugin::input_cb)
             .close_callback(SamplePlugin::close_cb);
 
-        let buffer_handle = weechat
-            .buffer_new(buffer_settings)
-            .expect("Can't create buffer");
+        let buffer_handle =
+            Weechat::buffer_new(buffer_settings).expect("Can't create buffer");
 
         let buffer = buffer_handle.upgrade().expect("Buffer already closed?");
 
@@ -69,21 +68,24 @@ impl WeechatPlugin for SamplePlugin {
 
         let now = Instant::now();
 
-        let op_group = buffer.add_group("operators", "blue", true, None);
-        let emma = buffer.add_nick(
-            NickSettings::new("Emma")
-                .set_color("magenta")
-                .set_prefix("&")
-                .set_prefix_color("green"),
-            Some(&op_group),
-        );
+        let op_group = buffer
+            .add_nicklist_group("operators", "blue", true, None)
+            .expect("Can't create nick group");
+        let emma = op_group
+            .add_nick(
+                NickSettings::new("Emma")
+                    .set_color("magenta")
+                    .set_prefix("&")
+                    .set_prefix_color("green"),
+            )
+            .expect("Can't add nick to group");
 
-        Weechat::print(&format!("Nick name getting test: {}", emma.get_name()));
+        Weechat::print(&format!("Nick name getting test: {}", emma.name()));
 
         for nick_number in 0..n {
             let name = &format!("nick_{}", nick_number);
             let nick = NickSettings::new(name);
-            let _ = buffer.add_nick(nick, None);
+            let _ = buffer.add_nick(nick);
         }
 
         buffer.print(&format!(
@@ -104,11 +106,13 @@ impl WeechatPlugin for SamplePlugin {
             Some("Hello rust command".to_owned()),
         );
 
-        let mut config = weechat
-            .config_new_with_callback("rust_sample", |_weechat, _config| {
+        let mut config = Weechat::config_new_with_callback(
+            "rust_sample",
+            |_weechat, _config| {
                 Weechat::print("Reloaded config");
-            })
-            .expect("Can't create new config");
+            },
+        )
+        .expect("Can't create new config");
 
         {
             let section_info = ConfigSectionSettings::new("sample_section");
