@@ -28,7 +28,8 @@ impl IntegerOptionSettings {
     /// Create new settings that can be used to create a new integer option.
     ///
     /// # Arguments
-    /// `name` - The name of the new option.
+    ///
+    /// * `name` - The name of the new option.
     pub fn new<N: Into<String>>(name: N) -> Self {
         IntegerOptionSettings {
             name: name.into(),
@@ -39,7 +40,8 @@ impl IntegerOptionSettings {
     /// Set the description of the option.
     ///
     /// # Arguments
-    /// `description` - The description of the new option.
+    ///
+    /// * `description` - The description of the new option.
     pub fn description<D: Into<String>>(mut self, descritpion: D) -> Self {
         self.description = descritpion.into();
         self
@@ -51,7 +53,8 @@ impl IntegerOptionSettings {
     /// the option is reset, the option will take this value.
     ///
     /// # Arguments
-    /// `value` - The value that should act as the default value.
+    ///
+    /// * `value` - The value that should act as the default value.
     pub fn default_value<V: Into<i32>>(mut self, value: V) -> Self {
         self.default_value = value.into();
         self
@@ -63,15 +66,15 @@ impl IntegerOptionSettings {
     /// symbolic values.
     ///
     /// # Arguments
-    /// `values` - The values that should act as the symbolic values.
+    ///
+    /// * `values` - The values that should act as the symbolic values.
     ///
     /// # Examples
-    /// ```
+    /// ```noexecute
     /// let settings = IntegerOptionSettings::new("server_buffer")
     ///     .string_values(vec!["independent", "merged"]);
     ///
     /// let option = section.new_integer_option(settings).expect("Can't create option");
-    ///
     /// ```
     pub fn string_values<I, T>(mut self, values: I) -> Self
     where
@@ -86,7 +89,8 @@ impl IntegerOptionSettings {
     /// Set minimal value of the integer option.
     ///
     /// # Arguments
-    /// `value` - The values that should act as minimal valid value.
+    ///
+    /// * `value` - The values that should act as minimal valid value.
     pub fn min(mut self, value: i32) -> Self {
         self.min = value;
         self
@@ -95,7 +99,8 @@ impl IntegerOptionSettings {
     /// Set maximum value of the integer option.
     ///
     /// # Arguments
-    /// `value` - The values that should act as maximal valid value.
+    ///
+    /// * `value` - The values that should act as maximal valid value.
     pub fn max(mut self, value: i32) -> Self {
         self.max = value;
         self
@@ -104,14 +109,19 @@ impl IntegerOptionSettings {
     /// Set the callback that will run when the value of the option changes.
     ///
     /// # Arguments
-    /// `callback` - The callback that will be run.
+    ///
+    /// * `callback` - The callback that will be run.
     ///
     /// # Examples
+    ///
     /// ```
+    /// use weechat::Weechat;
+    /// use weechat::config::IntegerOptionSettings;
+    ///
     /// let settings = IntegerOptionSettings::new("server_buffer")
-    ///     .string_values(vec!["independent", "merged"]);
+    ///     .string_values(vec!["independent", "merged"])
     ///     .set_change_callback(|weechat, option| {
-    ///         weechat.print("Option changed");
+    ///         Weechat::print("Option changed");
     ///     });
     /// ```
     pub fn set_change_callback(

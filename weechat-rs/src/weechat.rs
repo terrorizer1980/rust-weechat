@@ -99,9 +99,6 @@ impl Weechat {
         WeechatExecutor::free();
     }
 
-    /// # Safety
-    ///
-    /// This should never be called by the user. This is called internally.
     pub(crate) fn from_ptr(ptr: *mut t_weechat_plugin) -> Weechat {
         assert!(!ptr.is_null());
         Weechat { ptr }

@@ -104,10 +104,12 @@ pub(crate) enum ConfigOptionPointers {
     Color(*const c_void),
 }
 
+/// A mutable handle to a Weechat config section.
 pub struct SectionHandleMut<'a> {
     pub(crate) inner: RefMut<'a, ConfigSection>,
 }
 
+/// A handle to a Weechat config section.
 pub struct SectionHandle<'a> {
     pub(crate) inner: Ref<'a, ConfigSection>,
 }
@@ -184,8 +186,10 @@ pub struct ConfigSectionSettings {
 impl ConfigSectionSettings {
     /// Create a new config section info.
     /// This can be passed to a config which will create a new ConfigSection.
+    ///
     /// #Arguments
-    /// `name` - The name that the section should get.
+    ///
+    /// * `name` - The name that the section should get.
     pub fn new<P: Into<String>>(name: P) -> Self {
         ConfigSectionSettings {
             name: name.into(),
@@ -197,14 +201,20 @@ impl ConfigSectionSettings {
     /// read from the disk.
     ///
     /// #Arguments
-    /// `callback` - The callback for a section read operation.
+    ///
+    /// * `callback` - The callback for a section read operation.
     ///
     /// # Examples
     /// ```
+    /// use weechat::Weechat;
+    /// use weechat::config::{ConfigSectionSettings, OptionChanged};
+    ///
     /// let server_section_options = ConfigSectionSettings::new("server")
-    ///     .set_read_callback(|weechat, config, section_name| {
-    ///         weechat.print("Writing section");
+    ///     .set_read_callback(|weechat, config, section, option_name, option_value| {
+    ///         Weechat::print("Writing section");
+    ///         OptionChanged::Changed
     /// });
+    /// ```
     pub fn set_read_callback(
         mut self,
         callback: impl FnMut(
@@ -224,14 +234,19 @@ impl ConfigSectionSettings {
     /// to the file.
     ///
     /// #Arguments
-    /// `callback` - The callback for the section write operation.
+    ///
+    /// * `callback` - The callback for the section write operation.
     ///
     /// # Examples
     /// ```
+    /// use weechat::Weechat;
+    /// use weechat::config::ConfigSectionSettings;
+    ///
     /// let server_section_options = ConfigSectionSettings::new("server")
     ///     .set_write_callback(|weechat, config, section| {
-    ///         weechat.print("Writing section");
+    ///         Weechat::print("Writing section");
     /// });
+    /// ```
     pub fn set_write_callback(
         mut self,
         callback: impl FnMut(&Weechat, &Conf, &mut ConfigSection) + 'static,
@@ -240,10 +255,12 @@ impl ConfigSectionSettings {
         self
     }
 
-    /// Set the function that will be called when default values will need to be
-    /// written to to the file.
+    /// Set the function that will be called when default values will need to
+    /// be written to to the file.
     ///
     /// #Arguments
+    ///
+    /// * `callback` - The callback for the section write default operation.
     pub fn set_write_default_callback(
         mut self,
         callback: impl FnMut(&Weechat, &Conf, &mut ConfigSection) + 'static,
@@ -332,10 +349,11 @@ impl ConfigSection {
 
     /// Free a config option that belongs to this section.
     ///
-    /// # Arguments
-    /// `option_name` - The name of the option that should be freed.
-    ///
     /// Returns an Err if the option can't be found in this section.
+    ///
+    /// # Arguments
+    ///
+    /// * `option_name` - The name of the option that should be freed.
     pub fn free_option(&mut self, option_name: &str) -> Result<(), ()> {
         let weechat = Weechat::from_ptr(self.weechat_ptr);
 
@@ -358,7 +376,8 @@ impl ConfigSection {
 
     /// Search for an option in this section.
     /// # Arguments
-    /// `option_name` - The name of the option to search for.
+    ///
+    /// * `option_name` - The name of the option to search for.
     pub fn search_option(&self, option_name: &str) -> Option<ConfigOption> {
         let weechat = Weechat::from_ptr(self.weechat_ptr);
         let config_search_option = weechat.get().config_search_option.unwrap();
@@ -384,11 +403,12 @@ impl ConfigSection {
 
     /// Create a new string Weechat configuration option.
     ///
-    /// # Arguments
-    /// `settings` - Settings that decide how the option should be created.
-    ///
     /// Returns None if the option couldn't be created, e.g. if a option with
     /// the same name already exists.
+    ///
+    /// # Arguments
+    ///
+    /// * `settings` - Settings that decide how the option should be created.
     pub fn new_string_option(
         &mut self,
         settings: StringOptionSettings,
@@ -427,11 +447,11 @@ impl ConfigSection {
 
     /// Create a new boolean Weechat configuration option.
     ///
-    /// # Arguments
-    /// `settings` - Settings that decide how the option should be created.
-    ///
     /// Returns None if the option couldn't be created, e.g. if a option with
     /// the same name already exists.
+    ///
+    /// # Arguments
+    /// * `settings` - Settings that decide how the option should be created.
     pub fn new_boolean_option(
         &mut self,
         settings: BooleanOptionSettings,
@@ -473,11 +493,11 @@ impl ConfigSection {
 
     /// Create a new integer Weechat configuration option.
     ///
-    /// # Arguments
-    /// `settings` - Settings that decide how the option should be created.
-    ///
     /// Returns None if the option couldn't be created, e.g. if a option with
     /// the same name already exists.
+    ///
+    /// # Arguments
+    /// * `settings` - Settings that decide how the option should be created.
     pub fn new_integer_option(
         &mut self,
         settings: IntegerOptionSettings,
@@ -519,11 +539,11 @@ impl ConfigSection {
 
     /// Create a new color Weechat configuration option.
     ///
-    /// # Arguments
-    /// `settings` - Settings that decide how the option should be created.
-    ///
     /// Returns None if the option couldn't be created, e.g. if a option with
     /// the same name already exists.
+    ///
+    /// # Arguments
+    /// * `settings` - Settings that decide how the option should be created.
     pub fn new_color_option(
         &mut self,
         settings: ColorOptionSettings,

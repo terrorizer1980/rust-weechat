@@ -1,19 +1,24 @@
 //! Weechat configuration for plugins.
 //!
-//! ##
+//! # Examples
 //!
-//! ```
-//! let mut config = weechat
-//!     .config_new("my_plugin", |weechat, conf| {})
+//! ```noexecute
+//! use weechat::Weechat;
+//! use weechat::config::{BooleanOptionSettings, ConfigSectionSettings};
+//!
+//! let mut config = Weechat::config_new("my_plugin")
 //!     .expect("Can't create new config");
 //!
-//! let server_section_options = ConfigSectionSettings::new("look")
-//! let look_section = config.new_section(server_section_options);
+//! let server_section_options = ConfigSectionSettings::new("look");
+//! {
+//!     let mut look_section = config.new_section(server_section_options)
+//!         .expect("Can't create new section");
 //!
-//! let use_colors = BooleanOptionSettings::new("use_colors")
-//!     .set_change_callback(move |weechat, option| {});
+//!     let use_colors = BooleanOptionSettings::new("use_colors")
+//!         .set_change_callback(move |weechat, option| {});
 //!
-//! let use_colors = server_section.new_boolean_option(use_colors);
+//!     let use_colors = look_section.new_boolean_option(use_colors);
+//! }
 //!
 //! config.read().expect("Can't read config");
 //!

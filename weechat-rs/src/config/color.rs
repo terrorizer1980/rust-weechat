@@ -24,7 +24,8 @@ impl ColorOptionSettings {
     /// Create new settings that can be used to create a new color option.
     ///
     /// # Arguments
-    /// `name` - The name of the new option.
+    ///
+    /// * `name` - The name of the new option.
     pub fn new<N: Into<String>>(name: N) -> Self {
         ColorOptionSettings {
             name: name.into(),
@@ -35,7 +36,7 @@ impl ColorOptionSettings {
     /// Set the description of the option.
     ///
     /// # Arguments
-    /// `description` - The description of the new option.
+    /// * `description` - The description of the new option.
     pub fn description<D: Into<String>>(mut self, descritpion: D) -> Self {
         self.description = descritpion.into();
         self
@@ -47,7 +48,8 @@ impl ColorOptionSettings {
     /// the option is reset, the option will take this value.
     ///
     /// # Arguments
-    /// `value` - The value that should act as the default value.
+    ///
+    /// * `value` - The value that should act as the default value.
     pub fn default_value<V: Into<String>>(mut self, value: V) -> Self {
         self.default_value = value.into();
         self
@@ -56,14 +58,19 @@ impl ColorOptionSettings {
     /// Set the callback that will run when the value of the option changes.
     ///
     /// # Arguments
-    /// `callback` - The callback that will be run.
+    ///
+    /// * `callback` - The callback that will be run.
     ///
     /// # Examples
     /// ```
+    /// use weechat::Weechat;
+    /// use weechat::config::ColorOptionSettings;
+    ///
     /// let settings = ColorOptionSettings::new("address")
     ///     .set_change_callback(|weechat, option| {
-    ///         weechat.print("Option changed");
+    ///         Weechat::print("Option changed");
     ///     });
+    /// ```
     pub fn set_change_callback(
         mut self,
         callback: impl FnMut(&Weechat, &ColorOption) + 'static,

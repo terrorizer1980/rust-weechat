@@ -15,15 +15,15 @@ pub mod weechat;
 
 pub use weechat_macro::weechat_plugin;
 
-/// Test
+/// Weechat plugin trait.
 ///
-/// # Safety
+/// Implement this trait over your struct to implement a Weechat plugin. The
+/// init method will get called when Weechat loads the plugin, while the
+/// Drop method will be called when Weechat unloads the plugin.
 pub trait WeechatPlugin: Sized {
     /// Initialize
     fn init(weechat: &Weechat, args: ArgsWeechat) -> Result<Self, ()>;
 }
-
-pub use crate::buffer::Buffer;
 
 /// Main Weechat struct that encapsulates common weechat API functions.
 /// It has a similar API as the weechat script API.
@@ -31,9 +31,9 @@ pub struct Weechat {
     pub(crate) ptr: *mut t_weechat_plugin,
 }
 
+pub use crate::weechat::ArgsWeechat;
 #[cfg(feature = "async-executor")]
 pub use executor::JoinHandle;
-pub use weechat::ArgsWeechat;
 
 /// Status values for Weechat callbacks
 pub enum ReturnCode {

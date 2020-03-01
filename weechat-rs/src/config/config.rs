@@ -81,38 +81,48 @@ impl Weechat {
     ///
     /// # Arguments
     /// * `name` - Name of the new configuration file
-    pub fn config_new(&self, name: &str) -> Result<Config, ()> {
-        self.config_new_helper(name, None)
+    ///
+    /// # Panics
+    ///
+    /// Panics if the method is not called from the main Weechat thread.
+    pub fn config_new(name: &str) -> Result<Config, ()> {
+        Weechat::config_new_helper(name, None)
     }
 
     /// Create a new Weechat configuration file, returns a `Config` object.
     /// The configuration file is freed when the `Config` object is dropped.
     ///
     /// # Arguments
+    ///
     /// * `name` - Name of the new configuration file
+    ///
     /// * `reload_callback` - Callback that will be called when the
     /// configuration file is reloaded.
     ///
     /// # Examples
     ///
-    /// ```
-    /// let config = weechat.config_new_with_callback("server_buffer",
+    /// ```noexecute
+    /// use weechat::Weechat;
+    ///
+    /// let config = Weechat::config_new_with_callback("server_buffer",
     ///     |weechat, conf| {
-    ///         weechat.print("Config was reloaded")
+    ///         Weechat::print("Config was reloaded");
     ///     }
     /// );
     /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics if the method is not called from the main Weechat thread.
     pub fn config_new_with_callback(
-        &self,
         name: &str,
         reload_callback: impl FnMut(&Weechat, &Conf) + 'static,
     ) -> Result<Config, ()> {
         let callback = Box::new(reload_callback);
-        self.config_new_helper(name, Some(callback))
+        Weechat::config_new_helper(name, Some(callback))
     }
 
     fn config_new_helper(
-        &self,
         name: &str,
         callback: Option<Box<dyn FnMut(&Weechat, &Conf)>>,
     ) -> Result<Config, ()> {
@@ -140,6 +150,9 @@ impl Weechat {
             WEECHAT_RC_OK
         }
 
+        Weechat::check_thread();
+        let weechat = unsafe { Weechat::weechat() };
+
         let c_name = LossyCString::new(name);
 
         let c_reload_cb = match callback {
@@ -149,15 +162,15 @@ impl Weechat {
 
         let config_pointers = Box::new(ConfigPointers {
             reload_cb: callback,
-            weechat_ptr: self.ptr,
+            weechat_ptr: weechat.ptr,
         });
         let config_pointers_ref = Box::leak(config_pointers);
 
-        let config_new = self.get().config_new.unwrap();
+        let config_new = weechat.get().config_new.unwrap();
 
         let config_ptr = unsafe {
             config_new(
-                self.ptr,
+                weechat.ptr,
                 c_name.as_ptr(),
                 c_reload_cb,
                 config_pointers_ref as *const _ as *const c_void,
@@ -173,7 +186,7 @@ impl Weechat {
         Ok(Config {
             inner: Conf {
                 ptr: config_ptr,
-                weechat_ptr: self.ptr,
+                weechat_ptr: weechat.ptr,
             },
             _config_data: config_pointers_ref,
             sections: HashMap::new(),
@@ -230,7 +243,8 @@ impl Weechat {
 
     /// Search an option with a full name.
     /// # Arguments
-    /// `option_name` - The full name of the option that should be searched for
+    ///
+    /// * `option_name` - The full name of the option that should be searched for
     /// (format: "file.section.option").
     pub fn config_get(&self, option_name: &str) -> Option<ConfigOption> {
         let weechat = Weechat::from_ptr(self.ptr);
@@ -345,8 +359,13 @@ impl Config {
     /// Create a new section in the configuration file.
     ///
     /// # Arguments
-    /// `section_settings` - Settings that decide how the section will be
+    ///
+    /// * `section_settings` - Settings that decide how the section will be
     /// created.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the method is not called from the main Weechat thread.
     pub fn new_section(
         &mut self,
         section_settings: ConfigSectionSettings,
@@ -535,8 +554,11 @@ impl Config {
 
     /// Search the configuration object for a section and borrow it.
     ///
+    /// Returns a handle to a section if one is found, None otherwise.
+    ///
     /// # Arguments
-    /// `section_name` - The name of the section that should be retrieved.
+    ///
+    /// * `section_name` - The name of the section that should be retrieved.
     ///
     /// # Panics
     ///
@@ -555,8 +577,11 @@ impl Config {
 
     /// Search the configuration object for a section and borrow it mutably.
     ///
+    /// Returns a handle to a section if one is found, None otherwise.
+    ///
     /// # Arguments
-    /// `section_name` - The name of the section that should be retrieved.
+    ///
+    /// * `section_name` - The name of the section that should be retrieved.
     ///
     /// # Panics
     ///
@@ -586,9 +611,11 @@ impl Conf {
     /// Write a line to the configuration file.
     ///
     /// # Arguments
-    /// `key` - The key of the option that will be written. Can be a
-    /// section name.
-    /// `value` - The value of the option that will be written.
+    ///
+    /// * `key` - The key of the option that will be written. Can be a
+    ///     section name.
+    ///
+    /// * `value` - The value of the option that will be written.
     pub fn write_line(&self, key: &str, value: &str) {
         self.write(key, Some(value))
     }
@@ -612,7 +639,8 @@ impl Conf {
     /// Write a line in a configuration file with option and its value.
     ///
     /// # Arguments
-    /// `option` - The option that will be written to the configuration file.
+    ///
+    /// * `option` - The option that will be written to the configuration file.
     pub fn write_option<'a, O: AsRef<dyn BaseConfigOption + 'a>>(
         &self,
         option: O,

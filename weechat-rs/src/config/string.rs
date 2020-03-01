@@ -8,6 +8,9 @@ use std::ffi::CStr;
 use std::marker::PhantomData;
 use weechat_sys::{t_config_option, t_weechat_plugin};
 
+type StringCheckCb =
+    Option<Box<dyn FnMut(&Weechat, &StringOption, Cow<str>) -> bool>>;
+
 /// Settings for a new string option.
 #[derive(Default)]
 pub struct StringOptionSettings {
@@ -19,15 +22,15 @@ pub struct StringOptionSettings {
 
     pub(crate) change_cb: Option<Box<dyn FnMut(&Weechat, &StringOption)>>,
 
-    pub(crate) check_cb:
-        Option<Box<dyn FnMut(&Weechat, &StringOption, Cow<str>) -> bool>>,
+    pub(crate) check_cb: StringCheckCb,
 }
 
 impl StringOptionSettings {
     /// Create new settings that can be used to create a new string option.
     ///
     /// # Arguments
-    /// `name` - The name of the new option.
+    ///
+    /// * `name` - The name of the new option.
     pub fn new<N: Into<String>>(name: N) -> Self {
         StringOptionSettings {
             name: name.into(),
@@ -38,7 +41,8 @@ impl StringOptionSettings {
     /// Set the description of the option.
     ///
     /// # Arguments
-    /// `description` - The description of the new option.
+    ///
+    /// * `description` - The description of the new option.
     pub fn description<D: Into<String>>(mut self, descritpion: D) -> Self {
         self.description = descritpion.into();
         self
@@ -50,7 +54,8 @@ impl StringOptionSettings {
     /// the option is reset, the option will take this value.
     ///
     /// # Arguments
-    /// `value` - The value that should act as the default value.
+    ///
+    /// * `value` - The value that should act as the default value.
     pub fn default_value<V: Into<String>>(mut self, value: V) -> Self {
         self.default_value = value.into();
         self
@@ -59,14 +64,19 @@ impl StringOptionSettings {
     /// Set the callback that will run when the value of the option changes.
     ///
     /// # Arguments
-    /// `callback` - The callback that will be run.
+    ///
+    /// * `callback` - The callback that will be run.
     ///
     /// # Examples
     /// ```
+    /// use weechat::Weechat;
+    /// use weechat::config::StringOptionSettings;
+    ///
     /// let settings = StringOptionSettings::new("address")
     ///     .set_change_callback(|weechat, option| {
-    ///         weechat.print("Option changed");
+    ///         Weechat::print("Option changed");
     ///     });
+    /// ```
     pub fn set_change_callback(
         mut self,
         callback: impl FnMut(&Weechat, &StringOption) + 'static,
@@ -78,14 +88,18 @@ impl StringOptionSettings {
     /// Set a callback to check the validity of the string option.
     ///
     /// # Arguments
-    /// `callback` - The callback that will be run.
+    ///
+    /// * `callback` - The callback that will be run.
     ///
     /// # Examples
     /// ```
+    /// use weechat::config::StringOptionSettings;
+    ///
     /// let settings = StringOptionSettings::new("address")
     ///     .set_check_callback(|weechat, option, value| {
     ///         value.starts_with("http")
     ///     });
+    /// ```
     pub fn set_check_callback(
         mut self,
         callback: impl FnMut(&Weechat, &StringOption, Cow<str>) -> bool + 'static,

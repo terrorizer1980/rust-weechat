@@ -154,6 +154,7 @@ pub trait BaseConfigOption: HidenConfigOptionT {
     }
 }
 
+/// Marker trait for config options.
 pub trait ConfigOptions: BaseConfigOption + FromPtrs {}
 
 pub(crate) type CheckCB<T> = dyn FnMut(&Weechat, &T, Cow<str>) -> bool;
