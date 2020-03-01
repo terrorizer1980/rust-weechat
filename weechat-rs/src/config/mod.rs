@@ -2,7 +2,7 @@
 //!
 //! # Examples
 //!
-//! ```noexecute
+//! ```no_run
 //! use weechat::Weechat;
 //! use weechat::config::{BooleanOptionSettings, ConfigSectionSettings};
 //!

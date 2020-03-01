@@ -1,4 +1,5 @@
 //! Weechat Hook module.
+//!
 //! Weechat hooks are used for many different things, to create commands, to
 //! listen to events on a file descriptor, add completions to weechat, etc.
 //! This module contains hook creation methods for the `Weechat` object.
@@ -175,8 +176,14 @@ pub struct CommandDescription<'a> {
 }
 
 impl Weechat {
-    /// Create a new weechat command. Returns the hook of the command. The
-    /// command is unhooked if the hook is dropped.
+    /// Create a new weechat command.
+    ///
+    /// # Arguments
+    ///
+    /// * `command_info`
+    ///
+    /// Returns the hook of the command. The command is unhooked if the hook is
+    /// dropped.
     pub fn hook_command<T>(
         &self,
         command_info: CommandDescription,
@@ -249,13 +256,19 @@ impl Weechat {
 
     /// Hook an object that can be turned into a raw file descriptor.
     /// Returns the hook object.
+    ///
+    /// # Arguments
+    ///
     /// * `fd_object` - An object for wich the file descriptor will be watched
     ///     and the callback called when read or write operations can happen
     ///     on it.
+    ///
     /// * `mode` - Configure the hook to watch for writes, reads or both on the
     ///     file descriptor.
+    ///
     /// * `callback` - A function that will be called if a watched event on the
     ///     file descriptor happends.
+    ///
     /// * `callback_data` - Data that will be passed to the callback every time
     ///     the callback runs. This data will be freed when the hook is
     ///     unhooked.
@@ -330,15 +343,24 @@ impl Weechat {
 
     /// Create a timer that will repeatedly fire.
     ///
+    /// # Arguments
+    ///
     /// * `interval` - The delay between calls in milliseconds.
-    /// * `align_second` - The alignment on a second. For example, if current time is 09:00, if
-    ///     interval = 60000 (60 seconds), and align_second = 60, then timer is called each minute when
-    ///     second is 0.
-    /// * `max_calls` - The number of calls to timer (if 0, then timer has no end)
-    /// * `callback` - A function that will be called when the timer fires, the `remaining` argument
-    ///     will be -1 if the timer has no end.
+    ///
+    /// * `align_second` - The alignment on a second. For example, if the
+    ///     current time is 09:00, if the interval = 60000 (60 seconds), and 
+    ///     align_second = 60, then timer is called each minute on the 0th
+    ///     second.
+    ///
+    /// * `max_calls` - The number of times the callback should be called, 0
+    ///     means it's called forever.
+    ///
+    /// * `callback` - A function that will be called when the timer fires, the
+    ///     `remaining` argument will be -1 if the timer has no end.
+    ///
     /// * `callback_data` - Data that will be passed to the callback every time
-    ///     the callback runs. This data will be freed when the hook is unhooked.
+    ///     the callback runs. This data will be freed when the hook is
+    ///     unhooked.
     pub fn hook_timer<T>(
         &self,
         interval: Duration,
@@ -401,10 +423,14 @@ impl Weechat {
         }
     }
 
-    /// Hook a command when Weechat runs it.
+    /// Override an existing Weechat command.
+    ///
+    /// # Arguments
     ///
     /// * `command` - The command to hook (wildcard `*` is allowed).
+    ///
     /// * `callback` - A function that will be called when the command is run.
+    ///
     /// * `callback_data` - Data that will be passed to the callback every time
     ///     the callback runs. This data will be freed when the hook is unhooked.
     pub fn hook_command_run<T>(
@@ -468,8 +494,12 @@ impl Weechat {
 
     /// Hook a signal.
     ///
+    /// # Arguments
+    ///
     /// * `signal` - The signal to hook (wildcard `*` is allowed).
+    ///
     /// * `callback` - A function that will be called when the signal is received.
+    ///
     /// * `callback_data` - Data that will be passed to the callback every time
     ///     the callback runs. This data will be freed when the hook is unhooked.
     pub fn hook_signal<T>(

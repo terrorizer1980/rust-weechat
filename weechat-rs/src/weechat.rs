@@ -8,8 +8,6 @@ use std::borrow::Cow;
 use std::ffi::CStr;
 use std::{ptr, vec};
 
-use crate::Weechat;
-
 #[cfg(feature = "async-executor")]
 use crate::executor::WeechatExecutor;
 #[cfg(feature = "async-executor")]
@@ -17,16 +15,23 @@ pub use async_task::JoinHandle;
 #[cfg(feature = "async-executor")]
 use std::future::Future;
 
-/// An iterator over the arguments of a command, yielding a String value for
-/// each argument.
+/// An iterator over the arguments of a Weechat command, yielding a String value
+/// for each argument.
 pub struct ArgsWeechat {
     iter: vec::IntoIter<String>,
 }
+
 
 impl ArgsWeechat {
     /// Create an ArgsWeechat object from the underlying weechat C types.
     /// Expects the strings in argv to be valid utf8, if not invalid UTF-8
     /// sequences are replaced with the replacement character.
+    ///
+    /// # Safety
+    ///
+    /// This should never be called by the user, this is called internally but
+    /// needs to be public because it's used in the macro expansion of the
+    /// plugin init method.
     pub fn new(argc: c_int, argv: *mut *mut c_char) -> ArgsWeechat {
         let argc = argc as isize;
         let args: Vec<String> = (0..argc)
@@ -68,6 +73,12 @@ impl DoubleEndedIterator for ArgsWeechat {
 
 static mut WEECHAT: Option<Weechat> = None;
 static mut WEECHAT_THREAD_ID: Option<std::thread::ThreadId> = None;
+
+/// Main Weechat struct that encapsulates common weechat API functions.
+/// It has a similar API as the weechat script API.
+pub struct Weechat {
+    pub(crate) ptr: *mut t_weechat_plugin,
+}
 
 impl Weechat {
     /// Create a Weechat object from a C t_weechat_plugin pointer.
@@ -113,8 +124,8 @@ impl Weechat {
     /// Weechat objects need to have a lifetime bound to a Weechat context
     /// object that is only valid for the duration of a callback.
     ///
-    /// Since this one will have a static lifetime objects that are fetched from
-    /// this object will have a too long lifetime.
+    /// Since this one will have a static lifetime, objects that are fetched
+    /// from this object may have a longer lifetime than they should.
     pub unsafe fn weechat() -> &'static mut Weechat {
         match WEECHAT {
             Some(ref mut w) => w,
@@ -241,16 +252,20 @@ impl Weechat {
     }
 
     /// Get some info from Weechat or a plugin.
-    /// * `info_name` - name the info
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - name the info
+    ///
     /// * `arguments` - arguments for the info
     pub fn info_get(
         &self,
-        info_name: &str,
+        name: &str,
         arguments: &str,
     ) -> Option<Cow<str>> {
         let info_get = self.get().info_get.unwrap();
 
-        let info_name = LossyCString::new(info_name);
+        let info_name = LossyCString::new(name);
         let arguments = LossyCString::new(arguments);
 
         unsafe {
@@ -267,6 +282,7 @@ impl Weechat {
     /// Evaluate a weechat expression and return the result
     //
     // TODO: Add hashtable options
+    // TODO: This needs better docs and examples.
     pub fn eval_string_expression(&self, expr: &str) -> Option<Cow<str>> {
         let string_eval_expression = self.get().string_eval_expression.unwrap();
 
@@ -294,6 +310,33 @@ impl Weechat {
     /// # Panics
     ///
     /// Panics if the method is not called from the main Weechat thread.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use weechat::Weechat;
+    /// use async_std::sync::{channel, Receiver};
+    /// use futures::executor::block_on;
+    ///
+    /// pub async fn task(receiver: Receiver<String>) {
+    ///     loop {
+    ///         match receiver.recv().await {
+    ///             Some(m) => {
+    ///                 Weechat::print(&format!("Received message: {}", m));
+    ///             },
+    ///             None => {
+    ///                 Weechat::print("Error channel closed");
+    ///                 return;
+    ///             }
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// let (tx, rx) = channel(1000);
+    ///
+    /// Weechat::spawn(task(rx));
+    /// block_on(tx.send("Hello wordl".to_string()));
+    /// ```
     pub fn spawn<F, R>(future: F) -> JoinHandle<R, ()>
     where
         F: Future<Output = R> + 'static,

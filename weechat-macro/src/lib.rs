@@ -94,6 +94,22 @@ impl Parse for WeechatPluginInfo {
     }
 }
 
+/// Register a struct that implements the `WeechatPlugin` trait as a plugin.
+///
+/// This configures the Weechat init and end method as well as additonal plugin
+/// metadata.
+///
+/// # Example
+/// ```
+/// weechat_plugin!(
+///     SamplePlugin,
+///     name: "rust_sample",
+///     author: "poljar",
+///     description: "",
+///     version: "0.1.0",
+///     license: "MIT"
+/// );
+/// ```
 #[proc_macro]
 pub fn weechat_plugin(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let WeechatPluginInfo {

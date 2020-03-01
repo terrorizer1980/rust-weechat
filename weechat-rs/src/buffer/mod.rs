@@ -306,6 +306,28 @@ impl Weechat {
     /// # Panics
     ///
     /// Panics if the method is not called from the main Weechat thread.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let buffer_settings = BufferSettings::new(&room_id.to_string())
+    ///     .input_data((state, room_id.to_owned()))
+    ///     .input_callback(async move |data, buffer, input| {
+    ///     })
+    ///     .close_callback(|weechat, buffer| {
+    ///         Ok(())
+    ///     });
+    ///
+    /// let buffer_handle = Weechat::buffer_new(buffer_settings)
+    ///     .expect("Can't create new room buffer");
+    ///
+    /// let buffer = buffer_handle
+    ///     .upgrade()
+    ///     .expect("Can't upgrade newly created buffer");
+    ///
+    /// buffer.enable_nicklist();
+    /// buffer.print("Hello world");
+    /// ```
     #[cfg(feature = "async-executor")]
     pub fn buffer_new<T: Clone>(
         settings: BufferSettings<T>,

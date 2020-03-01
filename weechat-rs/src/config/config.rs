@@ -101,7 +101,7 @@ impl Weechat {
     ///
     /// # Examples
     ///
-    /// ```noexecute
+    /// ```no_run
     /// use weechat::Weechat;
     ///
     /// let config = Weechat::config_new_with_callback("server_buffer",

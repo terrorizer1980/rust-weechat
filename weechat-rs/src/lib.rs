@@ -4,14 +4,9 @@
 //!
 //! The bindings make it possible to create powerful Weechat plugins using rust.
 //!
-//! ```noexecute
+//! ```no_run
 //! use std::borrow::Cow;
-//! use std::time::Instant;
-//! use weechat::bar::{BarItem, LightBarItem};
 //! use weechat::buffer::{Buffer, BufferSettings, NickSettings};
-//! use weechat::config::{
-//!     BooleanOption, BooleanOptionSettings, Config, ConfigSectionSettings,
-//! };
 //! use weechat::hooks::{CommandDescription, CommandHook};
 //! use weechat::{weechat_plugin, ArgsWeechat, Weechat, WeechatPlugin};
 //!
@@ -89,7 +84,12 @@
 //!         Weechat::print("Bye rust");
 //!     }
 //! }
+//! ```
 //!
+//! The above plugin implementation still needs to be registered as a Weechat
+//! plugin:
+//!
+//! ```ignore
 //! weechat_plugin!(
 //!     SamplePlugin,
 //!     name: "rust_sample",
@@ -102,17 +102,18 @@
 #![warn(missing_docs)]
 
 use std::ffi::CString;
-use weechat_sys::t_weechat_plugin;
 
 #[cfg(feature = "async-executor")]
 mod executor;
+mod weechat;
 
 pub mod bar;
 pub mod buffer;
 pub mod completion;
 pub mod config;
 pub mod hooks;
-pub mod weechat;
+
+pub use crate::weechat::{ArgsWeechat, Weechat};
 
 pub use weechat_macro::weechat_plugin;
 
@@ -122,17 +123,17 @@ pub use weechat_macro::weechat_plugin;
 /// init method will get called when Weechat loads the plugin, while the
 /// Drop method will be called when Weechat unloads the plugin.
 pub trait WeechatPlugin: Sized {
-    /// Initialize
+    /// Initialize the plugin.
+    ///
+    /// # Arguments
+    ///
+    /// * `weechat` - A borrow to a Weechat object that will be valid during the
+    ///     duration of the init callback.
+    ///
+    /// * `args` - Arguments passed to the plugin when it is loaded.
     fn init(weechat: &Weechat, args: ArgsWeechat) -> Result<Self, ()>;
 }
 
-/// Main Weechat struct that encapsulates common weechat API functions.
-/// It has a similar API as the weechat script API.
-pub struct Weechat {
-    pub(crate) ptr: *mut t_weechat_plugin,
-}
-
-pub use crate::weechat::ArgsWeechat;
 #[cfg(feature = "async-executor")]
 pub use executor::JoinHandle;
 

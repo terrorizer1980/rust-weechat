@@ -70,11 +70,11 @@ impl IntegerOptionSettings {
     /// * `values` - The values that should act as the symbolic values.
     ///
     /// # Examples
-    /// ```noexecute
+    /// ```no_run
+    /// use weechat::config::IntegerOptionSettings;
+    ///
     /// let settings = IntegerOptionSettings::new("server_buffer")
     ///     .string_values(vec!["independent", "merged"]);
-    ///
-    /// let option = section.new_integer_option(settings).expect("Can't create option");
     /// ```
     pub fn string_values<I, T>(mut self, values: I) -> Self
     where
