@@ -1,0 +1,16 @@
+language: rust
+rust: stable
+
+jobs:
+  include:
+    - os: linux
+      dist: bionic
+
+    - os: osx
+
+before_script:
+  - rustup component add rustfmt
+
+script:
+  - cargo build
+  - cargo fmt --all -- --check
