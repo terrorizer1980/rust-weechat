@@ -21,7 +21,6 @@ pub struct ArgsWeechat {
     iter: vec::IntoIter<String>,
 }
 
-
 impl ArgsWeechat {
     /// Create an ArgsWeechat object from the underlying weechat C types.
     /// Expects the strings in argv to be valid utf8, if not invalid UTF-8
@@ -258,11 +257,7 @@ impl Weechat {
     /// * `name` - name the info
     ///
     /// * `arguments` - arguments for the info
-    pub fn info_get(
-        &self,
-        name: &str,
-        arguments: &str,
-    ) -> Option<Cow<str>> {
+    pub fn info_get(&self, name: &str, arguments: &str) -> Option<Cow<str>> {
         let info_get = self.get().info_get.unwrap();
 
         let info_name = LossyCString::new(name);

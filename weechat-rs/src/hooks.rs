@@ -348,7 +348,7 @@ impl Weechat {
     /// * `interval` - The delay between calls in milliseconds.
     ///
     /// * `align_second` - The alignment on a second. For example, if the
-    ///     current time is 09:00, if the interval = 60000 (60 seconds), and 
+    ///     current time is 09:00, if the interval = 60000 (60 seconds), and
     ///     align_second = 60, then timer is called each minute on the 0th
     ///     second.
     ///
