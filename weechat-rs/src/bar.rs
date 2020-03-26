@@ -54,7 +54,9 @@ impl Weechat {
     ///
     /// # Example
     /// ```
-    /// let item = Weechat::new_bar_item("buffer_plugin", |_, _| {"rust/sample".to_owned()});
+    /// let item = Weechat::new_bar_item("buffer_plugin", |_, _| {
+    ///     "rust/sample".to_owned()
+    /// });
     /// ```
     ///
     // TODO: Provide window object, the callback should accept a Window object wrapping a t_gui_window

@@ -87,7 +87,10 @@ pub struct CompletionHook {
 
 struct CompletionHookData {
     #[allow(clippy::type_complexity)]
-    callback: Box<dyn FnMut(&Weechat, &Buffer, Cow<str>, Completion) -> ReturnCode + 'static>,
+    callback: Box<
+        dyn FnMut(&Weechat, &Buffer, Cow<str>, Completion) -> ReturnCode
+            + 'static,
+    >,
     weechat_ptr: *mut t_weechat_plugin,
 }
 
@@ -104,14 +107,9 @@ impl Weechat {
         &self,
         completion_item: &str,
         description: &str,
-        callback: impl FnMut(
-            &Weechat,
-            &Buffer,
-            Cow<str>,
-            Completion,
-        ) -> ReturnCode + 'static,
-    ) -> CompletionHook
-    {
+        callback: impl FnMut(&Weechat, &Buffer, Cow<str>, Completion) -> ReturnCode
+            + 'static,
+    ) -> CompletionHook {
         unsafe extern "C" fn c_hook_cb<T>(
             pointer: *const c_void,
             _data: *mut c_void,
