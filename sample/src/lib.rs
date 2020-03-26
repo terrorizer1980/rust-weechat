@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use std::time::Instant;
-use weechat::bar::{BarItemHandle};
+use weechat::BarItemHandle;
 use weechat::buffer::{Buffer, BufferSettings, NickSettings};
 use weechat::config::{
     BooleanOption, BooleanOptionSettings, Config, ConfigSectionSettings,
