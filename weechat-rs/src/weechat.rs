@@ -90,6 +90,7 @@ impl Weechat {
     /// # Safety
     ///
     /// This should never be called by the user. This is called internally.
+    #[doc(hidden)]
     pub unsafe fn init_from_ptr(ptr: *mut t_weechat_plugin) -> Weechat {
         assert!(!ptr.is_null());
 
@@ -105,6 +106,7 @@ impl Weechat {
     /// # Safety
     ///
     /// This should never be called by the user. This is called internally.
+    #[doc(hidden)]
     pub unsafe fn free() {
         #[cfg(feature = "async-executor")]
         WeechatExecutor::free();
