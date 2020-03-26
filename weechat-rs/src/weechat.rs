@@ -31,6 +31,7 @@ impl ArgsWeechat {
     /// This should never be called by the user, this is called internally but
     /// needs to be public because it's used in the macro expansion of the
     /// plugin init method.
+    #[doc(hidden)]
     pub fn new(argc: c_int, argv: *mut *mut c_char) -> ArgsWeechat {
         let argc = argc as isize;
         let args: Vec<String> = (0..argc)

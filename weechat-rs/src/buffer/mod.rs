@@ -244,13 +244,18 @@ impl BufferSettings {
 
 impl Weechat {
     /// Search a buffer by plugin and/or name.
+    ///
+    /// Returns a Buffer if one is found, otherwise None.
+    ///
+    /// # Arguments
+    ///
     /// * `plugin_name` - name of a plugin, the following special value is
     ///     allowed: "==", the buffer name used is the buffers full name.
+    ///
     /// * `buffer_name` - name of a buffer, if this is an empty string,
     ///     the current buffer is returned (buffer displayed by current
     ///     window); if the name starts with (?i), the search is case
     ///     insensitive.
-    /// Returns a Buffer if one is found, otherwise None.
     pub fn buffer_search(
         &self,
         plugin_name: &str,

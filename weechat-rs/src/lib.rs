@@ -107,12 +107,13 @@ use std::ffi::CString;
 mod executor;
 mod weechat;
 
-pub mod bar;
+mod bar;
 pub mod buffer;
 pub mod completion;
 pub mod config;
 pub mod hooks;
 
+pub use crate::bar::BarItemHandle;
 pub use crate::weechat::{ArgsWeechat, Weechat};
 
 pub use weechat_macro::weechat_plugin;
