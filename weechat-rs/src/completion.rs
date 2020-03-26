@@ -80,14 +80,14 @@ impl Completion {
 }
 
 /// Hook for a completion item, the hook is removed when the object is dropped.
-pub struct CompletionHook<T> {
+pub struct CompletionHook {
     _hook: Hook,
-    _hook_data: Box<CompletionHookData<T>>,
+    _hook_data: Box<CompletionHookData>,
 }
 
-struct CompletionHookData<T> {
-    callback: fn(&T, &Buffer, Cow<str>, Completion) -> ReturnCode,
-    callback_data: T,
+struct CompletionHookData {
+    #[allow(clippy::type_complexity)]
+    callback: Box<dyn FnMut(&Weechat, &Buffer, Cow<str>, Completion) -> ReturnCode + 'static>,
     weechat_ptr: *mut t_weechat_plugin,
 }
 
@@ -104,16 +104,13 @@ impl Weechat {
         &self,
         completion_item: &str,
         description: &str,
-        callback: fn(
-            data: &T,
-            buffer: &Buffer,
-            item: Cow<str>,
-            completion: Completion,
-        ) -> ReturnCode,
-        callback_data: Option<T>,
-    ) -> CompletionHook<T>
-    where
-        T: Default,
+        callback: impl FnMut(
+            &Weechat,
+            &Buffer,
+            Cow<str>,
+            Completion,
+        ) -> ReturnCode + 'static,
+    ) -> CompletionHook
     {
         unsafe extern "C" fn c_hook_cb<T>(
             pointer: *const c_void,
@@ -122,10 +119,9 @@ impl Weechat {
             buffer: *mut t_gui_buffer,
             completion: *mut t_gui_completion,
         ) -> c_int {
-            let hook_data: &mut CompletionHookData<T> =
-                { &mut *(pointer as *mut CompletionHookData<T>) };
-            let callback = hook_data.callback;
-            let callback_data = &hook_data.callback_data;
+            let hook_data: &mut CompletionHookData =
+                { &mut *(pointer as *mut CompletionHookData) };
+            let callback = &mut hook_data.callback;
             let weechat = Weechat::from_ptr(hook_data.weechat_ptr);
             let buffer = weechat.buffer_from_ptr(buffer);
 
@@ -133,7 +129,7 @@ impl Weechat {
                 CStr::from_ptr(completion_item).to_string_lossy();
 
             callback(
-                callback_data,
+                &weechat,
                 &buffer,
                 completion_item,
                 Completion::from_raw(hook_data.weechat_ptr, completion),
@@ -141,8 +137,7 @@ impl Weechat {
         }
 
         let data = Box::new(CompletionHookData {
-            callback,
-            callback_data: callback_data.unwrap_or_default(),
+            callback: Box::new(callback),
             weechat_ptr: self.ptr,
         });
 
@@ -168,7 +163,7 @@ impl Weechat {
             weechat_ptr: self.ptr,
         };
 
-        CompletionHook::<T> {
+        CompletionHook {
             _hook: hook,
             _hook_data: hook_data,
         }
