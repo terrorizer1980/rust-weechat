@@ -147,14 +147,88 @@ pub struct ConfigSection {
     pub(crate) option_pointers: HashMap<String, ConfigOptionPointers>,
 }
 
-type ReadCB =
-    dyn FnMut(&Weechat, &Conf, &mut ConfigSection, &str, &str) -> OptionChanged;
-type WriteCB = dyn FnMut(&Weechat, &Conf, &mut ConfigSection);
+pub trait SectionWriteCallback: 'static {
+    fn callback(
+        &mut self,
+        weechat: &Weechat,
+        config: &Conf,
+        section: &mut ConfigSection,
+    );
+}
+
+impl<T: FnMut(&Weechat, &Conf, &mut ConfigSection) + 'static>
+    SectionWriteCallback for T
+{
+    fn callback(
+        &mut self,
+        weechat: &Weechat,
+        config: &Conf,
+        section: &mut ConfigSection,
+    ) {
+        self(weechat, config, section)
+    }
+}
+
+pub trait SectionWriteDefaultCallback: 'static {
+    fn callback(
+        &mut self,
+        weechat: &Weechat,
+        config: &Conf,
+        section: &mut ConfigSection,
+    );
+}
+
+impl<T: FnMut(&Weechat, &Conf, &mut ConfigSection) + 'static>
+    SectionWriteDefaultCallback for T
+{
+    fn callback(
+        &mut self,
+        weechat: &Weechat,
+        config: &Conf,
+        section: &mut ConfigSection,
+    ) {
+        self(weechat, config, section)
+    }
+}
+
+pub trait SectionReadCallback: 'static {
+    fn callback(
+        &mut self,
+        weechat: &Weechat,
+        config: &Conf,
+        section: &mut ConfigSection,
+        option_name: &str,
+        option_value: &str,
+    ) -> OptionChanged;
+}
+
+impl<
+        T: FnMut(
+                &Weechat,
+                &Conf,
+                &mut ConfigSection,
+                &str,
+                &str,
+            ) -> OptionChanged
+            + 'static,
+    > SectionReadCallback for T
+{
+    fn callback(
+        &mut self,
+        weechat: &Weechat,
+        config: &Conf,
+        section: &mut ConfigSection,
+        option_name: &str,
+        option_value: &str,
+    ) -> OptionChanged {
+        self(weechat, config, section, option_name, option_value)
+    }
+}
 
 pub(crate) struct ConfigSectionPointers {
-    pub(crate) read_cb: Option<Box<ReadCB>>,
-    pub(crate) write_cb: Option<Box<WriteCB>>,
-    pub(crate) write_default_cb: Option<Box<WriteCB>>,
+    pub(crate) read_cb: Option<Box<dyn SectionReadCallback>>,
+    pub(crate) write_cb: Option<Box<dyn SectionWriteCallback>>,
+    pub(crate) write_default_cb: Option<Box<dyn SectionWriteDefaultCallback>>,
     pub(crate) section: Option<Weak<RefCell<ConfigSection>>>,
     pub(crate) weechat_ptr: *mut t_weechat_plugin,
 }
@@ -174,13 +248,14 @@ impl std::fmt::Debug for ConfigSectionPointers {
 pub struct ConfigSectionSettings {
     pub(crate) name: String,
 
-    pub(crate) read_callback: Option<Box<ReadCB>>,
+    pub(crate) read_callback: Option<Box<dyn SectionReadCallback>>,
 
     /// A function called when the section is written to the disk
-    pub(crate) write_callback: Option<Box<WriteCB>>,
+    pub(crate) write_callback: Option<Box<dyn SectionWriteCallback>>,
 
     /// A function called when default values for the section must be written to the disk
-    pub(crate) write_default_callback: Option<Box<WriteCB>>,
+    pub(crate) write_default_callback:
+        Option<Box<dyn SectionWriteDefaultCallback>>,
 }
 
 impl ConfigSectionSettings {
@@ -207,24 +282,18 @@ impl ConfigSectionSettings {
     /// # Examples
     /// ```
     /// use weechat::Weechat;
-    /// use weechat::config::{ConfigSectionSettings, OptionChanged};
+    /// use weechat::config::{Conf, ConfigSection, ConfigSectionSettings, OptionChanged};
     ///
     /// let server_section_options = ConfigSectionSettings::new("server")
-    ///     .set_read_callback(|weechat, config, section, option_name, option_value| {
+    ///     .set_read_callback(|_: &Weechat, config: &Conf, section: &mut ConfigSection,
+    ///                         option_name: &str, option_value: &str| {
     ///         Weechat::print("Writing section");
     ///         OptionChanged::Changed
     /// });
     /// ```
     pub fn set_read_callback(
         mut self,
-        callback: impl FnMut(
-                &Weechat,
-                &Conf,
-                &mut ConfigSection,
-                &str,
-                &str,
-            ) -> OptionChanged
-            + 'static,
+        callback: impl SectionReadCallback,
     ) -> Self {
         self.read_callback = Some(Box::new(callback));
         self

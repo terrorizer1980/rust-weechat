@@ -4,7 +4,7 @@
 //!
 //! ```no_run
 //! use weechat::Weechat;
-//! use weechat::config::{BooleanOptionSettings, ConfigSectionSettings};
+//! use weechat::config::{BooleanOptionSettings, ConfigSectionSettings, BooleanOption};
 //!
 //! let mut config = Weechat::config_new("my_plugin")
 //!     .expect("Can't create new config");
@@ -15,7 +15,7 @@
 //!         .expect("Can't create new section");
 //!
 //!     let use_colors = BooleanOptionSettings::new("use_colors")
-//!         .set_change_callback(move |weechat, option| {});
+//!         .set_change_callback(move |weechat: &Weechat, option: &BooleanOption| {});
 //!
 //!     let use_colors = look_section.new_boolean_option(use_colors);
 //! }
@@ -35,7 +35,7 @@ mod string;
 
 pub use crate::config::boolean::{BooleanOption, BooleanOptionSettings};
 pub use crate::config::color::{ColorOption, ColorOptionSettings};
-pub use crate::config::config::{Conf, Config, OptionChanged};
+pub use crate::config::config::{Conf, Config, OptionChanged, ConfigReloadCallback};
 pub use crate::config::integer::{IntegerOption, IntegerOptionSettings};
 pub use crate::config::string::{StringOption, StringOptionSettings};
 
@@ -44,5 +44,6 @@ pub use crate::config::config_options::{
 };
 pub use crate::config::section::{
     ConfigOption, ConfigSection, ConfigSectionSettings, SectionHandle,
-    SectionHandleMut,
+    SectionHandleMut, SectionReadCallback, SectionWriteCallback,
+    SectionWriteDefaultCallback,
 };

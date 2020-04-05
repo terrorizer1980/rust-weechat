@@ -65,7 +65,7 @@ impl OptionChanged {
 }
 
 struct ConfigPointers {
-    reload_cb: Option<Box<dyn FnMut(&Weechat, &Conf)>>,
+    reload_cb: Option<Box<dyn ConfigReloadCallback>>,
     weechat_ptr: *mut t_weechat_plugin,
 }
 
@@ -74,6 +74,27 @@ type ReloadCB = unsafe extern "C" fn(
     _data: *mut c_void,
     config_pointer: *mut t_config_file,
 ) -> c_int;
+
+/// Trait for the config reload callback.
+///
+/// This trait can be implemented or a normal function or coroutine can be
+/// passed as the callback.
+pub trait ConfigReloadCallback: 'static {
+    /// Function called when configuration file is reloaded with /reload
+    ///
+    /// # Arguments
+    ///
+    /// * `weeechat` - A reference to the weechat context.
+    ///
+    /// * `config` - A reference to the non-owned config.
+    fn callback(&mut self, weechat: &Weechat, config: &Conf);
+}
+
+impl<T: FnMut(&Weechat, &Conf) + 'static> ConfigReloadCallback for T {
+    fn callback(&mut self, weechat: &Weechat, config: &Conf) {
+        self(weechat, config)
+    }
+}
 
 impl Weechat {
     /// Create a new Weechat configuration file, returns a `Config` object.
@@ -103,9 +124,10 @@ impl Weechat {
     ///
     /// ```no_run
     /// use weechat::Weechat;
+    /// use weechat::config::Conf;
     ///
     /// let config = Weechat::config_new_with_callback("server_buffer",
-    ///     |weechat, conf| {
+    ///     |weechat: &Weechat, conf: &Conf| {
     ///         Weechat::print("Config was reloaded");
     ///     }
     /// );
@@ -116,7 +138,7 @@ impl Weechat {
     /// Panics if the method is not called from the main Weechat thread.
     pub fn config_new_with_callback(
         name: &str,
-        reload_callback: impl FnMut(&Weechat, &Conf) + 'static,
+        reload_callback: impl ConfigReloadCallback,
     ) -> Result<Config, ()> {
         let callback = Box::new(reload_callback);
         Weechat::config_new_helper(name, Some(callback))
@@ -124,7 +146,7 @@ impl Weechat {
 
     fn config_new_helper(
         name: &str,
-        callback: Option<Box<dyn FnMut(&Weechat, &Conf)>>,
+        callback: Option<Box<dyn ConfigReloadCallback>>,
     ) -> Result<Config, ()> {
         unsafe extern "C" fn c_reload_cb(
             pointer: *const c_void,
@@ -145,7 +167,7 @@ impl Weechat {
 
             let weechat = Weechat::from_ptr(pointers.weechat_ptr);
 
-            cb(&weechat, &conf);
+            cb.callback(&weechat, &conf);
 
             WEECHAT_RC_OK
         }
@@ -396,12 +418,12 @@ impl Config {
 
             let weechat = Weechat::from_ptr(pointers.weechat_ptr);
 
-            let callback = pointers
+            let cb = pointers
                 .read_cb
                 .as_mut()
                 .expect("C read callback was called but no ruts callback");
 
-            let ret = callback(
+            let ret = cb.callback(
                 &weechat,
                 &conf,
                 &mut section.borrow_mut(),
@@ -434,8 +456,8 @@ impl Config {
             };
             let weechat = Weechat::from_ptr(pointers.weechat_ptr);
 
-            if let Some(ref mut callback) = pointers.write_cb {
-                callback(&weechat, &conf, &mut section.borrow_mut())
+            if let Some(ref mut cb) = pointers.write_cb {
+                cb.callback(&weechat, &conf, &mut section.borrow_mut())
             }
             WEECHAT_RC_OK
         }
@@ -462,8 +484,8 @@ impl Config {
             };
             let weechat = Weechat::from_ptr(pointers.weechat_ptr);
 
-            if let Some(ref mut callback) = pointers.write_default_cb {
-                callback(&weechat, &conf, &mut section.borrow_mut())
+            if let Some(ref mut cb) = pointers.write_default_cb {
+                cb.callback(&weechat, &conf, &mut section.borrow_mut())
             }
             WEECHAT_RC_OK
         }
