@@ -322,7 +322,7 @@ impl Weechat {
     ///         Ok(())
     /// });
     ///
-    /// let buffer_handle = Weechat::buffer_new_async(buffer_settings)
+    /// let buffer_handle = Weechat::buffer_new_with_async(buffer_settings)
     ///     .expect("Can't create new room buffer");
     ///
     /// let buffer = buffer_handle
@@ -333,7 +333,7 @@ impl Weechat {
     /// buffer.print("Hello world");
     /// ```
     #[cfg(feature = "async-executor")]
-    pub fn buffer_new_async(
+    pub fn buffer_new_with_async(
         settings: BufferSettingsAsync,
     ) -> Result<BufferHandle, ()> {
         unsafe extern "C" fn c_input_cb(
