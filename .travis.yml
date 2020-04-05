@@ -12,6 +12,6 @@ before_script:
   - rustup component add rustfmt
 
 script:
-  - cargo build
+  - cargo build --all-features
   - cargo fmt --all -- --check
-  - cargo test
+  - cargo test --all-features
