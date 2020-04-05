@@ -100,7 +100,7 @@ impl Parse for WeechatPluginInfo {
 /// metadata.
 ///
 /// # Example
-/// ```
+/// ```ignore
 /// weechat_plugin!(
 ///     SamplePlugin,
 ///     name: "rust_sample",
