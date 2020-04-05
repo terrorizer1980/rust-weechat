@@ -2,11 +2,11 @@ use std::borrow::Cow;
 use std::time::Instant;
 use weechat::buffer::{Buffer, BufferSettings, NickSettings};
 use weechat::config::{
-    Conf, BooleanOption, BooleanOptionSettings, Config, ConfigSectionSettings,
+    BooleanOption, BooleanOptionSettings, Conf, Config, ConfigSectionSettings,
 };
 use weechat::hooks::{CommandDescription, CommandHook};
-use weechat::{weechat_plugin, ArgsWeechat, Weechat, WeechatPlugin};
 use weechat::BarItemHandle;
+use weechat::{weechat_plugin, ArgsWeechat, Weechat, WeechatPlugin};
 
 struct SamplePlugin {
     _rust_hook: CommandHook<String>,

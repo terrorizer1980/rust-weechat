@@ -13,9 +13,9 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 #[cfg(feature = "async-executor")]
-use futures::future::LocalBoxFuture;
-#[cfg(feature = "async-executor")]
 use async_trait::async_trait;
+#[cfg(feature = "async-executor")]
+use futures::future::LocalBoxFuture;
 
 use crate::{LossyCString, Weechat};
 use libc::{c_char, c_int};
@@ -117,7 +117,10 @@ pub trait BufferInputCallbackAsync: 'static {
 
 #[cfg(feature = "async-executor")]
 #[async_trait(?Send)]
-impl<T: FnMut(BufferHandle, String) -> LocalBoxFuture<'static, ()> + 'static> BufferInputCallbackAsync for T {
+impl<
+        T: FnMut(BufferHandle, String) -> LocalBoxFuture<'static, ()> + 'static,
+    > BufferInputCallbackAsync for T
+{
     async fn callback(&mut self, buffer: BufferHandle, input: String) {
         self(buffer, input).await
     }
@@ -166,9 +169,8 @@ impl BufferSettingsAsync {
     ///     data into the buffer input line.
     pub fn input_callback(
         mut self,
-        callback: impl BufferInputCallbackAsync
-    ) -> Self
-    {
+        callback: impl BufferInputCallbackAsync,
+    ) -> Self {
         self.input_callback = Some(Box::new(callback));
         self
     }
@@ -358,8 +360,7 @@ impl Weechat {
                 buffer_ptr: buffer_cell,
             };
             if let Some(cb) = pointers.input_cb.as_mut() {
-                let future =
-                    cb.callback(buffer_handle, input_data.to_string());
+                let future = cb.callback(buffer_handle, input_data.to_string());
                 Weechat::spawn_buffer_cb(
                     buffer.full_name().to_string(),
                     future,
