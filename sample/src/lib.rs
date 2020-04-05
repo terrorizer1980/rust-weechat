@@ -2,11 +2,11 @@ use std::borrow::Cow;
 use std::time::Instant;
 use weechat::buffer::{Buffer, BufferSettings, NickSettings};
 use weechat::config::{
-    BooleanOption, BooleanOptionSettings, Config, ConfigSectionSettings,
+    Conf, BooleanOption, BooleanOptionSettings, Config, ConfigSectionSettings,
 };
 use weechat::hooks::{CommandDescription, CommandHook};
-use weechat::BarItemHandle;
 use weechat::{weechat_plugin, ArgsWeechat, Weechat, WeechatPlugin};
+use weechat::BarItemHandle;
 
 struct SamplePlugin {
     _rust_hook: CommandHook<String>,
@@ -100,7 +100,7 @@ impl WeechatPlugin for SamplePlugin {
 
         let mut config = Weechat::config_new_with_callback(
             "rust_sample",
-            |_weechat, _config| {
+            |_weechat: &Weechat, _config: &Conf| {
                 Weechat::print("Reloaded config");
             },
         )
@@ -121,10 +121,10 @@ impl WeechatPlugin for SamplePlugin {
                 .new_boolean_option(option_settings)
                 .expect("Can't create option");
         }
-
-        let item = Weechat::new_bar_item("buffer_plugin", |_, _| {
-            "rust/sample".to_owned()
-        });
+        let item = Weechat::new_bar_item(
+            "buffer_plugin",
+            |_weechat: &Weechat, _buffer: &Buffer| "rust/sample".to_owned(),
+        );
 
         Ok(SamplePlugin {
             _rust_hook: command,

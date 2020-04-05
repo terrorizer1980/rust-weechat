@@ -9,8 +9,29 @@ use weechat_sys::{
 use crate::buffer::Buffer;
 use crate::{LossyCString, Weechat};
 
+///
+pub trait BarItemCallback: 'static {
+    /// The callback that should be called after the bar items
+    /// is marked to be updated.
+    ///
+    /// Should return a string that will be displayed by the bar item.
+    ///
+    /// # Arguments
+    ///
+    /// * `weeechat` - A reference to the weechat context.
+    ///
+    /// * `buffer` - The currently visible buffer.
+    fn callback(&mut self, weechat: &Weechat, buffer: &Buffer) -> String;
+}
+
+impl<T: FnMut(&Weechat, &Buffer) -> String + 'static> BarItemCallback for T {
+    fn callback(&mut self, weechat: &Weechat, buffer: &Buffer) -> String {
+        self(weechat, buffer)
+    }
+}
+
 struct BarItemCbData {
-    callback: Box<dyn FnMut(&Weechat, &Buffer) -> String>,
+    callback: Box<dyn BarItemCallback>,
     weechat_ptr: *mut t_weechat_plugin,
 }
 
@@ -53,8 +74,11 @@ impl Weechat {
     /// Panics if the method is not called from the main Weechat thread.
     ///
     /// # Example
-    /// ```
-    /// let item = Weechat::new_bar_item("buffer_plugin", |_, _| {
+    /// ```no_run
+    /// # use weechat::Weechat;
+    /// # use weechat::buffer::Buffer;
+    /// let item = Weechat::new_bar_item("buffer_plugin", |weechat:&Weechat,
+    /// buffer: &Buffer| {
     ///     "rust/sample".to_owned()
     /// });
     /// ```
@@ -65,7 +89,7 @@ impl Weechat {
     // come from this.
     pub fn new_bar_item(
         name: &str,
-        callback: impl FnMut(&Weechat, &Buffer) -> String + 'static,
+        callback: impl BarItemCallback,
     ) -> Result<BarItemHandle, ()> {
         unsafe extern "C" fn c_item_cb(
             pointer: *const c_void,
@@ -80,9 +104,9 @@ impl Weechat {
             let weechat = Weechat::from_ptr(data.weechat_ptr);
             let buffer = weechat.buffer_from_ptr(buffer);
 
-            let callback = &mut data.callback;
+            let cb_trait = &mut data.callback;
 
-            let ret = callback(&weechat, &buffer);
+            let ret = cb_trait.callback(&weechat, &buffer);
 
             // Weechat wants a malloc'ed string
             libc::strdup(LossyCString::new(ret).as_ptr())
