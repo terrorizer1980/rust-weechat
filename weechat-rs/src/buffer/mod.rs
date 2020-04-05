@@ -13,7 +13,9 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 #[cfg(feature = "async-executor")]
-use futures::future::{Future, FutureExt, LocalBoxFuture};
+use futures::future::LocalBoxFuture;
+#[cfg(feature = "async-executor")]
+use async_trait::async_trait;
 
 use crate::{LossyCString, Weechat};
 use libc::{c_char, c_int};
@@ -84,15 +86,13 @@ impl BufferHandle {
 }
 
 #[cfg(feature = "async-executor")]
-pub(crate) struct BufferPointers<T: Clone> {
+pub(crate) struct BufferPointersAsync {
     pub(crate) weechat: *mut t_weechat_plugin,
-    pub(crate) input_cb: Option<BufferInputCallback<T>>,
+    pub(crate) input_cb: Option<Box<dyn BufferInputCallbackAsync>>,
     pub(crate) close_cb: Option<BufferCloseCallback>,
-    pub(crate) input_data: Option<T>,
     pub(crate) buffer_cell: Option<Rc<RefCell<*mut t_gui_buffer>>>,
 }
 
-#[cfg(not(feature = "async-executor"))]
 pub(crate) struct BufferPointers {
     pub(crate) weechat: *mut t_weechat_plugin,
     pub(crate) input_cb: Option<BufferInputCallback>,
@@ -100,18 +100,28 @@ pub(crate) struct BufferPointers {
     pub(crate) buffer_cell: Option<Rc<RefCell<*mut t_gui_buffer>>>,
 }
 
-#[cfg(not(feature = "async-executor"))]
 /// Callback that will be called if the user inputs something into the buffer
-/// input field. This is the normal version of the callback.
+/// input field. This is the non-async version of the callback.
 pub type BufferInputCallback =
     Box<dyn FnMut(&Weechat, &Buffer, Cow<str>) -> Result<(), ()>>;
 
 #[cfg(feature = "async-executor")]
-/// Callback that will be called if the user inputs something into the buffer
-/// input field. This is the async/await enabled version of the callback.
-pub type BufferInputCallback<T> = Box<
-    dyn FnMut(Option<T>, BufferHandle, String) -> LocalBoxFuture<'static, ()>,
->;
+#[async_trait(?Send)]
+/// Trait for the buffer input callback.
+/// This is the async version of the callback.
+pub trait BufferInputCallbackAsync: 'static {
+    /// Callback that will be called if the user inputs something into the buffer
+    /// input field.
+    async fn callback(&mut self, buffer: BufferHandle, input: String);
+}
+
+#[cfg(feature = "async-executor")]
+#[async_trait(?Send)]
+impl<T: FnMut(BufferHandle, String) -> LocalBoxFuture<'static, ()> + 'static> BufferInputCallbackAsync for T {
+    async fn callback(&mut self, buffer: BufferHandle, input: String) {
+        self(buffer, input).await
+    }
+}
 
 /// Callback that will be called if the buffer gets closed.
 pub type BufferCloseCallback =
@@ -119,14 +129,12 @@ pub type BufferCloseCallback =
 
 #[cfg(feature = "async-executor")]
 /// Settings for the creation of a buffer.
-pub struct BufferSettings<T: Clone> {
+pub struct BufferSettingsAsync {
     pub(crate) name: String,
-    pub(crate) input_callback: Option<BufferInputCallback<T>>,
-    pub(crate) input_data: Option<T>,
+    pub(crate) input_callback: Option<Box<dyn BufferInputCallbackAsync>>,
     pub(crate) close_callback: Option<BufferCloseCallback>,
 }
 
-#[cfg(not(feature = "async-executor"))]
 /// Settings for the creation of a buffer.
 pub struct BufferSettings {
     pub(crate) name: String,
@@ -135,7 +143,7 @@ pub struct BufferSettings {
 }
 
 #[cfg(feature = "async-executor")]
-impl<T: Clone> BufferSettings<T> {
+impl BufferSettingsAsync {
     /// Create new default buffer creation settings.
     ///
     /// # Arguments
@@ -143,10 +151,9 @@ impl<T: Clone> BufferSettings<T> {
     /// * `name` - The name of the new buffer. Needs to be unique across a
     /// plugin, otherwise the buffer creation will fail.
     pub fn new(name: &str) -> Self {
-        BufferSettings {
+        BufferSettingsAsync {
             name: name.to_owned(),
             input_callback: None,
-            input_data: None,
             close_callback: None,
         }
     }
@@ -157,28 +164,12 @@ impl<T: Clone> BufferSettings<T> {
     ///
     /// * `callback` - An async function that will be called once a user inputs
     ///     data into the buffer input line.
-    pub fn input_callback<C: 'static>(
+    pub fn input_callback(
         mut self,
-        mut callback: impl FnMut(Option<T>, BufferHandle, String) -> C + 'static,
+        callback: impl BufferInputCallbackAsync
     ) -> Self
-    where
-        C: Future<Output = ()>,
     {
-        let future = move |data, buffer, input| {
-            callback(data, buffer, input).boxed_local()
-        };
-        self.input_callback = Some(Box::new(future));
-        self
-    }
-
-    /// Set some additional data that will be passed to the input callback on
-    /// every invocation.
-    ///
-    /// # Arguments
-    ///
-    /// * `data` - The data that should be passed to the input callback.
-    pub fn input_data(mut self, data: T) -> Self {
-        self.input_data = Some(data);
+        self.input_callback = Some(Box::new(callback));
         self
     }
 
@@ -197,7 +188,6 @@ impl<T: Clone> BufferSettings<T> {
     }
 }
 
-#[cfg(not(feature = "async-executor"))]
 impl BufferSettings {
     /// Create new default buffer creation settings.
     ///
@@ -302,7 +292,7 @@ impl Weechat {
         }
     }
 
-    /// Create a new Weechat buffer
+    /// Create a new Weechat buffer with an async input callback.
     ///
     /// * `settings` - Settings for the new buffer.
     ///
@@ -313,17 +303,24 @@ impl Weechat {
     /// Panics if the method is not called from the main Weechat thread.
     ///
     /// # Example
+    /// ```no_execute
+    /// # use futures::future::{FutureExt, LocalBoxFuture};
+    /// # use weechat::Weechat;
+    /// # use weechat::buffer::{BufferHandle, BufferSettingsAsync};
+    /// fn input_cb(buffer: BufferHandle, input: String) -> LocalBoxFuture<'static, ()> {
+    ///     async move {
+    ///         let buffer = buffer.upgrade().unwrap();
+    ///         buffer.print(&input);
+    ///     }.boxed_local()
+    /// }
     ///
-    /// ```
-    /// let buffer_settings = BufferSettings::new(&room_id.to_string())
-    ///     .input_data((state, room_id.to_owned()))
-    ///     .input_callback(async move |data, buffer, input| {
-    ///     })
+    /// let buffer_settings = BufferSettingsAsync::new("test_buffer")
+    ///     .input_callback(input_cb)
     ///     .close_callback(|weechat, buffer| {
     ///         Ok(())
-    ///     });
+    /// });
     ///
-    /// let buffer_handle = Weechat::buffer_new(buffer_settings)
+    /// let buffer_handle = Weechat::buffer_new_async(buffer_settings)
     ///     .expect("Can't create new room buffer");
     ///
     /// let buffer = buffer_handle
@@ -334,10 +331,10 @@ impl Weechat {
     /// buffer.print("Hello world");
     /// ```
     #[cfg(feature = "async-executor")]
-    pub fn buffer_new<T: Clone>(
-        settings: BufferSettings<T>,
+    pub fn buffer_new_async(
+        settings: BufferSettingsAsync,
     ) -> Result<BufferHandle, ()> {
-        unsafe extern "C" fn c_input_cb<T: Clone>(
+        unsafe extern "C" fn c_input_cb(
             pointer: *const c_void,
             _data: *mut c_void,
             buffer: *mut t_gui_buffer,
@@ -345,8 +342,8 @@ impl Weechat {
         ) -> c_int {
             let input_data = CStr::from_ptr(input_data).to_string_lossy();
 
-            let pointers: &mut BufferPointers<T> =
-                { &mut *(pointer as *mut BufferPointers<T>) };
+            let pointers: &mut BufferPointersAsync =
+                { &mut *(pointer as *mut BufferPointersAsync) };
 
             let weechat = Weechat::from_ptr(pointers.weechat);
             let buffer = weechat.buffer_from_ptr(buffer);
@@ -360,11 +357,9 @@ impl Weechat {
                 weechat: pointers.weechat,
                 buffer_ptr: buffer_cell,
             };
-            let data = pointers.input_data.clone();
-
-            if let Some(callback) = pointers.input_cb.as_mut() {
+            if let Some(cb) = pointers.input_cb.as_mut() {
                 let future =
-                    callback(data, buffer_handle, input_data.to_string());
+                    cb.callback(buffer_handle, input_data.to_string());
                 Weechat::spawn_buffer_cb(
                     buffer.full_name().to_string(),
                     future,
@@ -374,14 +369,14 @@ impl Weechat {
             WEECHAT_RC_OK
         }
 
-        unsafe extern "C" fn c_close_cb<T: Clone>(
+        unsafe extern "C" fn c_close_cb(
             pointer: *const c_void,
             _data: *mut c_void,
             buffer: *mut t_gui_buffer,
         ) -> c_int {
             // We use from_raw() here so that the box gets deallocated at the
             // end of this scope.
-            let pointers = Box::from_raw(pointer as *mut BufferPointers<T>);
+            let pointers = Box::from_raw(pointer as *mut BufferPointersAsync);
             let weechat = Weechat::from_ptr(pointers.weechat);
             let buffer = weechat.buffer_from_ptr(buffer);
 
@@ -409,7 +404,7 @@ impl Weechat {
 
         let c_input_cb: Option<WeechatInputCbT> = match settings.input_callback
         {
-            Some(_) => Some(c_input_cb::<T>),
+            Some(_) => Some(c_input_cb),
             None => None,
         };
 
@@ -419,10 +414,9 @@ impl Weechat {
         // We create a box and use leak to stop rust from freeing our data,
         // we are giving Weechat ownership over the data and will free it in
         // the buffer close callback.
-        let buffer_pointers = Box::new(BufferPointers::<T> {
+        let buffer_pointers = Box::new(BufferPointersAsync {
             weechat: weechat.ptr,
             input_cb: settings.input_callback,
-            input_data: settings.input_data,
             close_cb: settings.close_callback,
             buffer_cell: None,
         });
@@ -439,7 +433,7 @@ impl Weechat {
                 c_input_cb,
                 buffer_pointers_ref as *const _ as *const c_void,
                 ptr::null_mut(),
-                Some(c_close_cb::<T>),
+                Some(c_close_cb),
                 buffer_pointers_ref as *const _ as *const c_void,
                 ptr::null_mut(),
             )
@@ -450,8 +444,8 @@ impl Weechat {
             return Err(());
         }
 
-        let pointers: &mut BufferPointers<T> =
-            unsafe { &mut *(buffer_pointers_ref as *mut BufferPointers<T>) };
+        let pointers: &mut BufferPointersAsync =
+            unsafe { &mut *(buffer_pointers_ref as *mut BufferPointersAsync) };
 
         let buffer_cell = Rc::new(RefCell::new(buf_ptr));
 
@@ -467,8 +461,37 @@ impl Weechat {
     ///
     /// * `settings` - Settings for the new buffer.
     ///
+    /// # Panics
+    ///
+    /// Panics if the method is not called from the main Weechat thread.
+    ///
     /// Returns a Buffer if one has been created, otherwise an empty Error.
-    #[cfg(not(feature = "async-executor"))]
+    /// # Example
+    /// ```no_run
+    /// # use std::borrow::Cow;
+    /// # use weechat::Weechat;
+    /// # use weechat::buffer::{Buffer, BufferHandle, BufferSettings};
+    /// fn input_cb(weechat: &Weechat, buffer: &Buffer, input: Cow<str>) -> Result<(), ()> {
+    ///     buffer.print(&input);
+    ///     Ok(())
+    /// }
+    ///
+    /// let buffer_settings = BufferSettings::new("test_buffer")
+    ///     .input_callback(input_cb)
+    ///     .close_callback(|weechat, buffer| {
+    ///         Ok(())
+    /// });
+    ///
+    /// let buffer_handle = Weechat::buffer_new(buffer_settings)
+    ///     .expect("Can't create new room buffer");
+    ///
+    /// let buffer = buffer_handle
+    ///     .upgrade()
+    ///     .expect("Can't upgrade newly created buffer");
+    ///
+    /// buffer.enable_nicklist();
+    /// buffer.print("Hello world");
+    /// ```
     pub fn buffer_new(settings: BufferSettings) -> Result<BufferHandle, ()> {
         unsafe extern "C" fn c_input_cb(
             pointer: *const c_void,

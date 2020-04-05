@@ -14,11 +14,12 @@ description = "Weechat API bindings for Rust"
 license = "MIT"
 
 [features]
-async-executor = ["async-task", "pipe-channel", "futures"]
+async-executor = ["async-task", "pipe-channel", "futures", "async-trait"]
 
 [dependencies]
 libc = "0.2.68"
 async-task = { version = "1.3.1", optional = true }
+async-trait = { version = "0.1.29", optional = true }
 pipe-channel = { version = "1.3.0", optional = true }
 futures = { version = "0.3.4", optional = true }
 
