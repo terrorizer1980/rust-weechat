@@ -103,14 +103,14 @@ impl Weechat {
     ///     populate the words for the completion
     /// * `callback_data` - Data that will be passed to the callback every time
     ///     the callback runs. This data will be freed when the hook is unhooked.
-    pub fn hook_completion<T>(
+    pub fn hook_completion(
         &self,
         completion_item: &str,
         description: &str,
         callback: impl FnMut(&Weechat, &Buffer, Cow<str>, Completion) -> ReturnCode
             + 'static,
     ) -> CompletionHook {
-        unsafe extern "C" fn c_hook_cb<T>(
+        unsafe extern "C" fn c_hook_cb(
             pointer: *const c_void,
             _data: *mut c_void,
             completion_item: *const c_char,
@@ -150,7 +150,7 @@ impl Weechat {
                 self.ptr,
                 completion_item.as_ptr(),
                 description.as_ptr(),
-                Some(c_hook_cb::<T>),
+                Some(c_hook_cb),
                 data_ref as *const _ as *const c_void,
                 ptr::null_mut(),
             )
