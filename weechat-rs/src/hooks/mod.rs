@@ -8,17 +8,17 @@
 mod signal;
 
 mod commands;
-mod timer;
 mod fd;
+mod timer;
 
+pub use commands::{CommandDescription, CommandHook, CommandRunHook};
+pub use fd::{FdHook, FdHookMode};
 #[cfg(feature = "unstable")]
 pub use signal::{SignalHook, SignalHookValue};
-pub use fd::{FdHook, FdHookMode};
-pub use commands::{CommandDescription, CommandHook, CommandRunHook};
 pub use timer::TimerHook;
 
-use weechat_sys::{t_hook, t_weechat_plugin};
 use crate::Weechat;
+use weechat_sys::{t_hook, t_weechat_plugin};
 
 /// Weechat Hook type. The hook is unhooked automatically when the object is
 /// dropped.

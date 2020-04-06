@@ -1,12 +1,12 @@
 use libc::c_int;
 use std::os::raw::c_void;
-use std::time::Duration;
 use std::ptr;
+use std::time::Duration;
 
 use weechat_sys::{t_weechat_plugin, WEECHAT_RC_OK};
 
-use crate::Weechat;
 use super::Hook;
+use crate::Weechat;
 
 /// A hook for a timer, the hook will be removed when the object is dropped.
 pub struct TimerHook<T> {

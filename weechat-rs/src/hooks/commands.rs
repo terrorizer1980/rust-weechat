@@ -1,5 +1,5 @@
-use std::borrow::Cow;
 use libc::{c_char, c_int};
+use std::borrow::Cow;
 use std::ffi::CStr;
 use std::os::raw::c_void;
 use std::ptr;

@@ -1,12 +1,12 @@
 use libc::c_int;
 use std::os::raw::c_void;
-use std::ptr;
 use std::os::unix::io::AsRawFd;
+use std::ptr;
 
 use weechat_sys::WEECHAT_RC_OK;
 
-use crate::Weechat;
 use super::Hook;
+use crate::Weechat;
 
 /// Setting for the FdHook.
 pub enum FdHookMode {
