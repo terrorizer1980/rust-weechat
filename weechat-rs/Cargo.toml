@@ -15,6 +15,7 @@ license = "MIT"
 
 [features]
 async-executor = ["async-task", "pipe-channel", "futures", "async-trait"]
+unstable = []
 
 [dependencies]
 libc = "0.2.68"
