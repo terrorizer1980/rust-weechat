@@ -95,12 +95,16 @@ struct CompletionHookData {
 }
 
 impl Weechat {
-    /// Hook a completion.
+    /// Create a new completion
     ///
-    /// * `completion_item` - The name of the completion item
-    /// * `description` - The description of the completion item
-    /// * `callback` - A function that will be called when the completion is used, the callback must
-    ///     populate the words for the completion
+    /// * `name` - The name of the new completion. After this is created the
+    ///     can be used as `%(name)` when creating commands.
+    ///
+    /// * `description` - The description of the new completion.
+    ///
+    /// * `callback` - A function that will be called when the completion is
+    ///     used, the callback must populate the words for the completion.
+    ///
     /// * `callback_data` - Data that will be passed to the callback every time
     ///     the callback runs. This data will be freed when the hook is unhooked.
     pub fn hook_completion(
