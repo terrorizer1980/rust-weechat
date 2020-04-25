@@ -368,7 +368,6 @@ impl Weechat {
         }
     }
 
-    #[cfg(feature = "async-executor")]
     /// Spawn a new `Future` on the main Weechat thread.
     ///
     /// # Panics
@@ -401,12 +400,28 @@ impl Weechat {
     /// Weechat::spawn(task(rx));
     /// block_on(tx.send("Hello wordl".to_string()));
     /// ```
+    #[cfg(feature = "async-executor")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "async-executor")))]
     pub fn spawn<F, R>(future: F) -> JoinHandle<R, ()>
     where
         F: Future<Output = R> + 'static,
         R: 'static,
     {
+        Weechat::check_thread();
         WeechatExecutor::spawn(future)
+    }
+
+    /// Spawn a new `Future` on the main Weechat thread.
+    ///
+    /// This can be called from any thread and will execute the future on the
+    /// main Weechat thread.
+    #[cfg(feature = "async-executor")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "async-executor")))]
+    pub fn spawn_from_thread<F>(future: F)
+    where
+        F: Future<Output = ()> + Send + 'static,
+    {
+        WeechatExecutor::spawn_from_non_main(future)
     }
 
     #[cfg(feature = "async-executor")]

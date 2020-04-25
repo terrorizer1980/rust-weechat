@@ -106,6 +106,7 @@ pub type BufferInputCallback =
     Box<dyn FnMut(&Weechat, &Buffer, Cow<str>) -> Result<(), ()>>;
 
 #[cfg(feature = "async-executor")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async-executor")))]
 #[async_trait(?Send)]
 /// Trait for the buffer input callback.
 /// This is the async version of the callback.
@@ -131,6 +132,7 @@ pub type BufferCloseCallback =
     Box<dyn FnMut(&Weechat, &Buffer) -> Result<(), ()>>;
 
 #[cfg(feature = "async-executor")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async-executor")))]
 /// Settings for the creation of a buffer.
 pub struct BufferSettingsAsync {
     pub(crate) name: String,
@@ -333,6 +335,7 @@ impl Weechat {
     /// buffer.print("Hello world");
     /// ```
     #[cfg(feature = "async-executor")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "async-executor")))]
     pub fn buffer_new_with_async(
         settings: BufferSettingsAsync,
     ) -> Result<BufferHandle, ()> {
