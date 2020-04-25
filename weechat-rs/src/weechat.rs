@@ -277,14 +277,25 @@ impl Weechat {
         }
     }
 
-    /// Evaluate a weechat expression and return the result
+    /// Evaluate a Weechat expression and return the result.
+    ///
+    /// # Arguments
+    ///
+    /// * `expression` - The expression that should be evaluated.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the method is not called from the main Weechat thread.
     //
     // TODO: Add hashtable options
     // TODO: This needs better docs and examples.
-    pub fn eval_string_expression(&self, expr: &str) -> Option<Cow<str>> {
-        let string_eval_expression = self.get().string_eval_expression.unwrap();
+    pub fn eval_string_expression(expression: &str) -> Result<String, ()> {
+        Weechat::check_thread();
+        let weechat = unsafe { Weechat::weechat() };
 
-        let expr = LossyCString::new(expr);
+        let string_eval_expression = weechat.get().string_eval_expression.unwrap();
+
+        let expr = LossyCString::new(expression);
 
         unsafe {
             let result = string_eval_expression(
@@ -295,9 +306,63 @@ impl Weechat {
             );
 
             if result.is_null() {
-                None
+                Err(())
             } else {
-                Some(CStr::from_ptr(result).to_string_lossy())
+                Ok(CStr::from_ptr(result).to_string_lossy().to_string())
+            }
+        }
+    }
+
+    /// Execute a modifier.
+    ///
+    /// A modifier takes a string and modifies it in some way, Weechat has a
+    /// list of defined modifiers. For example to parse a string with some color
+    /// format (ansi, irc...) and to convert it to another format.
+    ///
+    /// Returns the modified string or an empty error if the string couldn't be
+    /// modified.
+    ///
+    /// # Arguments
+    ///
+    /// * `modifier` - The name of a modifier. The list of modifiers can be found in
+    ///     the official
+    /// [Weechat documentation](https://weechat.org/files/doc/stable/weechat_plugin_api.en.html#_hook_modifier_exec).
+    ///
+    /// * `modifier_data` - Data that will be passed to the modifier, this
+    /// depends on the modifier that was chosen, consult the list of modifiers
+    /// in the Weechat documentation.
+    ///
+    /// * `input_string` - The string that should be modified.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the method is not called from the main Weechat thread.
+    pub fn execute_modifier(
+        modifier: &str,
+        modifier_data: &str,
+        input_string: &str,
+    ) -> Result<String, ()> {
+        Weechat::check_thread();
+        let weechat = unsafe { Weechat::weechat() };
+
+        let exec = weechat.get().hook_modifier_exec.unwrap();
+
+        let modifier = LossyCString::new(modifier);
+        let modifier_data = LossyCString::new(modifier_data);
+        let input_string = LossyCString::new(input_string);
+
+        unsafe {
+            let result = exec(
+                weechat.ptr,
+                modifier.as_ptr(),
+                modifier_data.as_ptr(),
+                input_string.as_ptr(),
+            );
+
+            if result.is_null() {
+                Err(())
+            } else {
+                Ok(CStr::from_ptr(result).to_string_lossy().to_string())
             }
         }
     }
