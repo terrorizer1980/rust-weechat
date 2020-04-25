@@ -293,7 +293,8 @@ impl Weechat {
         Weechat::check_thread();
         let weechat = unsafe { Weechat::weechat() };
 
-        let string_eval_expression = weechat.get().string_eval_expression.unwrap();
+        let string_eval_expression =
+            weechat.get().string_eval_expression.unwrap();
 
         let expr = LossyCString::new(expression);
 

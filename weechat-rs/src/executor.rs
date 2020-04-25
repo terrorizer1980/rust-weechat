@@ -4,7 +4,7 @@ use std::collections::VecDeque;
 use std::future::Future;
 use std::sync::{Arc, Mutex, Weak};
 
-use crate::hooks::{FdHook, FdHookMode, FdHookCallback};
+use crate::hooks::{FdHook, FdHookCallback, FdHookMode};
 use crate::Weechat;
 
 static mut _EXECUTOR: Option<WeechatExecutor> = None;
@@ -78,12 +78,7 @@ impl WeechatExecutor {
             futures: queue,
         };
 
-        let hook = weechat
-            .hook_fd(
-                receiver,
-                FdHookMode::Read,
-                executor.clone(),
-            )
+        let hook = FdHook::new(receiver, FdHookMode::Read, executor.clone())
             .expect("Can't create executor FD hook");
 
         *executor._hook.lock().unwrap() = Some(hook);

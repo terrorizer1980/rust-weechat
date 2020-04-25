@@ -109,7 +109,6 @@ mod weechat;
 
 mod bar;
 pub mod buffer;
-pub mod completion;
 pub mod config;
 pub mod hooks;
 

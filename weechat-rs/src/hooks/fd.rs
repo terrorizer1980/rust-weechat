@@ -41,7 +41,7 @@ pub struct FdHook<F> {
     _hook_data: Box<FdHookData<F>>,
 }
 
-/// Callback trait for file descriptor based hooks. 
+/// Callback trait for file descriptor based hooks.
 pub trait FdHookCallback {
     /// The concrete type of the hooked file descriptor object.
     type FdObject;
@@ -56,7 +56,7 @@ struct FdHookData<F> {
     fd_object: F,
 }
 
-impl Weechat {
+impl<F> FdHook<F> {
     /// Hook an object that can be turned into a raw file descriptor.
     /// Returns the hook object.
     ///
@@ -75,8 +75,11 @@ impl Weechat {
     /// * `callback_data` - Data that will be passed to the callback every time
     ///     the callback runs. This data will be freed when the hook is
     ///     unhooked.
-    pub fn hook_fd<F>(
-        &self,
+    ///
+    /// # Panics
+    ///
+    /// Panics if the method is not called from the main Weechat thread.
+    pub fn new(
         fd_object: F,
         mode: FdHookMode,
         callback: impl FdHookCallback<FdObject = F> + 'static,
@@ -100,21 +103,24 @@ impl Weechat {
             WEECHAT_RC_OK
         }
 
+        Weechat::check_thread();
+        let weechat = unsafe { Weechat::weechat() };
+
         let fd = fd_object.as_raw_fd();
 
         let data = Box::new(FdHookData {
             callback: Box::new(callback),
-            weechat_ptr: self.ptr,
+            weechat_ptr: weechat.ptr,
             fd_object,
         });
 
         let data_ref = Box::leak(data);
-        let hook_fd = self.get().hook_fd.unwrap();
+        let hook_fd = weechat.get().hook_fd.unwrap();
         let (read, write) = mode.as_tuple();
 
         let hook_ptr = unsafe {
             hook_fd(
-                self.ptr,
+                weechat.ptr,
                 fd,
                 read,
                 write,
@@ -133,7 +139,7 @@ impl Weechat {
         let hook_data = unsafe { Box::from_raw(data_ref) };
         let hook = Hook {
             ptr: hook_ptr,
-            weechat_ptr: self.ptr,
+            weechat_ptr: weechat.ptr,
         };
 
         Ok(FdHook::<F> {
