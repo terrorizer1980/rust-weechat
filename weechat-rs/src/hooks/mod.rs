@@ -12,7 +12,7 @@ mod fd;
 mod timer;
 
 pub use commands::{CommandDescription, CommandHook, CommandRunHook};
-pub use fd::{FdHook, FdHookMode};
+pub use fd::{FdHook, FdHookMode, FdHookCallback};
 #[cfg(feature = "unstable")]
 pub use signal::{SignalHook, SignalHookValue};
 pub use timer::TimerHook;

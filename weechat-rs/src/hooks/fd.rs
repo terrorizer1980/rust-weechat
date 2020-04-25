@@ -3,7 +3,7 @@ use std::os::raw::c_void;
 use std::os::unix::io::AsRawFd;
 use std::ptr;
 
-use weechat_sys::WEECHAT_RC_OK;
+use weechat_sys::{t_weechat_plugin, WEECHAT_RC_OK};
 
 use super::Hook;
 use crate::Weechat;
@@ -36,14 +36,23 @@ impl FdHookMode {
 }
 
 /// Hook for a file descriptor, the hook is removed when the object is dropped.
-pub struct FdHook<T, F> {
+pub struct FdHook<F> {
     _hook: Hook,
-    _hook_data: Box<FdHookData<T, F>>,
+    _hook_data: Box<FdHookData<F>>,
 }
 
-struct FdHookData<T, F> {
-    callback: fn(&T, fd_object: &mut F),
-    callback_data: T,
+/// Callback trait for file descriptor based hooks. 
+pub trait FdHookCallback {
+    /// The concrete type of the hooked file descriptor object.
+    type FdObject;
+    /// The callback that will be called when data is available to be read or to
+    /// be written on the file descriptor based object.
+    fn callback(&mut self, weechat: &Weechat, fd_object: &mut Self::FdObject);
+}
+
+struct FdHookData<F> {
+    callback: Box<dyn FdHookCallback<FdObject = F>>,
+    weechat_ptr: *mut t_weechat_plugin,
     fd_object: F,
 }
 
@@ -66,29 +75,27 @@ impl Weechat {
     /// * `callback_data` - Data that will be passed to the callback every time
     ///     the callback runs. This data will be freed when the hook is
     ///     unhooked.
-    pub fn hook_fd<T, F>(
+    pub fn hook_fd<F>(
         &self,
         fd_object: F,
         mode: FdHookMode,
-        callback: fn(data: &T, fd_object: &mut F),
-        callback_data: Option<T>,
-    ) -> Result<FdHook<T, F>, ()>
+        callback: impl FdHookCallback<FdObject = F> + 'static,
+    ) -> Result<FdHook<F>, ()>
     where
-        T: Default,
         F: AsRawFd,
     {
-        unsafe extern "C" fn c_hook_cb<T, F>(
+        unsafe extern "C" fn c_hook_cb<F>(
             pointer: *const c_void,
             _data: *mut c_void,
             _fd: i32,
         ) -> c_int {
-            let hook_data: &mut FdHookData<T, F> =
-                { &mut *(pointer as *mut FdHookData<T, F>) };
-            let callback = hook_data.callback;
-            let callback_data = &hook_data.callback_data;
-            let fd_object = &mut hook_data.fd_object;
+            let hook_data: &mut FdHookData<F> =
+                { &mut *(pointer as *mut FdHookData<F>) };
+            let cb = &mut hook_data.callback;
+            let mut fd_object = &mut hook_data.fd_object;
+            let weechat = Weechat::from_ptr(hook_data.weechat_ptr);
 
-            callback(callback_data, fd_object);
+            cb.callback(&weechat, &mut fd_object);
 
             WEECHAT_RC_OK
         }
@@ -96,8 +103,8 @@ impl Weechat {
         let fd = fd_object.as_raw_fd();
 
         let data = Box::new(FdHookData {
-            callback,
-            callback_data: callback_data.unwrap_or_default(),
+            callback: Box::new(callback),
+            weechat_ptr: self.ptr,
             fd_object,
         });
 
@@ -112,7 +119,7 @@ impl Weechat {
                 read,
                 write,
                 0,
-                Some(c_hook_cb::<T, F>),
+                Some(c_hook_cb::<F>),
                 data_ref as *const _ as *const c_void,
                 ptr::null_mut(),
             )
@@ -129,7 +136,7 @@ impl Weechat {
             weechat_ptr: self.ptr,
         };
 
-        Ok(FdHook::<T, F> {
+        Ok(FdHook::<F> {
             _hook: hook,
             _hook_data: hook_data,
         })

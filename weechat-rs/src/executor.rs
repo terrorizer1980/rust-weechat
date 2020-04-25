@@ -4,7 +4,7 @@ use std::collections::VecDeque;
 use std::future::Future;
 use std::sync::{Arc, Mutex, Weak};
 
-use crate::hooks::{FdHook, FdHookMode};
+use crate::hooks::{FdHook, FdHookMode, FdHookCallback};
 use crate::Weechat;
 
 static mut _EXECUTOR: Option<WeechatExecutor> = None;
@@ -22,10 +22,46 @@ enum ExecutorJob {
 type FutureQueue = Arc<Mutex<VecDeque<ExecutorJob>>>;
 type FutureQueueHandle = Weak<Mutex<VecDeque<ExecutorJob>>>;
 
+#[derive(Clone)]
 pub struct WeechatExecutor {
-    _hook: Option<FdHook<FutureQueueHandle, Receiver<()>>>,
+    _hook: Arc<Mutex<Option<FdHook<Receiver<()>>>>>,
     sender: Arc<Mutex<Sender<()>>>,
     futures: FutureQueue,
+}
+
+impl FdHookCallback for WeechatExecutor {
+    type FdObject = Receiver<()>;
+
+    fn callback(&mut self, weechat: &Weechat, receiver: &mut Receiver<()>) {
+        if receiver.recv().is_err() {
+            return;
+        }
+
+        let mut futures = self.futures.lock().unwrap();
+        let task = futures.pop_front();
+
+        // Drop the lock here so we can spawn new futures from the currently
+        // running one.
+        drop(futures);
+
+        if let Some(task) = task {
+            match task {
+                ExecutorJob::Job(t) => t.run(),
+                ExecutorJob::BufferJob(t) => {
+                    let weechat = unsafe { Weechat::weechat() };
+                    let buffer_name = t.tag();
+
+                    let buffer = weechat.buffer_search("==", buffer_name);
+
+                    if buffer.is_some() {
+                        t.run();
+                    } else {
+                        t.cancel();
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl WeechatExecutor {
@@ -36,58 +72,23 @@ impl WeechatExecutor {
         let sender = Arc::new(Mutex::new(sender));
         let queue = Arc::new(Mutex::new(VecDeque::new()));
 
+        let mut executor = WeechatExecutor {
+            _hook: Arc::new(Mutex::new(None)),
+            sender,
+            futures: queue,
+        };
+
         let hook = weechat
             .hook_fd(
                 receiver,
                 FdHookMode::Read,
-                WeechatExecutor::executor_cb,
-                Some(Arc::downgrade(&queue)),
+                executor.clone(),
             )
             .expect("Can't create executor FD hook");
 
-        WeechatExecutor {
-            _hook: Some(hook),
-            sender,
-            futures: queue,
-        }
-    }
+        *executor._hook.lock().unwrap() = Some(hook);
 
-    fn executor_cb(
-        future_queue: &FutureQueueHandle,
-        receiver: &mut Receiver<()>,
-    ) {
-        if receiver.recv().is_err() {
-            return;
-        }
-
-        let futures = future_queue.upgrade();
-
-        if let Some(q) = futures {
-            let mut futures = q.lock().unwrap();
-            let task = futures.pop_front();
-
-            // Drop the lock here so we can spawn new futures from the currently
-            // running one.
-            drop(futures);
-
-            if let Some(task) = task {
-                match task {
-                    ExecutorJob::Job(t) => t.run(),
-                    ExecutorJob::BufferJob(t) => {
-                        let weechat = unsafe { Weechat::weechat() };
-                        let buffer_name = t.tag();
-
-                        let buffer = weechat.buffer_search("==", buffer_name);
-
-                        if buffer.is_some() {
-                            t.run();
-                        } else {
-                            t.cancel();
-                        }
-                    }
-                }
-            }
-        }
+        executor
     }
 
     pub fn free() {
