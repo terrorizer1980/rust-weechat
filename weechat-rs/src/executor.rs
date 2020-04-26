@@ -3,6 +3,7 @@ use futures::future::{BoxFuture, Future};
 use pipe_channel::{channel, Receiver, Sender};
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
+use std::panic;
 
 use crate::hooks::{FdHook, FdHookCallback, FdHookMode};
 use crate::Weechat;
@@ -42,7 +43,20 @@ impl FdHookCallback for WeechatExecutor {
         // Run a local future if there is one.
         if let Some(task) = future {
             match task {
-                ExecutorJob::Job(t) => t.run(),
+                ExecutorJob::Job(t) => {
+                    match panic::catch_unwind(|| t.run()) {
+                        Ok(_ret) => (),
+                        Err(e) => {
+                            Weechat::print(
+                                &format!(
+                                    "{}Panic occurred in future running on the Weechat thread {:?}",
+                                    Weechat::prefix("error"),
+                                    e
+                                )
+                            );
+                        },
+                    }
+                },
                 ExecutorJob::BufferJob(t) => {
                     let weechat = unsafe { Weechat::weechat() };
                     let buffer_name = t.tag();
@@ -50,7 +64,18 @@ impl FdHookCallback for WeechatExecutor {
                     let buffer = weechat.buffer_search("==", buffer_name);
 
                     if buffer.is_some() {
-                        t.run();
+                        match panic::catch_unwind(|| t.run()) {
+                            Ok(_ret) => (),
+                            Err(e) => {
+                                Weechat::print(
+                                    &format!(
+                                        "{}Panic occurred in a buffer input callback{:?}",
+                                        Weechat::prefix("error"),
+                                        e
+                                    )
+                                );
+                            },
+                        }
                     } else {
                         t.cancel();
                     }
