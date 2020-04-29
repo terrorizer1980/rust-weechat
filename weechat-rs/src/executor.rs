@@ -2,8 +2,8 @@ pub use async_task::JoinHandle;
 use futures::future::{BoxFuture, Future};
 use pipe_channel::{channel, Receiver, Sender};
 use std::collections::VecDeque;
-use std::sync::{Arc, Mutex};
 use std::panic;
+use std::sync::{Arc, Mutex};
 
 use crate::hooks::{FdHook, FdHookCallback, FdHookMode};
 use crate::Weechat;
@@ -43,18 +43,16 @@ impl FdHookCallback for WeechatExecutor {
         // Run a local future if there is one.
         if let Some(task) = future {
             match task {
-                ExecutorJob::Job(t) => {
-                    match panic::catch_unwind(|| t.run()) {
-                        Ok(_ret) => (),
-                        Err(e) => {
-                            Weechat::print(
+                ExecutorJob::Job(t) => match panic::catch_unwind(|| t.run()) {
+                    Ok(_ret) => (),
+                    Err(e) => {
+                        Weechat::print(
                                 &format!(
                                     "{}Panic occurred in future running on the Weechat thread {:?}",
                                     Weechat::prefix("error"),
                                     e
                                 )
                             );
-                        },
                     }
                 },
                 ExecutorJob::BufferJob(t) => {
@@ -74,7 +72,7 @@ impl FdHookCallback for WeechatExecutor {
                                         e
                                     )
                                 );
-                            },
+                            }
                         }
                     } else {
                         t.cancel();
