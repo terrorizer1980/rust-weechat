@@ -7,11 +7,13 @@
 #[cfg(feature = "unstable")]
 mod signal;
 
+mod bar;
 mod commands;
 mod completion;
 mod fd;
 mod timer;
 
+pub use bar::{BarItemHandle, BarItemCallback};
 pub use commands::{Command, CommandCallback, CommandRun, CommandSettings};
 pub use completion::{Completion, CompletionHook, CompletionPosition};
 pub use fd::{FdHook, FdHookCallback, FdHookMode};

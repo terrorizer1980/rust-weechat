@@ -4,8 +4,7 @@ use weechat::buffer::{Buffer, BufferSettings, NickSettings};
 use weechat::config::{
     BooleanOption, BooleanOptionSettings, Conf, Config, ConfigSectionSettings,
 };
-use weechat::hooks::{CommandSettings, Command};
-use weechat::BarItemHandle;
+use weechat::hooks::{BarItemHandle, CommandSettings, Command};
 use weechat::{weechat_plugin, ArgsWeechat, Weechat, WeechatPlugin};
 
 struct SamplePlugin {
