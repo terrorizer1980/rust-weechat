@@ -7,11 +7,11 @@
 //! ```no_run
 //! use std::borrow::Cow;
 //! use weechat::buffer::{Buffer, BufferSettings, NickSettings};
-//! use weechat::hooks::{CommandDescription, CommandHook};
+//! use weechat::hooks::{CommandSettings, Command};
 //! use weechat::{weechat_plugin, ArgsWeechat, Weechat, WeechatPlugin};
 //!
 //! struct SamplePlugin {
-//!     _rust_hook: CommandHook<String>,
+//!     _command: Command,
 //! }
 //!
 //! impl SamplePlugin {
@@ -29,12 +29,13 @@
 //!         Ok(())
 //!     }
 //!
-//!     fn rust_command_cb(data: &String, buffer: Buffer, args: ArgsWeechat) {
-//!         buffer.print(data);
-//!         for arg in args {
-//!             buffer.print(&arg)
-//!         }
-//!     }
+//!     fn rust_command_cb(_weechat: &Weechat, buffer: &Buffer, args: ArgsWeechat) {
+//!        buffer.print("Hello world");
+//!
+//!        for arg in args {
+//!            buffer.print(&arg)
+//!        }
+//!    }
 //! }
 //!
 //! impl WeechatPlugin for SamplePlugin {
@@ -62,19 +63,15 @@
 //!             )
 //!             .expect("Can't add nick to group");
 //!
-//!         let sample_command = CommandDescription {
-//!             name: "rustcommand",
-//!             ..Default::default()
-//!         };
+//!         let sample_command = CommandSettings::new("rustcommand");
 //!
 //!         let command = weechat.hook_command(
 //!             sample_command,
 //!             SamplePlugin::rust_command_cb,
-//!             Some("Hello rust command".to_owned()),
 //!         );
 //!
 //!         Ok(SamplePlugin {
-//!             _rust_hook: command,
+//!             _command: command,
 //!         })
 //!     }
 //! }
