@@ -13,65 +13,152 @@ use super::Hook;
 
 /// Hook for a weechat command, the command is removed when the object is
 /// dropped.
-pub struct CommandHook<T> {
+pub struct Command {
     _hook: Hook,
-    _hook_data: Box<CommandHookData<T>>,
+    _hook_data: Box<CommandHookData>,
+}
+
+pub trait CommandCallback {
+    fn callback(
+        &mut self,
+        weechat: &Weechat,
+        buffer: &Buffer,
+        arguments: ArgsWeechat,
+    );
+}
+
+impl<T: FnMut(&Weechat, &Buffer, ArgsWeechat) + 'static> CommandCallback for T {
+    fn callback(
+        &mut self,
+        weechat: &Weechat,
+        buffer: &Buffer,
+        arguments: ArgsWeechat,
+    ) {
+        self(weechat, buffer, arguments)
+    }
 }
 
 #[derive(Default)]
 /// Description for a weechat command that should will be hooked.
 /// The fields of this struct accept the same string formats that are described
 /// in the weechat API documentation.
-pub struct CommandDescription<'a> {
+pub struct CommandSettings {
     /// Name of the command.
-    pub name: &'a str,
+    name: String,
     /// Description for the command (displayed with `/help command`)
-    pub description: &'a str,
+    description: String,
     /// Arguments for the command (displayed with `/help command`)
-    pub args: &'a str,
+    arguments: Vec<String>,
     /// Description for the command arguments (displayed with `/help command`)
-    pub args_description: &'a str,
+    argument_descriptoin: String,
     /// Completion template for the command.
-    pub completion: &'a str,
+    completion: Vec<String>,
 }
 
-struct CommandHookData<T> {
-    callback: fn(&T, Buffer, ArgsWeechat),
-    callback_data: T,
+impl CommandSettings {
+    /// Create new command settings.
+    ///
+    /// This describes how a command will be created.
+    ///
+    /// #Arguments
+    ///
+    /// * `name` - The name that the section should get.
+    pub fn new<P: Into<String>>(name: P) -> Self {
+        CommandSettings {
+            name: name.into(),
+            ..Default::default()
+        }
+    }
+
+    /// Set the description of the command.
+    ///
+    /// # Arguments
+    ///
+    /// * `description` - The description of the command.
+    pub fn description<D: Into<String>>(mut self, descritpion: D) -> Self {
+        self.description = descritpion.into();
+        self
+    }
+
+    /// Set the
+    ///
+    /// # Arguments
+    ///
+    /// * `description` - The description of the command.
+    pub fn add_argument<T: Into<String>>(mut self, argument: T) -> Self {
+        self.arguments.push(argument.into());
+        self
+    }
+
+    pub fn arguments_description<T: Into<String>>(
+        mut self,
+        descritpion: T,
+    ) -> Self {
+        self.argument_descriptoin = descritpion.into();
+        self
+    }
+
+    pub fn add_completion<T: Into<String>>(mut self, completion: T) -> Self {
+        self.completion.push(completion.into());
+        self
+    }
+}
+
+struct CommandHookData {
+    callback: Box<dyn CommandCallback>,
     weechat_ptr: *mut t_weechat_plugin,
 }
 
 /// Hook for a weechat command, the hook is removed when the object is dropped.
-pub struct CommandRunHook<T> {
+pub struct CommandRun {
     _hook: Hook,
-    _hook_data: Box<CommandRunHookData<T>>,
+    _hook_data: Box<CommandRunHookData>,
 }
 
-struct CommandRunHookData<T> {
-    callback: fn(&T, Buffer, Cow<str>) -> ReturnCode,
-    callback_data: T,
+pub trait CommandRunCallback {
+    fn callback(
+        &mut self,
+        weechat: &Weechat,
+        buffer: &Buffer,
+        command: Cow<str>,
+    ) -> ReturnCode;
+}
+
+impl<T: FnMut(&Weechat, &Buffer, Cow<str>) -> ReturnCode + 'static>
+    CommandRunCallback for T
+{
+    fn callback(
+        &mut self,
+        weechat: &Weechat,
+        buffer: &Buffer,
+        command: Cow<str>,
+    ) -> ReturnCode {
+        self(weechat, buffer, command)
+    }
+}
+
+struct CommandRunHookData {
+    callback: Box<dyn CommandRunCallback>,
     weechat_ptr: *mut t_weechat_plugin,
 }
 
 impl Weechat {
-    /// Create a new weechat command.
-    ///
-    /// # Arguments
-    ///
-    /// * `command_info`
+    /// Create a new Weechat command.
     ///
     /// Returns the hook of the command. The command is unhooked if the hook is
     /// dropped.
-    pub fn hook_command<T>(
+    ///
+    /// # Arguments
+    ///
+    /// * `command_settings` - Settings for the new command.
+    ///
+    /// * `callback` - The callback that will be called if the command is run.
+    pub fn hook_command(
         &self,
-        command_info: CommandDescription,
-        callback: fn(data: &T, buffer: Buffer, args: ArgsWeechat),
-        callback_data: Option<T>,
-    ) -> CommandHook<T>
-    where
-        T: Default,
-    {
-        unsafe extern "C" fn c_hook_cb<T>(
+        command_settings: CommandSettings,
+        callback: impl CommandCallback + 'static,
+    ) -> Command {
+        unsafe extern "C" fn c_hook_cb(
             pointer: *const c_void,
             _data: *mut c_void,
             buffer: *mut t_gui_buffer,
@@ -79,28 +166,28 @@ impl Weechat {
             argv: *mut *mut c_char,
             _argv_eol: *mut *mut c_char,
         ) -> c_int {
-            let hook_data: &mut CommandHookData<T> =
-                { &mut *(pointer as *mut CommandHookData<T>) };
+            let hook_data: &mut CommandHookData =
+                { &mut *(pointer as *mut CommandHookData) };
             let weechat = Weechat::from_ptr(hook_data.weechat_ptr);
             let buffer = weechat.buffer_from_ptr(buffer);
-            let callback = hook_data.callback;
-            let callback_data = &hook_data.callback_data;
+            let cb = &mut hook_data.callback;
             let args = ArgsWeechat::new(argc, argv);
 
-            callback(callback_data, buffer, args);
+            cb.callback(&weechat, &buffer, args);
 
             WEECHAT_RC_OK
         }
 
-        let name = LossyCString::new(command_info.name);
-        let description = LossyCString::new(command_info.description);
-        let args = LossyCString::new(command_info.args);
-        let args_description = LossyCString::new(command_info.args_description);
-        let completion = LossyCString::new(command_info.completion);
+        let name = LossyCString::new(command_settings.name);
+        let description = LossyCString::new(command_settings.description);
+        let args = LossyCString::new(command_settings.arguments.join("||"));
+        let args_description =
+            LossyCString::new(command_settings.argument_descriptoin);
+        let completion =
+            LossyCString::new(command_settings.completion.join("||"));
 
         let data = Box::new(CommandHookData {
-            callback,
-            callback_data: callback_data.unwrap_or_default(),
+            callback: Box::new(callback),
             weechat_ptr: self.ptr,
         });
 
@@ -115,7 +202,7 @@ impl Weechat {
                 args.as_ptr(),
                 args_description.as_ptr(),
                 completion.as_ptr(),
-                Some(c_hook_cb::<T>),
+                Some(c_hook_cb),
                 data_ref as *const _ as *const c_void,
                 ptr::null_mut(),
             )
@@ -126,7 +213,7 @@ impl Weechat {
             weechat_ptr: self.ptr,
         };
 
-        CommandHook::<T> {
+        Command {
             _hook: hook,
             _hook_data: hook_data,
         }
@@ -136,55 +223,46 @@ impl Weechat {
     ///
     /// # Arguments
     ///
-    /// * `command` - The command to hook (wildcard `*` is allowed).
+    /// * `command` - The command to override (wildcard `*` is allowed).
     ///
-    /// * `callback` - A function that will be called when the command is run.
-    ///
-    /// * `callback_data` - Data that will be passed to the callback every time
-    ///     the callback runs. This data will be freed when the hook is unhooked.
-    pub fn hook_command_run<T>(
+    /// * `callback` - The function that will be called when the command is run.
+    pub fn hook_command_run(
         &self,
         command: &str,
-        callback: fn(data: &T, buffer: Buffer, command: Cow<str>) -> ReturnCode,
-        callback_data: Option<T>,
-    ) -> CommandRunHook<T>
-    where
-        T: Default,
-    {
-        unsafe extern "C" fn c_hook_cb<T>(
+        callback: impl CommandRunCallback + 'static,
+    ) -> CommandRun {
+        unsafe extern "C" fn c_hook_cb(
             pointer: *const c_void,
             _data: *mut c_void,
             buffer: *mut t_gui_buffer,
             command: *const std::os::raw::c_char,
         ) -> c_int {
-            let hook_data: &mut CommandRunHookData<T> =
-                { &mut *(pointer as *mut CommandRunHookData<T>) };
-            let callback = hook_data.callback;
-            let callback_data = &hook_data.callback_data;
+            let hook_data: &mut CommandRunHookData =
+                { &mut *(pointer as *mut CommandRunHookData) };
+            let cb = &mut hook_data.callback;
 
             let weechat = Weechat::from_ptr(hook_data.weechat_ptr);
             let buffer = weechat.buffer_from_ptr(buffer);
             let command = CStr::from_ptr(command).to_string_lossy();
 
-            callback(callback_data, buffer, command) as isize as i32
+            cb.callback(&weechat, &buffer, command) as isize as i32
         }
 
         let data = Box::new(CommandRunHookData {
-            callback,
-            callback_data: callback_data.unwrap_or_default(),
+            callback: Box::new(callback),
             weechat_ptr: self.ptr,
         });
 
         let data_ref = Box::leak(data);
-        let hook_timer = self.get().hook_command_run.unwrap();
+        let hook_command_run = self.get().hook_command_run.unwrap();
 
         let command = LossyCString::new(command);
 
         let hook_ptr = unsafe {
-            hook_timer(
+            hook_command_run(
                 self.ptr,
                 command.as_ptr(),
-                Some(c_hook_cb::<T>),
+                Some(c_hook_cb),
                 data_ref as *const _ as *const c_void,
                 ptr::null_mut(),
             )
@@ -195,7 +273,7 @@ impl Weechat {
             weechat_ptr: self.ptr,
         };
 
-        CommandRunHook::<T> {
+        CommandRun {
             _hook: hook,
             _hook_data: hook_data,
         }

@@ -9,7 +9,7 @@ use std::marker::PhantomData;
 use std::os::raw::c_void;
 use std::ptr;
 
-use std::cell::RefCell;
+use std::cell::Cell;
 use std::rc::Rc;
 
 #[cfg(feature = "async-executor")]
@@ -34,14 +34,19 @@ pub struct Buffer<'a> {
 }
 
 enum InnerBuffers<'a> {
-    BorrowedBuffer(InnerBuffer<'a, Weechat>),
-    OwnedBuffer(InnerBuffer<'a, BufferHandle>),
+    BorrowedBuffer(InnerBuffer<'a>),
+    OwnedBuffer(InnerOwnedBuffer<'a>),
 }
 
-struct InnerBuffer<'a, T> {
+struct InnerOwnedBuffer<'a> {
+    pub(crate) weechat: *mut t_weechat_plugin,
+    pub(crate) buffer_handle: &'a BufferHandle,
+}
+
+struct InnerBuffer<'a> {
     pub(crate) weechat: *mut t_weechat_plugin,
     pub(crate) ptr: *mut t_gui_buffer,
-    weechat_phantom: PhantomData<&'a T>,
+    weechat_phantom: PhantomData<&'a Weechat>,
 }
 
 impl PartialEq for Buffer<'_> {
@@ -58,8 +63,9 @@ impl PartialEq for Buffer<'_> {
 /// The buffer handle can be upgraded to a buffer which can then manipulate the
 /// buffer state using the `upgrade()` method.
 pub struct BufferHandle {
-    pub(crate) weechat: *mut t_weechat_plugin,
-    pub(crate) buffer_ptr: Rc<RefCell<*mut t_gui_buffer>>,
+    buffer_name: Rc<String>,
+    weechat: *mut t_weechat_plugin,
+    buffer_ptr: Rc<Cell<*mut t_gui_buffer>>,
 }
 
 impl BufferHandle {
@@ -68,16 +74,15 @@ impl BufferHandle {
     /// This is necessary to do because the handle can be invalidated by Weechat
     /// between callbacks.
     pub fn upgrade(&self) -> Result<Buffer<'_>, ()> {
-        let ptr_borrow = self.buffer_ptr.borrow();
+        let ptr = self.buffer_ptr.get();
 
-        if ptr_borrow.is_null() {
+        if ptr.is_null() {
             Err(())
         } else {
             let buffer = Buffer {
-                inner: InnerBuffers::OwnedBuffer(InnerBuffer {
+                inner: InnerBuffers::OwnedBuffer(InnerOwnedBuffer {
                     weechat: self.weechat,
-                    ptr: *ptr_borrow,
-                    weechat_phantom: PhantomData,
+                    buffer_handle: self.clone(),
                 }),
             };
             Ok(buffer)
@@ -90,14 +95,14 @@ pub(crate) struct BufferPointersAsync {
     pub(crate) weechat: *mut t_weechat_plugin,
     pub(crate) input_cb: Option<Box<dyn BufferInputCallbackAsync>>,
     pub(crate) close_cb: Option<BufferCloseCallback>,
-    pub(crate) buffer_cell: Option<Rc<RefCell<*mut t_gui_buffer>>>,
+    pub(crate) buffer_cell: Option<Rc<Cell<*mut t_gui_buffer>>>,
 }
 
 pub(crate) struct BufferPointers {
     pub(crate) weechat: *mut t_weechat_plugin,
     pub(crate) input_cb: Option<BufferInputCallback>,
     pub(crate) close_cb: Option<BufferCloseCallback>,
-    pub(crate) buffer_cell: Option<Rc<RefCell<*mut t_gui_buffer>>>,
+    pub(crate) buffer_cell: Option<Rc<Cell<*mut t_gui_buffer>>>,
 }
 
 /// Callback that will be called if the user inputs something into the buffer
@@ -359,6 +364,7 @@ impl Weechat {
                 .clone();
 
             let buffer_handle = BufferHandle {
+                buffer_name: Rc::new(buffer.full_name().to_string()),
                 weechat: pointers.weechat,
                 buffer_ptr: buffer_cell,
             };
@@ -390,14 +396,12 @@ impl Weechat {
                 true
             };
 
+            // Invalidate the buffer pointer now.
             let mut cell = pointers
                 .buffer_cell
                 .as_ref()
                 .expect("Buffer cell wasn't initialized properly")
-                .borrow_mut();
-
-            // Invalidate the buffer pointer now.
-            *cell = ptr::null_mut();
+                .replace(ptr::null_mut());
 
             if ret {
                 WEECHAT_RC_OK
@@ -451,11 +455,13 @@ impl Weechat {
         let pointers: &mut BufferPointersAsync =
             unsafe { &mut *(buffer_pointers_ref as *mut BufferPointersAsync) };
 
-        let buffer_cell = Rc::new(RefCell::new(buf_ptr));
+        let buffer = weechat.buffer_from_ptr(buf_ptr);
+        let buffer_cell = Rc::new(Cell::new(buf_ptr));
 
         pointers.buffer_cell = Some(buffer_cell.clone());
 
         Ok(BufferHandle {
+            buffer_name: Rc::new(buffer.full_name().to_string()),
             weechat: weechat.ptr,
             buffer_ptr: buffer_cell,
         })
@@ -541,14 +547,12 @@ impl Weechat {
                 true
             };
 
-            let mut cell = pointers
+            // Invalidate the buffer pointer now.
+            pointers
                 .buffer_cell
                 .as_ref()
                 .expect("Buffer cell wasn't initialized properly")
-                .borrow_mut();
-
-            // Invalidate the buffer pointer now.
-            *cell = ptr::null_mut();
+                .replace(ptr::null_mut());
 
             if ret {
                 WEECHAT_RC_OK
@@ -601,11 +605,13 @@ impl Weechat {
         let pointers: &mut BufferPointers =
             unsafe { &mut *(buffer_pointers_ref as *mut BufferPointers) };
 
-        let buffer_cell = Rc::new(RefCell::new(buf_ptr));
+        let buffer = weechat.buffer_from_ptr(buf_ptr);
+        let buffer_cell = Rc::new(Cell::new(buf_ptr));
 
         pointers.buffer_cell = Some(buffer_cell.clone());
 
         Ok(BufferHandle {
+            buffer_name: Rc::new(buffer.full_name().to_string()),
             weechat: weechat.ptr,
             buffer_ptr: buffer_cell,
         })
@@ -632,7 +638,18 @@ impl Buffer<'_> {
     fn ptr(&self) -> *mut t_gui_buffer {
         match &self.inner {
             InnerBuffers::BorrowedBuffer(b) => b.ptr,
-            InnerBuffers::OwnedBuffer(b) => b.ptr,
+            InnerBuffers::OwnedBuffer(b) => {
+                let ptr = b.buffer_handle.buffer_ptr.get();
+
+                if ptr.is_null() {
+                    panic!(
+                        "Buffer {} has been closed.",
+                        b.buffer_handle.buffer_name
+                    )
+                } else {
+                    ptr
+                }
+            }
         }
     }
 

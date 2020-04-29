@@ -4,12 +4,12 @@ use weechat::buffer::{Buffer, BufferSettings, NickSettings};
 use weechat::config::{
     BooleanOption, BooleanOptionSettings, Conf, Config, ConfigSectionSettings,
 };
-use weechat::hooks::{CommandDescription, CommandHook};
+use weechat::hooks::{CommandSettings, Command};
 use weechat::BarItemHandle;
 use weechat::{weechat_plugin, ArgsWeechat, Weechat, WeechatPlugin};
 
 struct SamplePlugin {
-    _rust_hook: CommandHook<String>,
+    _rust_hook: Command,
     _rust_config: Config,
     _item: BarItemHandle,
 }
@@ -29,8 +29,9 @@ impl SamplePlugin {
         Ok(())
     }
 
-    fn rust_command_cb(data: &String, buffer: Buffer, args: ArgsWeechat) {
-        buffer.print(data);
+    fn rust_command_cb(_weechat: &Weechat, buffer: &Buffer, args: ArgsWeechat) {
+        buffer.print("Hello world");
+
         for arg in args {
             buffer.print(&arg)
         }
@@ -87,15 +88,11 @@ impl WeechatPlugin for SamplePlugin {
             now.elapsed().subsec_millis()
         ));
 
-        let sample_command = CommandDescription {
-            name: "rustcommand",
-            ..Default::default()
-        };
+        let sample_command = CommandSettings::new("rustcommand");
 
         let command = weechat.hook_command(
             sample_command,
             SamplePlugin::rust_command_cb,
-            Some("Hello rust command".to_owned()),
         );
 
         let mut config = Weechat::config_new_with_callback(

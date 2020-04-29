@@ -4,16 +4,45 @@ use std::ffi::CStr;
 use std::os::raw::c_void;
 use std::ptr;
 
-use weechat_sys::{t_gui_buffer, t_gui_completion, t_weechat_plugin};
+use weechat_sys::{
+    t_gui_buffer, t_gui_completion, t_weechat_plugin, WEECHAT_RC_ERROR,
+    WEECHAT_RC_OK,
+};
 
 use crate::buffer::Buffer;
 use crate::hooks::Hook;
-use crate::{LossyCString, ReturnCode, Weechat};
+use crate::{LossyCString, Weechat};
 
 /// A handle to a completion item.
 pub struct Completion {
     weechat_ptr: *mut t_weechat_plugin,
     ptr: *mut t_gui_completion,
+}
+
+pub trait CompletionCallback {
+    fn callback(
+        &mut self,
+        weechat: &Weechat,
+        buffer: &Buffer,
+        completion_name: Cow<str>,
+        completion: &Completion,
+    ) -> Result<(), ()>;
+}
+
+impl<
+        T: FnMut(&Weechat, &Buffer, Cow<str>, &Completion) -> Result<(), ()>
+            + 'static,
+    > CompletionCallback for T
+{
+    fn callback(
+        &mut self,
+        weechat: &Weechat,
+        buffer: &Buffer,
+        completion_name: Cow<str>,
+        completion: &Completion,
+    ) -> Result<(), ()> {
+        self(weechat, buffer, completion_name, completion)
+    }
 }
 
 /// The positions an entry can be added to a completion list.
@@ -53,6 +82,34 @@ impl Completion {
         self.add_with_options(word, false, CompletionPosition::Sorted)
     }
 
+    /// Get the command used in the completion.
+    pub fn base_command(&self) -> Cow<str> {
+        self.get_string("base_command")
+    }
+
+    /// Get the word that is being completed.
+    pub fn base_word(&self) -> Cow<str> {
+        self.get_string("base_word")
+    }
+
+    /// Get the command arguments including the base word.
+    pub fn arguments(&self) -> Cow<str> {
+        self.get_string("args")
+    }
+
+    fn get_string(&self, property_name: &str) -> Cow<str> {
+        let weechat = Weechat::from_ptr(self.weechat_ptr);
+
+        let get_string = weechat.get().hook_completion_get_string.unwrap();
+
+        let property_name = LossyCString::new(property_name);
+
+        unsafe {
+            let ret = get_string(self.ptr, property_name.as_ptr());
+            CStr::from_ptr(ret).to_string_lossy()
+        }
+    }
+
     /// Add a word for completion in a specific position specific if the word is a nick name
     pub fn add_with_options(
         &self,
@@ -87,10 +144,7 @@ pub struct CompletionHook {
 
 struct CompletionHookData {
     #[allow(clippy::type_complexity)]
-    callback: Box<
-        dyn FnMut(&Weechat, &Buffer, Cow<str>, Completion) -> ReturnCode
-            + 'static,
-    >,
+    callback: Box<dyn CompletionCallback>,
     weechat_ptr: *mut t_weechat_plugin,
 }
 
@@ -104,16 +158,12 @@ impl Weechat {
     ///
     /// * `callback` - A function that will be called when the completion is
     ///     used, the callback must populate the words for the completion.
-    ///
-    /// * `callback_data` - Data that will be passed to the callback every time
-    ///     the callback runs. This data will be freed when the hook is unhooked.
     pub fn hook_completion(
         &self,
         completion_item: &str,
         description: &str,
-        callback: impl FnMut(&Weechat, &Buffer, Cow<str>, Completion) -> ReturnCode
-            + 'static,
-    ) -> CompletionHook {
+        callback: impl CompletionCallback + 'static,
+    ) -> Result<CompletionHook, ()> {
         unsafe extern "C" fn c_hook_cb(
             pointer: *const c_void,
             _data: *mut c_void,
@@ -123,19 +173,25 @@ impl Weechat {
         ) -> c_int {
             let hook_data: &mut CompletionHookData =
                 { &mut *(pointer as *mut CompletionHookData) };
-            let callback = &mut hook_data.callback;
+            let cb = &mut hook_data.callback;
             let weechat = Weechat::from_ptr(hook_data.weechat_ptr);
             let buffer = weechat.buffer_from_ptr(buffer);
 
             let completion_item =
                 CStr::from_ptr(completion_item).to_string_lossy();
 
-            callback(
+            let ret = cb.callback(
                 &weechat,
                 &buffer,
                 completion_item,
-                Completion::from_raw(hook_data.weechat_ptr, completion),
-            ) as i32
+                &Completion::from_raw(hook_data.weechat_ptr, completion),
+            );
+
+            if let Ok(()) = ret {
+                WEECHAT_RC_OK
+            } else {
+                WEECHAT_RC_ERROR
+            }
         }
 
         let data = Box::new(CompletionHookData {
@@ -159,15 +215,21 @@ impl Weechat {
                 ptr::null_mut(),
             )
         };
+
         let hook_data = unsafe { Box::from_raw(data_ref) };
+
+        if hook_ptr.is_null() {
+            return Err(());
+        }
+
         let hook = Hook {
             ptr: hook_ptr,
             weechat_ptr: self.ptr,
         };
 
-        CompletionHook {
+        Ok(CompletionHook {
             _hook: hook,
             _hook_data: hook_data,
-        }
+        })
     }
 }

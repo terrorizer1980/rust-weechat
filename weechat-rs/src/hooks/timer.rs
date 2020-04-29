@@ -9,14 +9,31 @@ use super::Hook;
 use crate::Weechat;
 
 /// A hook for a timer, the hook will be removed when the object is dropped.
-pub struct TimerHook<T> {
+pub struct TimerHook {
     _hook: Hook,
-    _hook_data: Box<TimerHookData<T>>,
+    _hook_data: Box<TimerHookData>,
 }
 
-struct TimerHookData<T> {
-    callback: fn(&T, &Weechat, i32),
-    callback_data: T,
+pub enum RemainingCalls {
+    Infinite,
+    Finite(i32),
+}
+
+impl From<i32> for RemainingCalls {
+    fn from(remaining: i32) -> Self {
+        match remaining {
+            -1 => RemainingCalls::Infinite,
+            r => RemainingCalls::Finite(r),
+        }
+    }
+}
+
+pub trait TimerCallback {
+    fn callback(&mut self, weechat: &Weechat, remaining_calls: RemainingCalls);
+}
+
+struct TimerHookData {
+    callback: Box<dyn TimerCallback>,
     weechat_ptr: *mut t_weechat_plugin,
 }
 
@@ -41,39 +58,32 @@ impl Weechat {
     /// * `callback_data` - Data that will be passed to the callback every time
     ///     the callback runs. This data will be freed when the hook is
     ///     unhooked.
-    pub fn hook_timer<T>(
+    pub fn hook_timer(
         &self,
         interval: Duration,
         align_second: i32,
         max_calls: i32,
-        callback: fn(data: &T, weechat: &Weechat, remaining: i32),
-        callback_data: Option<T>,
-    ) -> TimerHook<T>
-    where
-        T: Default,
-    {
-        unsafe extern "C" fn c_hook_cb<T>(
+        callback: impl TimerCallback + 'static,
+    ) -> Result<TimerHook, ()> {
+        unsafe extern "C" fn c_hook_cb(
             pointer: *const c_void,
             _data: *mut c_void,
             remaining: i32,
         ) -> c_int {
-            let hook_data: &mut TimerHookData<T> =
-                { &mut *(pointer as *mut TimerHookData<T>) };
-            let callback = &hook_data.callback;
-            let callback_data = &hook_data.callback_data;
+            let hook_data: &mut TimerHookData =
+                { &mut *(pointer as *mut TimerHookData) };
+            let cb = &mut hook_data.callback;
 
-            callback(
-                callback_data,
+            cb.callback(
                 &Weechat::from_ptr(hook_data.weechat_ptr),
-                remaining,
+                RemainingCalls::from(remaining),
             );
 
             WEECHAT_RC_OK
         }
 
-        let data = Box::new(TimerHookData::<T> {
-            callback,
-            callback_data: callback_data.unwrap_or_default(),
+        let data = Box::new(TimerHookData {
+            callback: Box::new(callback),
             weechat_ptr: self.ptr,
         });
 
@@ -86,20 +96,25 @@ impl Weechat {
                 interval.as_millis() as i64,
                 align_second,
                 max_calls,
-                Some(c_hook_cb::<T>),
+                Some(c_hook_cb),
                 data_ref as *const _ as *const c_void,
                 ptr::null_mut(),
             )
         };
         let hook_data = unsafe { Box::from_raw(data_ref) };
+
+        if hook_ptr.is_null() {
+            return Err(());
+        }
+
         let hook = Hook {
             ptr: hook_ptr,
             weechat_ptr: self.ptr,
         };
 
-        TimerHook {
+        Ok(TimerHook {
             _hook: hook,
             _hook_data: hook_data,
-        }
+        })
     }
 }
