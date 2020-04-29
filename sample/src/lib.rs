@@ -4,7 +4,7 @@ use weechat::buffer::{Buffer, BufferSettings, NickSettings};
 use weechat::config::{
     BooleanOption, BooleanOptionSettings, Conf, Config, ConfigSectionSettings,
 };
-use weechat::hooks::{BarItemHandle, CommandSettings, Command};
+use weechat::hooks::{BarItemHandle, Command, CommandSettings};
 use weechat::{weechat_plugin, ArgsWeechat, Weechat, WeechatPlugin};
 
 struct SamplePlugin {
@@ -89,10 +89,8 @@ impl WeechatPlugin for SamplePlugin {
 
         let sample_command = CommandSettings::new("rustcommand");
 
-        let command = weechat.hook_command(
-            sample_command,
-            SamplePlugin::rust_command_cb,
-        );
+        let command =
+            weechat.hook_command(sample_command, SamplePlugin::rust_command_cb);
 
         let mut config = Weechat::config_new_with_callback(
             "rust_sample",
