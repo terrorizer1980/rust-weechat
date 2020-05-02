@@ -260,19 +260,22 @@ impl Weechat {
     /// * `name` - name the info
     ///
     /// * `arguments` - arguments for the info
-    pub fn info_get(&self, name: &str, arguments: &str) -> Option<Cow<str>> {
-        let info_get = self.get().info_get.unwrap();
+    pub fn info_get(name: &str, arguments: &str) -> Option<String> {
+        Weechat::check_thread();
+        let weechat = unsafe { Weechat::weechat() };
+
+        let info_get = weechat.get().info_get.unwrap();
 
         let info_name = LossyCString::new(name);
         let arguments = LossyCString::new(arguments);
 
         unsafe {
             let info =
-                info_get(self.ptr, info_name.as_ptr(), arguments.as_ptr());
+                info_get(weechat.ptr, info_name.as_ptr(), arguments.as_ptr());
             if info.is_null() {
                 None
             } else {
-                Some(CStr::from_ptr(info).to_string_lossy())
+                Some(CStr::from_ptr(info).to_string_lossy().to_string())
             }
         }
     }
