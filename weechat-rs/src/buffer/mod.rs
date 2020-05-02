@@ -116,6 +116,19 @@ pub trait BufferInputCallback: 'static {
     ) -> Result<(), ()>;
 }
 
+impl<T: FnMut(&Weechat, &Buffer, Cow<str>) -> Result<(), ()> + 'static>
+    BufferInputCallback for T
+{
+    fn callback(
+        &mut self,
+        weechat: &Weechat,
+        buffer: &Buffer,
+        input: Cow<str>,
+    ) -> Result<(), ()> {
+        self(weechat, buffer, input)
+    }
+}
+
 #[cfg(feature = "async-executor")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async-executor")))]
 #[async_trait(?Send)]
