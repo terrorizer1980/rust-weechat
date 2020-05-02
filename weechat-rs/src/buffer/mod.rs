@@ -268,6 +268,7 @@ impl Weechat {
         let buf_ptr = unsafe {
             buffer_search(plugin_name.as_ptr(), buffer_name.as_ptr())
         };
+
         if buf_ptr.is_null() {
             None
         } else {

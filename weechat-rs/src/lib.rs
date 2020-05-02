@@ -107,6 +107,7 @@ mod weechat;
 pub mod buffer;
 pub mod config;
 pub mod hooks;
+pub mod infolist;
 
 pub use crate::weechat::{ArgsWeechat, Weechat};
 
