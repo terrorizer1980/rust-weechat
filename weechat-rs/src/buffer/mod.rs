@@ -107,8 +107,13 @@ pub(crate) struct BufferPointers {
 
 /// Callback that will be called if the user inputs something into the buffer
 /// input field. This is the non-async version of the callback.
-pub trait  BufferInputCallback: 'static {
-    fn callback(&mut self, weechat: &Weechat, buffer: &Buffer, input: Cow<str>) -> Result<(), ()>;
+pub trait BufferInputCallback: 'static {
+    fn callback(
+        &mut self,
+        weechat: &Weechat,
+        buffer: &Buffer,
+        input: Cow<str>,
+    ) -> Result<(), ()>;
 }
 
 #[cfg(feature = "async-executor")]

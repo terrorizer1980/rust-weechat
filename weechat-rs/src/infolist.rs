@@ -1,14 +1,14 @@
 use std::borrow::Cow;
-use std::collections::{HashMap, hash_map::Keys};
+use std::collections::{hash_map::Keys, HashMap};
 use std::ffi::CStr;
 use std::marker::PhantomData;
 use std::ptr;
-use std::time::{SystemTime, Duration};
+use std::time::{Duration, SystemTime};
 
-use weechat_sys::{t_infolist, t_weechat_plugin, t_gui_buffer};
+use weechat_sys::{t_gui_buffer, t_infolist, t_weechat_plugin};
 
+use crate::buffer::{Buffer, InnerBuffer, InnerBuffers};
 use crate::{LossyCString, Weechat};
-use crate::buffer::{Buffer, InnerBuffers,  InnerBuffer};
 
 pub struct Infolist<'a> {
     ptr: *mut t_infolist,
@@ -32,7 +32,7 @@ impl From<&str> for InfolistType {
             "s" => InfolistType::String,
             "t" => InfolistType::Time,
             "p" => InfolistType::Buffer,
-            v => panic!("Got unexprected value {}", v)
+            v => panic!("Got unexprected value {}", v),
         }
     }
 }
@@ -51,9 +51,7 @@ impl<'a> InfolistItem<'a> {
 
         let infolist_integer = weechat.get().infolist_integer.unwrap();
 
-        unsafe {
-            infolist_integer(self.ptr, name.as_ptr())
-        }
+        unsafe { infolist_integer(self.ptr, name.as_ptr()) }
     }
 
     fn string(&self, name: &str) -> Option<Cow<str>> {
@@ -95,29 +93,29 @@ impl<'a> InfolistItem<'a> {
         })
     }
 
-    fn time(&self, name: &str) -> SystemTime {
+    fn time(&self, name: &str) -> Option<SystemTime> {
         let weechat = Weechat::from_ptr(self.weechat_ptr);
         let name = LossyCString::new(name);
 
         let infolist_time = weechat.get().infolist_time.unwrap();
 
-        let time = unsafe {
-            infolist_time(self.ptr, name.as_ptr())
-        };
+        let time = unsafe { infolist_time(self.ptr, name.as_ptr()) };
 
         let unix = SystemTime::UNIX_EPOCH;
         let duration = Duration::from_secs(time as u64);
 
-        unix.checked_add(duration).unwrap()
+        unix.checked_add(duration)
     }
 
     pub fn get(&self, key: &str) -> Option<InfolistVariable> {
         let infolist_type = self.fields.get(key)?;
 
         let variable = match infolist_type {
-            InfolistType::Integer => InfolistVariable::Integer(self.integer(key)),
+            InfolistType::Integer => {
+                InfolistVariable::Integer(self.integer(key))
+            }
             InfolistType::String => InfolistVariable::String(self.string(key)?),
-            InfolistType::Time => InfolistVariable::Time(self.time(key)),
+            InfolistType::Time => InfolistVariable::Time(self.time(key)?),
             InfolistType::Buffer => InfolistVariable::Buffer(self.buffer(key)?),
         };
 
@@ -155,7 +153,7 @@ impl<'a> Infolist<'a> {
             let name = split[1];
 
             // Skip the buffer, we can't safely expose them
-            // without knowing the size of the buffer. (Note the buffer here 
+            // without knowing the size of the buffer. (Note the buffer here
             // isn't a GUI buffer but a vector like thing.
             if infolist_type == "b" {
                 continue;
@@ -167,7 +165,7 @@ impl<'a> Infolist<'a> {
                 if self.infolist_name == "logger_buffer" && name == "buffer" {
                     InfolistType::Buffer
                 } else {
-                    continue
+                    continue;
                 }
             } else {
                 InfolistType::from(infolist_type)
@@ -185,9 +183,7 @@ impl<'a> Drop for Infolist<'a> {
         let weechat = Weechat::from_ptr(self.weechat_ptr);
         let infolist_free = weechat.get().infolist_free.unwrap();
 
-        unsafe {
-            infolist_free(self.ptr)
-        }
+        unsafe { infolist_free(self.ptr) }
     }
 }
 
