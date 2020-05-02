@@ -30,23 +30,23 @@ pub use crate::buffer::nickgroup::NickGroup;
 ///
 /// A buffer contains the data displayed on the screen.
 pub struct Buffer<'a> {
-    inner: InnerBuffers<'a>,
+    pub(crate) inner: InnerBuffers<'a>,
 }
 
-enum InnerBuffers<'a> {
+pub(crate) enum InnerBuffers<'a> {
     BorrowedBuffer(InnerBuffer<'a>),
     OwnedBuffer(InnerOwnedBuffer<'a>),
 }
 
-struct InnerOwnedBuffer<'a> {
+pub(crate) struct InnerOwnedBuffer<'a> {
     pub(crate) weechat: *mut t_weechat_plugin,
     pub(crate) buffer_handle: &'a BufferHandle,
 }
 
-struct InnerBuffer<'a> {
+pub(crate) struct InnerBuffer<'a> {
     pub(crate) weechat: *mut t_weechat_plugin,
     pub(crate) ptr: *mut t_gui_buffer,
-    weechat_phantom: PhantomData<&'a Weechat>,
+    pub(crate) weechat_phantom: PhantomData<&'a Weechat>,
 }
 
 impl PartialEq for Buffer<'_> {
@@ -100,15 +100,16 @@ pub(crate) struct BufferPointersAsync {
 
 pub(crate) struct BufferPointers {
     pub(crate) weechat: *mut t_weechat_plugin,
-    pub(crate) input_cb: Option<BufferInputCallback>,
+    pub(crate) input_cb: Option<Box<dyn BufferInputCallback>>,
     pub(crate) close_cb: Option<BufferCloseCallback>,
     pub(crate) buffer_cell: Option<Rc<Cell<*mut t_gui_buffer>>>,
 }
 
 /// Callback that will be called if the user inputs something into the buffer
 /// input field. This is the non-async version of the callback.
-pub type BufferInputCallback =
-    Box<dyn FnMut(&Weechat, &Buffer, Cow<str>) -> Result<(), ()>>;
+pub trait  BufferInputCallback: 'static {
+    fn callback(&mut self, weechat: &Weechat, buffer: &Buffer, input: Cow<str>) -> Result<(), ()>;
+}
 
 #[cfg(feature = "async-executor")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async-executor")))]
@@ -148,7 +149,7 @@ pub struct BufferSettingsAsync {
 /// Settings for the creation of a buffer.
 pub struct BufferSettings {
     pub(crate) name: String,
-    pub(crate) input_callback: Option<BufferInputCallback>,
+    pub(crate) input_callback: Option<Box<dyn BufferInputCallback>>,
     pub(crate) close_callback: Option<BufferCloseCallback>,
 }
 
@@ -216,12 +217,11 @@ impl BufferSettings {
     ///
     /// # Arguments
     ///
-    /// * `callback` - An async function that will be called once a user inputs
-    ///     data into the buffer input line.
+    /// * `callback` - A function or a struct that implements the
+    /// BufferCloseCallback trait.
     pub fn input_callback(
         mut self,
-        callback: impl FnMut(&Weechat, &Buffer, Cow<str>) -> Result<(), ()>
-            + 'static,
+        callback: impl BufferInputCallback + 'static,
     ) -> Self {
         self.input_callback = Some(Box::new(callback));
         self
@@ -518,8 +518,8 @@ impl Weechat {
             let weechat = Weechat::from_ptr(pointers.weechat);
             let buffer = weechat.buffer_from_ptr(buffer);
 
-            let ret = if let Some(callback) = pointers.input_cb.as_mut() {
-                callback(&weechat, &buffer, input_data).is_ok()
+            let ret = if let Some(ref mut cb) = pointers.input_cb.as_mut() {
+                cb.callback(&weechat, &buffer, input_data).is_ok()
             } else {
                 true
             };
