@@ -62,6 +62,9 @@ impl PartialEq for Buffer<'_> {
 ///
 /// The buffer handle can be upgraded to a buffer which can then manipulate the
 /// buffer state using the `upgrade()` method.
+///
+/// The buffer won't be closed if this handle gets dropped, to close the buffer
+/// call the close method on the upgraded buffer object.
 pub struct BufferHandle {
     buffer_name: Rc<String>,
     weechat: *mut t_weechat_plugin,
@@ -130,11 +133,21 @@ impl<T: FnMut(&Weechat, &Buffer, Cow<str>) -> Result<(), ()> + 'static>
 }
 
 pub trait BufferCloseCallback {
-    fn callback(&mut self, weechat: &Weechat, buffer: &Buffer) -> Result<(), ()>;
+    fn callback(
+        &mut self,
+        weechat: &Weechat,
+        buffer: &Buffer,
+    ) -> Result<(), ()>;
 }
 
-impl<T: FnMut(&Weechat, &Buffer) -> Result<(), ()> + 'static> BufferCloseCallback for T {
-    fn callback(&mut self, weechat: &Weechat, buffer: &Buffer) -> Result<(), ()> {
+impl<T: FnMut(&Weechat, &Buffer) -> Result<(), ()> + 'static>
+    BufferCloseCallback for T
+{
+    fn callback(
+        &mut self,
+        weechat: &Weechat,
+        buffer: &Buffer,
+    ) -> Result<(), ()> {
         self(weechat, buffer)
     }
 }
@@ -422,7 +435,7 @@ impl Weechat {
             };
 
             // Invalidate the buffer pointer now.
-            let mut cell = pointers
+            pointers
                 .buffer_cell
                 .as_ref()
                 .expect("Buffer cell wasn't initialized properly")
@@ -435,14 +448,14 @@ impl Weechat {
             }
         }
 
+        Weechat::check_thread();
+        let weechat = unsafe { Weechat::weechat() };
+
         let c_input_cb: Option<WeechatInputCbT> = match settings.input_callback
         {
             Some(_) => Some(c_input_cb),
             None => None,
         };
-
-        Weechat::check_thread();
-        let weechat = unsafe { Weechat::weechat() };
 
         // We create a box and use leak to stop rust from freeing our data,
         // we are giving Weechat ownership over the data and will free it in
@@ -586,14 +599,14 @@ impl Weechat {
             }
         }
 
+        Weechat::check_thread();
+        let weechat = unsafe { Weechat::weechat() };
+
         let c_input_cb: Option<WeechatInputCbT> = match settings.input_callback
         {
             Some(_) => Some(c_input_cb),
             None => None,
         };
-
-        Weechat::check_thread();
-        let weechat = unsafe { Weechat::weechat() };
 
         // We create a box and use leak to stop rust from freeing our data,
         // we are giving weechat ownership over the data and will free it in
