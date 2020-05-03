@@ -4,8 +4,8 @@ use weechat_sys::t_weechat_plugin;
 
 use crate::LossyCString;
 use libc::{c_char, c_int};
-use std::borrow::Cow;
 use std::ffi::CStr;
+use std::panic::PanicInfo;
 use std::{ptr, vec};
 
 #[cfg(feature = "async-executor")]
@@ -97,9 +97,53 @@ impl Weechat {
         WEECHAT = Some(Weechat { ptr });
         WEECHAT_THREAD_ID = Some(std::thread::current().id());
 
+        std::panic::set_hook(Box::new(Weechat::panic_hook));
+
         #[cfg(feature = "async-executor")]
         WeechatExecutor::start();
         Weechat { ptr }
+    }
+
+    fn panic_hook(info: &PanicInfo) {
+        let current_thread = std::thread::current();
+        let weechat_thread = Weechat::thread_id();
+
+        let current_thread_id = current_thread.id();
+        let thread_name = current_thread.name().unwrap_or("Unnamed");
+
+        if current_thread_id == weechat_thread {
+            Weechat::print(&format!(
+                "{}Panic in the main Weechat thread: {}",
+                Weechat::prefix("error"),
+                info
+            ));
+        } else {
+            #[cfg(feature = "async-executor")]
+            {
+                if current_thread_id != weechat_thread {
+                    Weechat::spawn_from_thread(Weechat::thread_panic(
+                        thread_name.to_string(),
+                        info.to_string(),
+                    ))
+                }
+            }
+            #[cfg(not(feature = "async-executor"))]
+            {
+                println!("thread '{}' panicked: {}", thread_name, info);
+            }
+        }
+    }
+
+    #[cfg(feature = "async-executor")]
+    async fn thread_panic(thread_name: String, message: String) {
+        Weechat::print(&format!(
+            "{}Thread '{}{}{}' {}.",
+            Weechat::prefix("error"),
+            Weechat::color("red"),
+            thread_name,
+            Weechat::color("reset"),
+            message
+        ));
     }
 
     /// Free internal plugin data.
@@ -181,6 +225,16 @@ impl Weechat {
                 msg.as_ptr(),
             );
         }
+    }
+
+    fn thread_id() -> std::thread::ThreadId {
+        unsafe {
+            WEECHAT_THREAD_ID.as_ref().expect(
+                "Weechat main thread ID wasn't found, plugin \
+                 wasn't correctly initialized",
+            )
+        }
+        .clone()
     }
 
     pub(crate) fn check_thread() {
