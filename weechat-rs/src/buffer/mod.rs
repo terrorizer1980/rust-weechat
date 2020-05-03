@@ -94,14 +94,14 @@ impl BufferHandle {
 pub(crate) struct BufferPointersAsync {
     pub(crate) weechat: *mut t_weechat_plugin,
     pub(crate) input_cb: Option<Box<dyn BufferInputCallbackAsync>>,
-    pub(crate) close_cb: Option<BufferCloseCallback>,
+    pub(crate) close_cb: Option<Box<dyn BufferCloseCallback>>,
     pub(crate) buffer_cell: Option<Rc<Cell<*mut t_gui_buffer>>>,
 }
 
 pub(crate) struct BufferPointers {
     pub(crate) weechat: *mut t_weechat_plugin,
     pub(crate) input_cb: Option<Box<dyn BufferInputCallback>>,
-    pub(crate) close_cb: Option<BufferCloseCallback>,
+    pub(crate) close_cb: Option<Box<dyn BufferCloseCallback>>,
     pub(crate) buffer_cell: Option<Rc<Cell<*mut t_gui_buffer>>>,
 }
 
@@ -129,6 +129,16 @@ impl<T: FnMut(&Weechat, &Buffer, Cow<str>) -> Result<(), ()> + 'static>
     }
 }
 
+pub trait BufferCloseCallback {
+    fn callback(&mut self, weechat: &Weechat, buffer: &Buffer) -> Result<(), ()>;
+}
+
+impl<T: FnMut(&Weechat, &Buffer) -> Result<(), ()> + 'static> BufferCloseCallback for T {
+    fn callback(&mut self, weechat: &Weechat, buffer: &Buffer) -> Result<(), ()> {
+        self(weechat, buffer)
+    }
+}
+
 #[cfg(feature = "async-executor")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async-executor")))]
 #[async_trait(?Send)]
@@ -151,24 +161,20 @@ impl<
     }
 }
 
-/// Callback that will be called if the buffer gets closed.
-pub type BufferCloseCallback =
-    Box<dyn FnMut(&Weechat, &Buffer) -> Result<(), ()>>;
-
 #[cfg(feature = "async-executor")]
 #[cfg_attr(docsrs, doc(cfg(feature = "async-executor")))]
 /// Settings for the creation of a buffer.
 pub struct BufferSettingsAsync {
     pub(crate) name: String,
     pub(crate) input_callback: Option<Box<dyn BufferInputCallbackAsync>>,
-    pub(crate) close_callback: Option<BufferCloseCallback>,
+    pub(crate) close_callback: Option<Box<dyn BufferCloseCallback>>,
 }
 
 /// Settings for the creation of a buffer.
 pub struct BufferSettings {
     pub(crate) name: String,
     pub(crate) input_callback: Option<Box<dyn BufferInputCallback>>,
-    pub(crate) close_callback: Option<BufferCloseCallback>,
+    pub(crate) close_callback: Option<Box<dyn BufferCloseCallback>>,
 }
 
 #[cfg(feature = "async-executor")]
@@ -209,7 +215,7 @@ impl BufferSettingsAsync {
     ///     closed.
     pub fn close_callback(
         mut self,
-        callback: impl FnMut(&Weechat, &Buffer) -> Result<(), ()> + 'static,
+        callback: impl BufferCloseCallback + 'static,
     ) -> Self {
         self.close_callback = Some(Box::new(callback));
         self
@@ -252,7 +258,7 @@ impl BufferSettings {
     /// * `callback` - The callback that should be called before a buffer is
     pub fn close_callback(
         mut self,
-        callback: impl FnMut(&Weechat, &Buffer) -> Result<(), ()> + 'static,
+        callback: impl BufferCloseCallback + 'static,
     ) -> Self {
         self.close_callback = Some(Box::new(callback));
         self
@@ -409,8 +415,8 @@ impl Weechat {
             let weechat = Weechat::from_ptr(pointers.weechat);
             let buffer = weechat.buffer_from_ptr(buffer);
 
-            let ret = if let Some(mut callback) = pointers.close_cb {
-                callback(&weechat, &buffer).is_ok()
+            let ret = if let Some(mut cb) = pointers.close_cb {
+                cb.callback(&weechat, &buffer).is_ok()
             } else {
                 true
             };
@@ -560,8 +566,8 @@ impl Weechat {
             let weechat = Weechat::from_ptr(pointers.weechat);
             let buffer = weechat.buffer_from_ptr(buffer);
 
-            let ret = if let Some(mut callback) = pointers.close_cb {
-                callback(&weechat, &buffer).is_ok()
+            let ret = if let Some(mut cb) = pointers.close_cb {
+                cb.callback(&weechat, &buffer).is_ok()
             } else {
                 true
             };
