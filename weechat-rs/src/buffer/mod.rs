@@ -526,7 +526,7 @@ impl Weechat {
     ///
     /// let buffer_settings = BufferSettings::new("test_buffer")
     ///     .input_callback(input_cb)
-    ///     .close_callback(|weechat, buffer| {
+    ///     .close_callback(|weechat: &Weechat, buffer: &Buffer| {
     ///         Ok(())
     /// });
     ///
