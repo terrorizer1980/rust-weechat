@@ -1075,6 +1075,17 @@ impl Buffer<'_> {
         unsafe { buffer_clear(self.ptr()) }
     }
 
+    /// Close the buffer.
+    ///
+    /// Note that this will only queue up the buffer to be closed. The close
+    /// callback will first be run, only then will the buffer be closed.
+    pub fn close(&self) {
+        let weechat = self.weechat();
+
+        let buffer_close = weechat.get().buffer_close.unwrap();
+        unsafe { buffer_close(self.ptr()) }
+    }
+
     /// Get the contents of the input
     pub fn input(&self) -> Cow<str> {
         self.get_string("input").unwrap()
