@@ -228,13 +228,12 @@ impl Weechat {
     }
 
     fn thread_id() -> std::thread::ThreadId {
-        unsafe {
+        *unsafe {
             WEECHAT_THREAD_ID.as_ref().expect(
                 "Weechat main thread ID wasn't found, plugin \
                  wasn't correctly initialized",
             )
         }
-        .clone()
     }
 
     pub(crate) fn check_thread() {

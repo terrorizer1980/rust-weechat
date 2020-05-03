@@ -85,7 +85,7 @@ impl BufferHandle {
             let buffer = Buffer {
                 inner: InnerBuffers::OwnedBuffer(InnerOwnedBuffer {
                     weechat: self.weechat,
-                    buffer_handle: self.clone(),
+                    buffer_handle: self,
                 }),
             };
             Ok(buffer)
