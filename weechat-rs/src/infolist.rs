@@ -1,3 +1,8 @@
+//! Infolists can be used to share information between scripts and plugins.
+//!
+//! The list of available infolists can be found in the Weechat plugin API
+//! reference.
+
 use std::borrow::Cow;
 use std::collections::{hash_map::Keys, HashMap};
 use std::ffi::CStr;
@@ -10,6 +15,9 @@ use weechat_sys::{t_gui_buffer, t_infolist, t_weechat_plugin};
 use crate::buffer::{Buffer, InnerBuffer, InnerBuffers};
 use crate::{LossyCString, Weechat};
 
+/// An infolist is a list of items.
+///
+/// Each item contains one or more variables.
 pub struct Infolist<'a> {
     ptr: *mut t_infolist,
     infolist_name: String,
@@ -34,11 +42,15 @@ impl From<&str> for InfolistType {
             "s" => InfolistType::String,
             "t" => InfolistType::Time,
             "p" => InfolistType::Buffer,
-            v => panic!("Got unexprected value {}", v),
+            v => panic!("Got unexpected value {}", v),
         }
     }
 }
 
+/// An item of the infolist.
+///
+/// Each infolist item may contain multiple values. It essentially acts as a
+/// hashmap.
 pub struct InfolistItem<'a> {
     ptr: *mut t_infolist,
     weechat_ptr: *mut t_weechat_plugin,
@@ -134,10 +146,15 @@ impl<'a> InfolistItem<'a> {
     }
 }
 
+/// A variable that was fetched out of the infolist item.
 pub enum InfolistVariable<'a> {
+    /// Represents an infolist integer variable.
     Integer(i32),
+    /// Represents an infolist string variable.
     String(Cow<'a, str>),
+    /// Represents an infolist time-based variable.
     Time(SystemTime),
+    /// Represents an infolist GUI buffer variable.
     Buffer(Buffer<'a>),
 }
 
@@ -195,6 +212,37 @@ impl<'a> Drop for Infolist<'a> {
 }
 
 impl Weechat {
+    /// Get the infolist with the given name.
+    ///
+    /// # Arguments
+    ///
+    /// * `infolist_name` - The name of the infolist to fetch, valid values for
+    /// this can be found in the Weechat documentation.
+    ///
+    /// * `arguments` - Arguments that should be passed to Weechat while
+    /// fetching the infolist, the format of this will depend on the infolist
+    /// that is being fetched. A list of infolists and their accompanying
+    /// arguments can be found in the Weechat documentation.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use weechat::infolist::InfolistVariable;
+    /// # let weechat = unsafe { weechat::Weechat::weechat() };
+    /// let infolist = weechat.get_infolist("logger_buffer", None).unwrap();
+    ///
+    /// for item in infolist {
+    ///     let info_buffer = if let Some(buffer) = item.get("buffer") {
+    ///         buffer
+    ///     } else {
+    ///         continue;
+    ///     };
+    ///
+    ///     if let InfolistVariable::Buffer(info_buffer) = info_buffer {
+    ///         info_buffer.print("Hello world");
+    ///     }
+    /// }
+    /// ```
     pub fn get_infolist(
         &self,
         infolist_name: &str,

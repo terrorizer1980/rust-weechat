@@ -96,6 +96,7 @@
 //!     license: "MIT"
 //! );
 //! ```
+
 #![warn(missing_docs)]
 
 use std::ffi::CString;
