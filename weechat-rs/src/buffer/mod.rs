@@ -122,6 +122,16 @@ pub trait BufferInputCallback: 'static {
 impl<T: FnMut(&Weechat, &Buffer, Cow<str>) -> Result<(), ()> + 'static>
     BufferInputCallback for T
 {
+    /// Callback that will be called if the user inputs something into the buffer
+    /// input field.
+    ///
+    /// # Arguments
+    ///
+    /// * `weechat` - A Weechat context.
+    ///
+    /// * `buffer` - The buffer that the user inputed some text into.
+    ///
+    /// * `input` - The input that was posted by the user.
     fn callback(
         &mut self,
         weechat: &Weechat,
@@ -133,6 +143,7 @@ impl<T: FnMut(&Weechat, &Buffer, Cow<str>) -> Result<(), ()> + 'static>
 }
 
 pub trait BufferCloseCallback {
+    /// Callback that will be called before the buffer is closed.
     fn callback(
         &mut self,
         weechat: &Weechat,

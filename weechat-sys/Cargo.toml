@@ -13,4 +13,4 @@ edition = "2018"
 bindgen = "0.53.2"
 
 [dependencies]
-libc = "0.2.69"
+libc = "0.2.70"

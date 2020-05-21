@@ -18,6 +18,8 @@ pub struct Infolist<'a> {
 }
 
 #[derive(Eq, Hash, PartialEq)]
+/// The type of an infolist variable.
+#[allow(missing_docs)]
 pub enum InfolistType {
     Integer,
     String,
@@ -107,6 +109,10 @@ impl<'a> InfolistItem<'a> {
         unix.checked_add(duration)
     }
 
+    /// Get a variable from the current infolist item.
+    ///
+    /// # Arguments
+    /// * `key` - The name of the variable that should be fetched.
     pub fn get(&self, key: &str) -> Option<InfolistVariable> {
         let infolist_type = self.fields.get(key)?;
 
@@ -122,6 +128,7 @@ impl<'a> InfolistItem<'a> {
         Some(variable)
     }
 
+    /// Get the list of infolist variables that this item has.
     pub fn keys(&self) -> Keys<'_, String, InfolistType> {
         self.fields.keys()
     }
