@@ -12,6 +12,6 @@ name = "weechat_rust_sample_plugin"
 crate-type = ["dylib"]
 
 [dependencies]
-libc = "0.2.70"
+libc = "0.2.71"
 weechat = { path = "../weechat-rs" }
 weechat-sys = { path = "../weechat-sys" }

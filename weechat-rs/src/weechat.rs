@@ -468,11 +468,13 @@ impl Weechat {
     /// pub async fn task(receiver: Receiver<String>) {
     ///     loop {
     ///         match receiver.recv().await {
-    ///             Some(m) => {
+    ///             Ok(m) => {
     ///                 Weechat::print(&format!("Received message: {}", m));
     ///             },
-    ///             None => {
-    ///                 Weechat::print("Error channel closed");
+    ///             Err(e) => {
+    ///                 Weechat::print(
+    ///                     &format!("Error receiving on channel {:?}", e)
+    ///                 );
     ///                 return;
     ///             }
     ///         }
