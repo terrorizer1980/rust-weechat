@@ -6,6 +6,7 @@ use crate::LossyCString;
 use libc::{c_char, c_int};
 use std::ffi::CStr;
 use std::panic::PanicInfo;
+use std::path::PathBuf;
 use std::{ptr, vec};
 
 #[cfg(feature = "async-executor")]
@@ -368,6 +369,33 @@ impl Weechat {
                 Ok(CStr::from_ptr(result).to_string_lossy().to_string())
             }
         }
+    }
+
+    /// Get the Weechat homedir.
+    pub fn home_dir() -> PathBuf {
+        Weechat::check_thread();
+        let weechat = unsafe { Weechat::weechat() };
+
+        let eval_path_home = weechat.get().string_eval_path_home.unwrap();
+
+        let path = LossyCString::new("%h");
+
+        let path = unsafe {
+            let result = eval_path_home(
+                path.as_ptr(),
+                ptr::null_mut(),
+                ptr::null_mut(),
+                ptr::null_mut(),
+            );
+
+            if result.is_null() {
+                panic!("Returned null while evaluating the Weechat home dir");
+            } else {
+                CStr::from_ptr(result).to_string_lossy().to_string()
+            }
+        };
+
+        PathBuf::from(path)
     }
 
     /// Execute a modifier.
