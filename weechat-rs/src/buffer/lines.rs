@@ -132,7 +132,7 @@ impl<'a> BufferLine<'a> {
             self.weechat.hdata_char(
                 self.hdata(),
                 self.line_data_pointer,
-                "highlighted",
+                "highlight",
             ) != 0
         }
     }
