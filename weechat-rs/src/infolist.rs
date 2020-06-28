@@ -302,25 +302,3 @@ impl<'a> Iterator for Infolist<'a> {
         }
     }
 }
-
-impl<'a> DoubleEndedIterator for Infolist<'a> {
-    fn next_back(&mut self) -> Option<InfolistItem<'a>> {
-        let weechat = Weechat::from_ptr(self.weechat_ptr);
-        let infolist_prev = weechat.get().infolist_prev.unwrap();
-
-        let ret = unsafe { infolist_prev(self.ptr) };
-
-        if ret == 1 {
-            let fields = self.get_fields();
-
-            Some(InfolistItem {
-                ptr: self.ptr,
-                weechat_ptr: self.weechat_ptr,
-                fields,
-                infolist: PhantomData,
-            })
-        } else {
-            None
-        }
-    }
-}
