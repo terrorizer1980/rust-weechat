@@ -1138,6 +1138,25 @@ impl Buffer<'_> {
     }
 
     /// Get the lines of the buffer.
+    ///
+    /// This returns an iterator over all the buffer lines, the iterator can be
+    /// traversed forwards (from the first line of the buffer, to the last) as
+    /// well as backwards (from the last line of the buffer to the first).
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use weechat::Weechat;
+    /// # use weechat::buffer::BufferSettings;
+    /// # let buffer_handle = Weechat::buffer_new(BufferSettings::new("test"))
+    /// #    .unwrap();
+    /// # let buffer = buffer_handle.upgrade().unwrap();
+    ///
+    /// let lines = buffer.lines();
+    ///
+    /// for line in lines {
+    ///     Weechat::print(&format!("{:?}", line.tags()));
+    /// }
+    /// ```
     pub fn lines<'a>(&'a self) -> BufferLines<'a> {
         let weechat = self.weechat();
 
