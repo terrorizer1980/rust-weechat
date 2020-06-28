@@ -9,6 +9,7 @@ fn build(file: &str) -> Result<Bindings, ()> {
         "t_gui_nick",
         "t_gui_nick_group",
         "t_hook",
+        "t_hdata",
     ];
     const INCLUDED_VARS: &[&str] = &["WEECHAT_PLUGIN_API_VERSION"];
     let mut builder = bindgen::Builder::default().rustfmt_bindings(true);

@@ -6,7 +6,7 @@ mod nickgroup;
 use std::borrow::Cow;
 use std::ffi::CStr;
 use std::marker::PhantomData;
-use std::os::raw::c_void;
+use std::ffi::c_void;
 use std::ptr;
 
 use std::cell::Cell;
@@ -21,6 +21,7 @@ use crate::{LossyCString, Weechat};
 use libc::{c_char, c_int};
 use weechat_sys::{
     t_gui_buffer, t_gui_nick, t_weechat_plugin, WEECHAT_RC_ERROR, WEECHAT_RC_OK,
+    t_hdata,
 };
 
 pub use crate::buffer::nick::{Nick, NickSettings};
@@ -1105,5 +1106,39 @@ impl Buffer<'_> {
     /// Switch to the buffer
     pub fn switch_to(&self) {
         self.set("display", "1");
+    }
+
+    fn hdata_pointer(&self) -> *mut t_hdata {
+        let weechat = self.weechat();
+
+        unsafe {
+            weechat.hdata_get("buffer")
+        }
+    }
+
+    fn own_lines(&self) -> *mut c_void {
+        let weechat = self.weechat();
+
+        let hdata = self.hdata_pointer();
+
+        unsafe {
+            weechat.hdata_pointer(hdata, self.ptr() as *mut c_void, "own_lines")
+        }
+    }
+
+    /// Get the number of lines that the buffer has printed out.
+    pub fn num_lines(&self) -> i32 {
+        let weechat = self.weechat();
+        let own_lines = self.own_lines();
+
+        unsafe {
+            let lines = weechat.hdata_get("lines");
+            weechat.hdata_integer(lines, own_lines, "lines_count")
+        }
+    }
+
+    /// Get the lines of the buffer.
+    pub fn lines(&self) {
+        todo!()
     }
 }
