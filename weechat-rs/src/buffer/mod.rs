@@ -1176,6 +1176,7 @@ impl Buffer<'_> {
             first_line,
             last_line,
             buffer: PhantomData,
+            done: false,
         }
     }
 }

@@ -12,57 +12,74 @@ pub struct BufferLines<'a> {
     pub(crate) first_line: *mut c_void,
     pub(crate) last_line: *mut c_void,
     pub(crate) buffer: PhantomData<&'a Buffer<'a>>,
+    pub(crate) done: bool,
 }
 
 impl<'a> Iterator for BufferLines<'a> {
     type Item = BufferLine<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let weechat = Weechat::from_ptr(self.weechat_ptr);
-
-        let line_hdata = unsafe { weechat.hdata_get("line") };
-
-        let line_data_pointer = unsafe {
-            weechat.hdata_pointer(line_hdata, self.first_line, "data")
-        };
-
-        if line_data_pointer.is_null() {
+        if self.done {
             return None;
+        } else {
+            let weechat = Weechat::from_ptr(self.weechat_ptr);
+
+            let line_hdata = unsafe { weechat.hdata_get("line") };
+
+            let line_data_pointer = unsafe {
+                weechat.hdata_pointer(line_hdata, self.first_line, "data")
+            };
+
+            if line_data_pointer.is_null() {
+                return None;
+            }
+
+            if self.first_line == self.last_line {
+                self.done = true;
+            }
+
+            self.first_line =
+                unsafe { weechat.hdata_move(line_hdata, self.first_line, 1) };
+
+            Some(BufferLine {
+                weechat,
+                line_data_pointer,
+                buffer: PhantomData,
+            })
         }
-
-        self.first_line =
-            unsafe { weechat.hdata_move(line_hdata, self.first_line, 1) };
-
-        Some(BufferLine {
-            weechat,
-            line_data_pointer,
-            buffer: PhantomData,
-        })
     }
 }
 
 impl<'a> DoubleEndedIterator for BufferLines<'a> {
     fn next_back(&mut self) -> Option<Self::Item> {
-        let weechat = Weechat::from_ptr(self.weechat_ptr);
-
-        let line_hdata = unsafe { weechat.hdata_get("line") };
-
-        let line_data_pointer = unsafe {
-            weechat.hdata_pointer(line_hdata, self.last_line, "data")
-        };
-
-        if line_data_pointer.is_null() {
+        if self.done {
             return None;
+        } else {
+            let weechat = Weechat::from_ptr(self.weechat_ptr);
+
+            let line_hdata = unsafe { weechat.hdata_get("line") };
+
+            let line_data_pointer = unsafe {
+                weechat.hdata_pointer(line_hdata, self.last_line, "data")
+            };
+
+            if line_data_pointer.is_null() {
+                return None;
+            }
+
+            if self.last_line == self.first_line {
+                self.done = true;
+            }
+
+            self.last_line =
+                unsafe { weechat.hdata_move(line_hdata, self.last_line, -1) };
+
+            Some(BufferLine {
+                weechat,
+                line_data_pointer,
+                buffer: PhantomData,
+            })
         }
-
-        self.last_line =
-            unsafe { weechat.hdata_move(line_hdata, self.last_line, -1) };
-
-        Some(BufferLine {
-            weechat,
-            line_data_pointer,
-            buffer: PhantomData,
-        })
     }
 }
 
