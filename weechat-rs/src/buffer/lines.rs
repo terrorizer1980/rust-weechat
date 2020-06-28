@@ -23,7 +23,6 @@ impl<'a> Iterator for BufferLines<'a> {
         let line_hdata = unsafe { weechat.hdata_get("line") };
 
         let line_data_pointer = unsafe {
-            let line_hdata = weechat.hdata_get("line");
             weechat.hdata_pointer(line_hdata, self.first_line, "data")
         };
 
@@ -49,7 +48,6 @@ impl<'a> DoubleEndedIterator for BufferLines<'a> {
         let line_hdata = unsafe { weechat.hdata_get("line") };
 
         let line_data_pointer = unsafe {
-            let line_hdata = weechat.hdata_get("line");
             weechat.hdata_pointer(line_hdata, self.last_line, "data")
         };
 
