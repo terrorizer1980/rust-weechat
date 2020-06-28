@@ -103,8 +103,8 @@ use std::ffi::CString;
 
 #[cfg(feature = "async-executor")]
 mod executor;
-mod weechat;
 mod hdata;
+mod weechat;
 
 pub mod buffer;
 pub mod config;

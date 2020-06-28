@@ -1,12 +1,13 @@
 //! Weechat Buffer module containing Buffer and Nick types.
 
+mod lines;
 mod nick;
 mod nickgroup;
 
 use std::borrow::Cow;
+use std::ffi::c_void;
 use std::ffi::CStr;
 use std::marker::PhantomData;
-use std::ffi::c_void;
 use std::ptr;
 
 use std::cell::Cell;
@@ -20,10 +21,11 @@ use futures::future::LocalBoxFuture;
 use crate::{LossyCString, Weechat};
 use libc::{c_char, c_int};
 use weechat_sys::{
-    t_gui_buffer, t_gui_nick, t_weechat_plugin, WEECHAT_RC_ERROR, WEECHAT_RC_OK,
-    t_hdata,
+    t_gui_buffer, t_gui_nick, t_hdata, t_weechat_plugin, WEECHAT_RC_ERROR,
+    WEECHAT_RC_OK,
 };
 
+pub use crate::buffer::lines::BufferLines;
 pub use crate::buffer::nick::{Nick, NickSettings};
 pub use crate::buffer::nickgroup::NickGroup;
 
@@ -1111,9 +1113,7 @@ impl Buffer<'_> {
     fn hdata_pointer(&self) -> *mut t_hdata {
         let weechat = self.weechat();
 
-        unsafe {
-            weechat.hdata_get("buffer")
-        }
+        unsafe { weechat.hdata_get("buffer") }
     }
 
     fn own_lines(&self) -> *mut c_void {
@@ -1138,7 +1138,25 @@ impl Buffer<'_> {
     }
 
     /// Get the lines of the buffer.
-    pub fn lines(&self) {
-        todo!()
+    pub fn lines<'a>(&'a self) -> BufferLines<'a> {
+        let weechat = self.weechat();
+
+        let own_lines = self.own_lines();
+
+        let (first_line, last_line) = unsafe {
+            let lines = weechat.hdata_get("lines");
+
+            (
+                weechat.hdata_pointer(lines, own_lines, "first_line"),
+                weechat.hdata_pointer(lines, own_lines, "last_line"),
+            )
+        };
+
+        BufferLines {
+            weechat_ptr: self.weechat().ptr,
+            first_line,
+            last_line,
+            buffer: PhantomData,
+        }
     }
 }
