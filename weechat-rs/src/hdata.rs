@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::ffi::c_void;
 use std::ffi::CStr;
-use weechat_sys::t_hdata;
+use weechat_sys::{t_hdata, t_hashtable};
 
 use crate::{LossyCString, Weechat};
 
@@ -96,5 +96,8 @@ impl Weechat {
 
         let string_ptr = hdata_string(hdata, pointer, name.as_ptr());
         CStr::from_ptr(string_ptr).to_string_lossy()
+    }
+
+    pub(crate) unsafe fn hdata_update(&self, hdata: *mut t_hdata, pointer: *mut c_void, hahsmap: *mut t_hashtable) {
     }
 }
