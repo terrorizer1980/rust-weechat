@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::ffi::c_void;
 use std::marker::PhantomData;
 
@@ -108,6 +109,25 @@ impl<'a> BufferLine<'a> {
         }
     }
 
+    /// Set the prefix to the given new value.
+    ///
+    /// # Arguments
+    ///
+    /// * `new_prefix` - The new prefix that should be set on the line.
+    pub fn set_prefix(&self, new_prefix: &str) {
+        let mut hashmap = HashMap::new();
+
+        hashmap.insert("prefix", new_prefix);
+
+        unsafe {
+            self.weechat.hdata_update(
+                self.hdata(),
+                self.line_data_pointer,
+                hashmap,
+            );
+        }
+    }
+
     /// Get the message of the line.
     pub fn message(&self) -> Cow<str> {
         unsafe {
@@ -116,6 +136,25 @@ impl<'a> BufferLine<'a> {
                 self.line_data_pointer,
                 "message",
             )
+        }
+    }
+
+    /// Set the message to the given new value.
+    ///
+    /// # Arguments
+    ///
+    /// * `new_value` - The new message that should be set on the line.
+    pub fn set_message(&self, new_value: &str) {
+        let mut hashmap = HashMap::new();
+
+        hashmap.insert("message", new_value);
+
+        unsafe {
+            self.weechat.hdata_update(
+                self.hdata(),
+                self.line_data_pointer,
+                hashmap,
+            );
         }
     }
 
@@ -130,6 +169,25 @@ impl<'a> BufferLine<'a> {
         }
     }
 
+    /// Set the date to the given new value.
+    ///
+    /// # Arguments
+    ///
+    /// * `new_value` - The new date that should be set on the line.
+    pub fn set_date(&self, new_value: &str) {
+        let mut hashmap = HashMap::new();
+
+        hashmap.insert("date", new_value);
+
+        unsafe {
+            self.weechat.hdata_update(
+                self.hdata(),
+                self.line_data_pointer,
+                hashmap,
+            );
+        }
+    }
+
     /// Get the date the line was printed.
     pub fn date_printed(&self) -> i64 {
         unsafe {
@@ -138,6 +196,25 @@ impl<'a> BufferLine<'a> {
                 self.line_data_pointer,
                 "date_printed",
             )
+        }
+    }
+
+    /// Set the date the line was printed to the given new value.
+    ///
+    /// # Arguments
+    ///
+    /// * `new_value` - The new date that should be set on the line.
+    pub fn set_date_printed(&self, new_value: &str) {
+        let mut hashmap = HashMap::new();
+
+        hashmap.insert("date_printed", new_value);
+
+        unsafe {
+            self.weechat.hdata_update(
+                self.hdata(),
+                self.line_data_pointer,
+                hashmap,
+            );
         }
     }
 
@@ -173,6 +250,26 @@ impl<'a> BufferLine<'a> {
             }
 
             tags
+        }
+    }
+
+    /// Set the tags of the line to the new value.
+    ///
+    /// # Arguments
+    ///
+    /// * `new_value` - The new tags that should be set on the line.
+    pub fn set_tags(&self, new_value: &[&str]) {
+        let mut hashmap = HashMap::new();
+        let tags = new_value.join(",");
+
+        hashmap.insert("tags_array", tags.as_ref());
+
+        unsafe {
+            self.weechat.hdata_update(
+                self.hdata(),
+                self.line_data_pointer,
+                hashmap,
+            );
         }
     }
 }
