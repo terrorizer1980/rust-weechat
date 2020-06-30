@@ -1,12 +1,13 @@
 //! Weechat Buffer module containing Buffer and Nick types.
 
+mod lines;
 mod nick;
 mod nickgroup;
 
 use std::borrow::Cow;
+use std::ffi::c_void;
 use std::ffi::CStr;
 use std::marker::PhantomData;
-use std::os::raw::c_void;
 use std::ptr;
 
 use std::cell::Cell;
@@ -20,9 +21,11 @@ use futures::future::LocalBoxFuture;
 use crate::{LossyCString, Weechat};
 use libc::{c_char, c_int};
 use weechat_sys::{
-    t_gui_buffer, t_gui_nick, t_weechat_plugin, WEECHAT_RC_ERROR, WEECHAT_RC_OK,
+    t_gui_buffer, t_gui_nick, t_hdata, t_weechat_plugin, WEECHAT_RC_ERROR,
+    WEECHAT_RC_OK,
 };
 
+pub use crate::buffer::lines::{BufferLine, BufferLines, LineData};
 pub use crate::buffer::nick::{Nick, NickSettings};
 pub use crate::buffer::nickgroup::NickGroup;
 
@@ -1105,5 +1108,75 @@ impl Buffer<'_> {
     /// Switch to the buffer
     pub fn switch_to(&self) {
         self.set("display", "1");
+    }
+
+    fn hdata_pointer(&self) -> *mut t_hdata {
+        let weechat = self.weechat();
+
+        unsafe { weechat.hdata_get("buffer") }
+    }
+
+    fn own_lines(&self) -> *mut c_void {
+        let weechat = self.weechat();
+
+        let hdata = self.hdata_pointer();
+
+        unsafe {
+            weechat.hdata_pointer(hdata, self.ptr() as *mut c_void, "own_lines")
+        }
+    }
+
+    /// Get the number of lines that the buffer has printed out.
+    pub fn num_lines(&self) -> i32 {
+        let weechat = self.weechat();
+        let own_lines = self.own_lines();
+
+        unsafe {
+            let lines = weechat.hdata_get("lines");
+            weechat.hdata_integer(lines, own_lines, "lines_count")
+        }
+    }
+
+    /// Get the lines of the buffer.
+    ///
+    /// This returns an iterator over all the buffer lines, the iterator can be
+    /// traversed forwards (from the first line of the buffer, to the last) as
+    /// well as backwards (from the last line of the buffer to the first).
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use weechat::Weechat;
+    /// # use weechat::buffer::BufferSettings;
+    /// # let buffer_handle = Weechat::buffer_new(BufferSettings::new("test"))
+    /// #    .unwrap();
+    /// # let buffer = buffer_handle.upgrade().unwrap();
+    ///
+    /// let lines = buffer.lines();
+    ///
+    /// for line in lines {
+    ///     Weechat::print(&format!("{:?}", line.tags()));
+    /// }
+    /// ```
+    pub fn lines<'a>(&'a self) -> BufferLines<'a> {
+        let weechat = self.weechat();
+
+        let own_lines = self.own_lines();
+
+        let (first_line, last_line) = unsafe {
+            let lines = weechat.hdata_get("lines");
+
+            (
+                weechat.hdata_pointer(lines, own_lines, "first_line"),
+                weechat.hdata_pointer(lines, own_lines, "last_line"),
+            )
+        };
+
+        BufferLines {
+            weechat_ptr: self.weechat().ptr,
+            first_line,
+            last_line,
+            buffer: PhantomData,
+            done: false,
+        }
     }
 }
