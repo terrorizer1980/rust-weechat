@@ -84,6 +84,17 @@ impl<'a> DoubleEndedIterator for BufferLines<'a> {
     }
 }
 
+/// Struct that can be used to update multiple line fields at once.
+#[allow(missing_docs)]
+#[derive(Debug, Clone, Default)]
+pub struct LineData<'a> {
+    pub prefix: Option<&'a str>,
+    pub message: Option<&'a str>,
+    pub date: Option<i64>,
+    pub date_printed: Option<i64>,
+    pub tags: Option<&'a [&'a str]>,
+}
+
 /// The buffer line, makes it possible to modify the printed message and other
 /// line data.
 pub struct BufferLine<'a> {
@@ -95,6 +106,16 @@ pub struct BufferLine<'a> {
 impl<'a> BufferLine<'a> {
     fn hdata(&self) -> *mut t_hdata {
         unsafe { self.weechat.hdata_get("line_data") }
+    }
+
+    fn update_line(&self, hashmap: HashMap<&str, &str>) {
+        unsafe {
+            self.weechat.hdata_update(
+                self.hdata(),
+                self.line_data_pointer,
+                hashmap,
+            );
+        }
     }
 
     /// Get the prefix of the line, everything left of the message separator
@@ -116,16 +137,8 @@ impl<'a> BufferLine<'a> {
     /// * `new_prefix` - The new prefix that should be set on the line.
     pub fn set_prefix(&self, new_prefix: &str) {
         let mut hashmap = HashMap::new();
-
         hashmap.insert("prefix", new_prefix);
-
-        unsafe {
-            self.weechat.hdata_update(
-                self.hdata(),
-                self.line_data_pointer,
-                hashmap,
-            );
-        }
+        self.update_line(hashmap);
     }
 
     /// Get the message of the line.
@@ -148,14 +161,7 @@ impl<'a> BufferLine<'a> {
         let mut hashmap = HashMap::new();
 
         hashmap.insert("message", new_value);
-
-        unsafe {
-            self.weechat.hdata_update(
-                self.hdata(),
-                self.line_data_pointer,
-                hashmap,
-            );
-        }
+        self.update_line(hashmap);
     }
 
     /// Get the date of the line.
@@ -174,18 +180,11 @@ impl<'a> BufferLine<'a> {
     /// # Arguments
     ///
     /// * `new_value` - The new date that should be set on the line.
-    pub fn set_date(&self, new_value: &str) {
+    pub fn set_date(&self, new_value: i64) {
         let mut hashmap = HashMap::new();
-
-        hashmap.insert("date", new_value);
-
-        unsafe {
-            self.weechat.hdata_update(
-                self.hdata(),
-                self.line_data_pointer,
-                hashmap,
-            );
-        }
+        let date = new_value.to_string();
+        hashmap.insert("date", date.as_ref());
+        self.update_line(hashmap);
     }
 
     /// Get the date the line was printed.
@@ -206,16 +205,9 @@ impl<'a> BufferLine<'a> {
     /// * `new_value` - The new date that should be set on the line.
     pub fn set_date_printed(&self, new_value: &str) {
         let mut hashmap = HashMap::new();
-
-        hashmap.insert("date_printed", new_value);
-
-        unsafe {
-            self.weechat.hdata_update(
-                self.hdata(),
-                self.line_data_pointer,
-                hashmap,
-            );
-        }
+        let date = new_value.to_string();
+        hashmap.insert("date_printed", date.as_ref());
+        self.update_line(hashmap);
     }
 
     /// Is the line highlighted.
@@ -261,15 +253,61 @@ impl<'a> BufferLine<'a> {
     pub fn set_tags(&self, new_value: &[&str]) {
         let mut hashmap = HashMap::new();
         let tags = new_value.join(",");
-
         hashmap.insert("tags_array", tags.as_ref());
+        self.update_line(hashmap);
+    }
 
-        unsafe {
-            self.weechat.hdata_update(
-                self.hdata(),
-                self.line_data_pointer,
-                hashmap,
-            );
+    /// Update multiple fields of the line at once.
+    ///
+    /// # Arguments
+    /// * `data` - `LineData` that contains new values that should be set on the
+    ///     line.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use weechat::Weechat;
+    /// # use weechat::buffer::{BufferSettings, LineData};
+    /// # let buffer_handle = Weechat::buffer_new(BufferSettings::new("test"))
+    /// #    .unwrap();
+    /// # let buffer = buffer_handle.upgrade().unwrap();
+    /// # let mut lines = buffer.lines();
+    /// # let line = lines.next().unwrap();
+    ///
+    /// let new_line = LineData {
+    ///     message: Some("Hello world"),
+    ///     tags: Some(&["First", "Second tag"]),
+    ///     .. Default::default()
+    /// };
+    ///
+    /// line.update(new_line)
+    /// ```
+    pub fn update(&self, data: LineData<'a>) {
+        let mut hashmap = HashMap::new();
+
+        let tags = data.tags.map(|t| t.join(","));
+        let date = data.date.map(|d| d.to_string());
+        let date_printed = data.date_printed.map(|d| d.to_string());
+
+        if let Some(message) = data.message {
+            hashmap.insert("message", message);
         }
+
+        if let Some(prefix) = data.prefix {
+            hashmap.insert("prefix", prefix);
+        }
+
+        if let Some(t) = tags.as_ref() {
+            hashmap.insert("tags_array", t);
+        }
+
+        if let Some(d) = date.as_ref() {
+            hashmap.insert("date", d);
+        }
+
+        if let Some(d) = date_printed.as_ref() {
+            hashmap.insert("date_printed", d);
+        }
+
+        self.update_line(hashmap);
     }
 }

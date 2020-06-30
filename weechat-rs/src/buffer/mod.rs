@@ -25,7 +25,7 @@ use weechat_sys::{
     WEECHAT_RC_OK,
 };
 
-pub use crate::buffer::lines::BufferLines;
+pub use crate::buffer::lines::{LineData, BufferLine, BufferLines};
 pub use crate::buffer::nick::{Nick, NickSettings};
 pub use crate::buffer::nickgroup::NickGroup;
 
