@@ -13,6 +13,9 @@ edition = "2018"
 description = "Weechat API bindings for Rust"
 license = "MIT"
 
+[package.metadata.docs.rs]
+all-features = true
+
 [features]
 async-executor = ["async-task", "pipe-channel", "futures", "async-trait"]
 unstable = []
