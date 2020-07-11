@@ -4,13 +4,18 @@ use weechat::buffer::{Buffer, BufferSettings, NickSettings};
 use weechat::config::{
     BooleanOption, BooleanOptionSettings, Conf, Config, ConfigSectionSettings,
 };
-use weechat::hooks::{BarItemHandle, Command, CommandSettings};
-use weechat::{weechat_plugin, ArgsWeechat, Weechat, WeechatPlugin};
+use weechat::hooks::{
+    BarItemHandle, Command, CommandSettings, SignalData, SignalHook,
+};
+use weechat::{
+    weechat_plugin, ArgsWeechat, ReturnCode, Weechat, WeechatPlugin,
+};
 
 struct SamplePlugin {
     _rust_hook: Command,
     _rust_config: Config,
     _item: BarItemHandle,
+    _signal: SignalHook,
 }
 
 impl SamplePlugin {
@@ -120,10 +125,29 @@ impl WeechatPlugin for SamplePlugin {
             |_weechat: &Weechat, _buffer: &Buffer| "rust/sample".to_owned(),
         );
 
+        let signal_hook = SignalHook::new(
+            "buffer_switch",
+            |_weechat: &Weechat,
+             _signal_name: &str,
+             data: Option<SignalData>| {
+                if let Some(data) = data {
+                    match data {
+                        SignalData::Buffer(buffer) => {
+                            buffer.print("Switched buffer")
+                        }
+                        _ => (),
+                    }
+                }
+
+                ReturnCode::Ok
+            },
+        );
+
         Ok(SamplePlugin {
             _rust_hook: command,
             _rust_config: config,
             _item: item.unwrap(),
+            _signal: signal_hook.unwrap(),
         })
     }
 }

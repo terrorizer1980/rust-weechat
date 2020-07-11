@@ -4,7 +4,6 @@
 //! listen to events on a file descriptor, add completions to weechat, etc.
 //! This module contains hook creation methods for the `Weechat` object.
 
-#[cfg(feature = "unstable")]
 mod signal;
 
 mod bar;
@@ -17,8 +16,7 @@ pub use bar::{BarItemCallback, BarItemHandle};
 pub use commands::{Command, CommandCallback, CommandRun, CommandSettings};
 pub use completion::{Completion, CompletionHook, CompletionPosition};
 pub use fd::{FdHook, FdHookCallback, FdHookMode};
-#[cfg(feature = "unstable")]
-pub use signal::{SignalHook, SignalHookValue};
+pub use signal::{SignalData, SignalHook};
 pub use timer::TimerHook;
 
 use crate::Weechat;
