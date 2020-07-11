@@ -58,12 +58,17 @@ impl SignalHookValue {
     }
 }
 
+pub trait SignalCallback {
+    fn callback() {
+    }
+}
+
 impl Weechat {
     /// Hook a signal.
     ///
     /// # Arguments
     ///
-    /// * `signal` - The signal to hook (wildcard `*` is allowed).
+    /// * `signal_name` - The signal to hook (wildcard `*` is allowed).
     ///
     /// * `callback` - A function that will be called when the signal is received.
     ///
@@ -71,7 +76,7 @@ impl Weechat {
     ///     the callback runs. This data will be freed when the hook is unhooked.
     pub fn hook_signal<T>(
         &self,
-        signal: &str,
+        signal_name: &str,
         callback: fn(
             data: &T,
             weechat: &Weechat,
@@ -119,12 +124,12 @@ impl Weechat {
         let data_ref = Box::leak(data);
         let hook_signal = self.get().hook_signal.unwrap();
 
-        let signal = LossyCString::new(signal);
+        let signal_name = LossyCString::new(signal_name);
 
         let hook_ptr = unsafe {
             hook_signal(
                 self.ptr,
-                signal.as_ptr(),
+                signal_name.as_ptr(),
                 Some(c_hook_cb::<T>),
                 data_ref as *const _ as *const c_void,
                 ptr::null_mut(),
