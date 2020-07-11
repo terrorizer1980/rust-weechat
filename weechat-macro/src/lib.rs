@@ -28,21 +28,27 @@ enum WeechatVariable {
 }
 
 impl WeechatVariable {
-    fn litstr_to_pair(string: &LitStr) -> (usize, Literal) {
+    fn to_pair(string: &LitStr) -> (usize, Literal) {
         let mut bytes = string.value().into_bytes();
+        // Push a null byte since this goes to the C side.
         bytes.push(0);
-        let len = bytes.len();
-        (len, Literal::byte_string(&bytes))
+
+        (bytes.len(), Literal::byte_string(&bytes))
     }
 
     fn as_pair(&self) -> (usize, Literal) {
         match self {
-            WeechatVariable::Name(string) => WeechatVariable::litstr_to_pair(string),
-            WeechatVariable::Author(string) => WeechatVariable::litstr_to_pair(string),
-            WeechatVariable::Description(string) => WeechatVariable::litstr_to_pair(string),
-            WeechatVariable::Version(string) => WeechatVariable::litstr_to_pair(string),
-            WeechatVariable::License(string) => WeechatVariable::litstr_to_pair(string),
+            WeechatVariable::Name(string) => WeechatVariable::to_pair(string),
+            WeechatVariable::Author(string) => WeechatVariable::to_pair(string),
+            WeechatVariable::Description(string) => WeechatVariable::to_pair(string),
+            WeechatVariable::Version(string) => WeechatVariable::to_pair(string),
+            WeechatVariable::License(string) => WeechatVariable::to_pair(string),
         }
+    }
+
+    fn default_literal() -> (usize, Literal) {
+        let bytes = vec![0];
+        (bytes.len(), Literal::byte_string(&bytes))
     }
 }
 
@@ -58,14 +64,22 @@ impl Parse for WeechatVariable {
             "description" => Ok(WeechatVariable::Description(value)),
             "version" => Ok(WeechatVariable::Version(value)),
             "license" => Ok(WeechatVariable::License(value)),
-            _ => Err(Error::new(key.span(), "expected one of bla")),
+            _ => Err(Error::new(
+                key.span(),
+                "expected one of name, author, description, version or license",
+            )),
         }
     }
 }
 
 impl Parse for WeechatPluginInfo {
     fn parse(input: ParseStream) -> Result<Self> {
-        let plugin: syn::Ident = input.parse()?;
+        let plugin: syn::Ident = input.parse().map_err(|_e| {
+            Error::new(
+                input.span(),
+                "a struct that implements the WeechatPlugin trait needs to be given",
+            )
+        })?;
         input.parse::<syn::Token![,]>()?;
 
         let args: Punctuated<WeechatVariable, syn::Token![,]> =
@@ -85,11 +99,27 @@ impl Parse for WeechatPluginInfo {
 
         Ok(WeechatPluginInfo {
             plugin,
-            name: variables.remove("name").unwrap().as_pair(),
-            author: variables.remove("author").unwrap().as_pair(),
-            description: variables.remove("description").unwrap().as_pair(),
-            version: variables.remove("version").unwrap().as_pair(),
-            license: variables.remove("license").unwrap().as_pair(),
+            name: variables.remove("name").map_or_else(
+                || {
+                    Err(Error::new(
+                        input.span(),
+                        "the name of the plugin needs to be defined",
+                    ))
+                },
+                |v| Ok(v.as_pair()),
+            )?,
+            author: variables
+                .remove("author")
+                .map_or_else(WeechatVariable::default_literal, |v| v.as_pair()),
+            description: variables
+                .remove("description")
+                .map_or_else(WeechatVariable::default_literal, |v| v.as_pair()),
+            version: variables
+                .remove("version")
+                .map_or_else(WeechatVariable::default_literal, |v| v.as_pair()),
+            license: variables
+                .remove("license")
+                .map_or_else(WeechatVariable::default_literal, |v| v.as_pair()),
         })
     }
 }
@@ -190,11 +220,13 @@ pub fn weechat_plugin(input: proc_macro::TokenStream) -> proc_macro::TokenStream
             weechat_sys::WEECHAT_RC_OK
         }
 
-        pub(crate) fn plugin() -> &'static mut #plugin {
-            unsafe {
-                match &mut __PLUGIN {
-                    Some(p) => p,
-                    None => panic!("Weechat plugin isn't initialized"),
+        impl #plugin {
+            pub fn get() -> &'static mut #plugin {
+                unsafe {
+                    match &mut __PLUGIN {
+                        Some(p) => p,
+                        None => panic!("Weechat plugin isn't initialized"),
+                    }
                 }
             }
         }

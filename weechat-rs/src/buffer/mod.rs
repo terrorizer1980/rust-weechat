@@ -855,7 +855,7 @@ impl Buffer<'_> {
     /// * `group_name` - The name of the group that should be removed.
     ///
     /// Returns `true` if a group was found and removed, `false` otherwise.
-    pub fn remove_nicklist_group(&mut self, group_name: &str) -> bool {
+    pub fn remove_nicklist_group(&self, group_name: &str) -> bool {
         let weechat = self.weechat();
 
         let group = self.search_nicklist_group(group_name);
@@ -881,7 +881,7 @@ impl Buffer<'_> {
     /// * `nick` - The name of the nick that should be removed.
     ///
     /// Returns `true` if a nick was found and removed, `false` otherwise.
-    pub fn remove_nick(&mut self, nick: &str) -> bool {
+    pub fn remove_nick(&self, nick: &str) -> bool {
         let weechat = self.weechat();
 
         let nick = self.search_nick(nick);
