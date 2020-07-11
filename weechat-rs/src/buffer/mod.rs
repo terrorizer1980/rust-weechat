@@ -367,7 +367,7 @@ impl Weechat {
     /// ```no_run
     /// # use futures::future::{FutureExt, LocalBoxFuture};
     /// # use weechat::Weechat;
-    /// # use weechat::buffer::{BufferHandle, BufferSettingsAsync};
+    /// # use weechat::buffer::{BufferHandle, Buffer, BufferSettingsAsync};
     /// fn input_cb(buffer: BufferHandle, input: String) -> LocalBoxFuture<'static, ()> {
     ///     async move {
     ///         let buffer = buffer.upgrade().unwrap();
@@ -377,7 +377,7 @@ impl Weechat {
     ///
     /// let buffer_settings = BufferSettingsAsync::new("test_buffer")
     ///     .input_callback(input_cb)
-    ///     .close_callback(|weechat, buffer| {
+    ///     .close_callback(|weechat: &Weechat, buffer: &Buffer| {
     ///         Ok(())
     /// });
     ///
