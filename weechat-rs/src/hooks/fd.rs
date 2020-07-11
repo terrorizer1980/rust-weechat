@@ -131,20 +131,19 @@ impl<F> FdHook<F> {
             )
         };
 
-        if hook_ptr.is_null() {
-            unsafe { Box::from_raw(data_ref) };
-            return Err(());
-        };
-
         let hook_data = unsafe { Box::from_raw(data_ref) };
         let hook = Hook {
             ptr: hook_ptr,
             weechat_ptr: weechat.ptr,
         };
 
-        Ok(FdHook::<F> {
-            _hook: hook,
-            _hook_data: hook_data,
-        })
+        if hook_ptr.is_null() {
+            Err(())
+        } else {
+            Ok(FdHook::<F> {
+                _hook: hook,
+                _hook_data: hook_data,
+            })
+        }
     }
 }
