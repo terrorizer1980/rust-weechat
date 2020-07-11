@@ -16,7 +16,7 @@ pub use bar::{BarItemCallback, BarItemHandle};
 pub use commands::{Command, CommandCallback, CommandRun, CommandSettings};
 pub use completion::{Completion, CompletionHook, CompletionPosition};
 pub use fd::{FdHook, FdHookCallback, FdHookMode};
-pub use signal::{SignalData, SignalHook};
+pub use signal::{SignalData, SignalHook, SignalCallback};
 pub use timer::TimerHook;
 
 use crate::Weechat;
