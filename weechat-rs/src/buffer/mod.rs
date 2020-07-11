@@ -364,7 +364,7 @@ impl Weechat {
     /// Panics if the method is not called from the main Weechat thread.
     ///
     /// # Example
-    /// ```no_execute
+    /// ```no_run
     /// # use futures::future::{FutureExt, LocalBoxFuture};
     /// # use weechat::Weechat;
     /// # use weechat::buffer::{BufferHandle, BufferSettingsAsync};
