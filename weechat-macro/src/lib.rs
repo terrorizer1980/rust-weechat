@@ -132,6 +132,13 @@ impl Parse for WeechatPluginInfo {
 ///
 /// # Example
 /// ```ignore
+/// # use weechat::{weechat_plugin, ArgsWeechat, Weechat, WeechatPlugin};
+/// # struct SamplePlugin;
+/// # impl WeechatPlugin for SamplePlugin {
+/// #    fn init(weechat: &Weechat, _args: ArgsWeechat) -> Result<Self, ()> {
+/// #        Ok(SamplePlugin)
+/// #    }
+/// # }
 /// weechat_plugin!(
 ///     SamplePlugin,
 ///     name: "rust_sample",
