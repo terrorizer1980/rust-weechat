@@ -1,4 +1,4 @@
-# grep
+# sample
 
 Weechat sample plugin.
 
