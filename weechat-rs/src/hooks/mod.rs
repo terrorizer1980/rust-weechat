@@ -18,7 +18,9 @@ pub use bar::{BarItemCallback, BarItemHandle};
 pub use commands::{
     Command, CommandCallback, CommandRun, CommandRunCallback, CommandSettings,
 };
-pub use completion::{Completion, CompletionHook, CompletionPosition, CompletionCallback};
+pub use completion::{
+    Completion, CompletionCallback, CompletionHook, CompletionPosition,
+};
 
 pub use fd::{FdHook, FdHookCallback, FdHookMode};
 #[cfg(feature = "unsound")]
