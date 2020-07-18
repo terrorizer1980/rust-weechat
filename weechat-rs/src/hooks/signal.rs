@@ -22,6 +22,7 @@ struct SignalHookData {
 }
 
 /// Enum over the different data types a signal may send.
+#[non_exhaustive]
 pub enum SignalData<'a> {
     /// String data
     String(Cow<'a, str>),
@@ -124,6 +125,16 @@ impl<'a> SignalData<'a> {
 /// A blanket implementation for pure `FnMut` functions exists, if data needs to
 /// be passed to the callback implement this over your struct.
 pub trait SignalCallback {
+    /// Callback that will be called when a signal is fired.
+    /// input field.
+    ///
+    /// # Arguments
+    ///
+    /// * `weechat` - A Weechat context.
+    ///
+    /// * `signal_name` - The name of the signal that fired the callback.
+    ///
+    /// * `data` - The data that was passed on by the signal.
     fn callback(
         &mut self,
         weechat: &Weechat,
@@ -135,16 +146,6 @@ pub trait SignalCallback {
 impl<T: FnMut(&Weechat, &str, Option<SignalData>) -> ReturnCode + 'static>
     SignalCallback for T
 {
-    /// Callback that will be called when a signal is fired.
-    /// input field.
-    ///
-    /// # Arguments
-    ///
-    /// * `weechat` - A Weechat context.
-    ///
-    /// * `signal_name` - The name of the signal that fired the callback.
-    ///
-    /// * `data` - The data that was passed on by the signal.
     fn callback(
         &mut self,
         weechat: &Weechat,
