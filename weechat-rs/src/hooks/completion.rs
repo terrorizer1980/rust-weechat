@@ -173,7 +173,7 @@ struct CompletionHookData {
     weechat_ptr: *mut t_weechat_plugin,
 }
 
-impl Weechat {
+impl Completion {
     /// Create a new completion
     ///
     /// * `name` - The name of the new completion. After this is created the
@@ -183,8 +183,7 @@ impl Weechat {
     ///
     /// * `callback` - A function that will be called when the completion is
     ///     used, the callback must populate the words for the completion.
-    pub fn hook_completion(
-        &self,
+    pub fn new(
         completion_item: &str,
         description: &str,
         callback: impl CompletionCallback + 'static,
@@ -219,20 +218,23 @@ impl Weechat {
             }
         }
 
+        Weechat::check_thread();
+        let weechat = unsafe { Weechat::weechat() };
+
         let data = Box::new(CompletionHookData {
             callback: Box::new(callback),
-            weechat_ptr: self.ptr,
+            weechat_ptr: weechat.ptr,
         });
 
         let data_ref = Box::leak(data);
-        let hook_completion = self.get().hook_completion.unwrap();
+        let hook_completion = weechat.get().hook_completion.unwrap();
 
         let completion_item = LossyCString::new(completion_item);
         let description = LossyCString::new(description);
 
         let hook_ptr = unsafe {
             hook_completion(
-                self.ptr,
+                weechat.ptr,
                 completion_item.as_ptr(),
                 description.as_ptr(),
                 Some(c_hook_cb),
@@ -249,7 +251,7 @@ impl Weechat {
 
         let hook = Hook {
             ptr: hook_ptr,
-            weechat_ptr: self.ptr,
+            weechat_ptr: weechat.ptr,
         };
 
         Ok(CompletionHook {
