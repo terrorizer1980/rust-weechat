@@ -4,7 +4,7 @@ use weechat_sys::t_weechat_plugin;
 
 use crate::LossyCString;
 use libc::{c_char, c_int};
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
 use std::panic::PanicInfo;
 use std::path::PathBuf;
 use std::{ptr, vec};
@@ -50,11 +50,19 @@ impl ArgsWeechat {
     }
 }
 
+impl std::fmt::Debug for ArgsWeechat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_list().entries(self.iter.clone()).finish()
+    }
+}
+
 impl Iterator for ArgsWeechat {
     type Item = String;
+
     fn next(&mut self) -> Option<String> {
         self.iter.next()
     }
+
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
