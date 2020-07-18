@@ -26,6 +26,9 @@ jobs:
           - cd ..
           - cd sample
           - cargo build
+          - cd ..
+          - cd grep
+          - cargo build
 
 script:
   - cargo build
