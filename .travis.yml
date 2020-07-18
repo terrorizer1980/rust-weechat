@@ -8,10 +8,22 @@ jobs:
 
     - os: osx
 
+    - os: linux
+      rust: nightly
+      script:
+          - cargo build --all-features
+          - cargo test --all-features
+          - cd weechat-rs/examples
+          - cd go
+          - cargo build
+          - cd ..
+          - cd sample
+          - cargo build
+
 before_script:
   - rustup component add rustfmt
 
 script:
-  - cargo build --all-features
+  - cargo build
   - cargo fmt --all -- --check
-  - cargo test --all-features
+  - cargo test
