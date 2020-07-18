@@ -156,6 +156,79 @@ struct CommandRunHookData {
     weechat_ptr: *mut t_weechat_plugin,
 }
 
+impl CommandRun {
+    /// Override an existing Weechat command.
+    ///
+    /// # Arguments
+    ///
+    /// * `command` - The command to override (wildcard `*` is allowed).
+    ///
+    /// * `callback` - The function that will be called when the command is run.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the method is not called from the main Weechat thread.
+    pub fn new(
+        command: &str,
+        callback: impl CommandRunCallback + 'static,
+    ) -> Result<Self, ()> {
+        unsafe extern "C" fn c_hook_cb(
+            pointer: *const c_void,
+            _data: *mut c_void,
+            buffer: *mut t_gui_buffer,
+            command: *const std::os::raw::c_char,
+        ) -> c_int {
+            let hook_data: &mut CommandRunHookData =
+                { &mut *(pointer as *mut CommandRunHookData) };
+            let cb = &mut hook_data.callback;
+
+            let weechat = Weechat::from_ptr(hook_data.weechat_ptr);
+            let buffer = weechat.buffer_from_ptr(buffer);
+            let command = CStr::from_ptr(command).to_string_lossy();
+
+            cb.callback(&weechat, &buffer, command) as isize as i32
+        }
+
+        Weechat::check_thread();
+        let weechat = unsafe { Weechat::weechat() };
+
+        let data = Box::new(CommandRunHookData {
+            callback: Box::new(callback),
+            weechat_ptr: weechat.ptr,
+        });
+
+        let data_ref = Box::leak(data);
+        let hook_command_run = weechat.get().hook_command_run.unwrap();
+
+        let command = LossyCString::new(command);
+
+        let hook_ptr = unsafe {
+            hook_command_run(
+                weechat.ptr,
+                command.as_ptr(),
+                Some(c_hook_cb),
+                data_ref as *const _ as *const c_void,
+                ptr::null_mut(),
+            )
+        };
+        let hook_data = unsafe { Box::from_raw(data_ref) };
+
+        if hook_ptr.is_null() {
+            Err(())
+        } else {
+            let hook = Hook {
+                ptr: hook_ptr,
+                weechat_ptr: weechat.ptr,
+            };
+
+            Ok(CommandRun {
+                _hook: hook,
+                _hook_data: hook_data,
+            })
+        }
+    }
+}
+
 impl Weechat {
     /// Create a new Weechat command.
     ///
@@ -171,7 +244,7 @@ impl Weechat {
         &self,
         command_settings: CommandSettings,
         callback: impl CommandCallback + 'static,
-    ) -> Command {
+    ) -> Result<Command, ()> {
         unsafe extern "C" fn c_hook_cb(
             pointer: *const c_void,
             _data: *mut c_void,
@@ -222,74 +295,19 @@ impl Weechat {
             )
         };
         let hook_data = unsafe { Box::from_raw(data_ref) };
+
         let hook = Hook {
             ptr: hook_ptr,
             weechat_ptr: self.ptr,
         };
 
-        Command {
-            _hook: hook,
-            _hook_data: hook_data,
-        }
-    }
-
-    /// Override an existing Weechat command.
-    ///
-    /// # Arguments
-    ///
-    /// * `command` - The command to override (wildcard `*` is allowed).
-    ///
-    /// * `callback` - The function that will be called when the command is run.
-    pub fn hook_command_run(
-        &self,
-        command: &str,
-        callback: impl CommandRunCallback + 'static,
-    ) -> CommandRun {
-        unsafe extern "C" fn c_hook_cb(
-            pointer: *const c_void,
-            _data: *mut c_void,
-            buffer: *mut t_gui_buffer,
-            command: *const std::os::raw::c_char,
-        ) -> c_int {
-            let hook_data: &mut CommandRunHookData =
-                { &mut *(pointer as *mut CommandRunHookData) };
-            let cb = &mut hook_data.callback;
-
-            let weechat = Weechat::from_ptr(hook_data.weechat_ptr);
-            let buffer = weechat.buffer_from_ptr(buffer);
-            let command = CStr::from_ptr(command).to_string_lossy();
-
-            cb.callback(&weechat, &buffer, command) as isize as i32
-        }
-
-        let data = Box::new(CommandRunHookData {
-            callback: Box::new(callback),
-            weechat_ptr: self.ptr,
-        });
-
-        let data_ref = Box::leak(data);
-        let hook_command_run = self.get().hook_command_run.unwrap();
-
-        let command = LossyCString::new(command);
-
-        let hook_ptr = unsafe {
-            hook_command_run(
-                self.ptr,
-                command.as_ptr(),
-                Some(c_hook_cb),
-                data_ref as *const _ as *const c_void,
-                ptr::null_mut(),
-            )
-        };
-        let hook_data = unsafe { Box::from_raw(data_ref) };
-        let hook = Hook {
-            ptr: hook_ptr,
-            weechat_ptr: self.ptr,
-        };
-
-        CommandRun {
-            _hook: hook,
-            _hook_data: hook_data,
+        if hook_ptr.is_null() {
+            Err(())
+        } else {
+            Ok(Command {
+                _hook: hook,
+                _hook_data: hook_data,
+            })
         }
     }
 }

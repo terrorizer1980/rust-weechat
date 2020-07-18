@@ -144,7 +144,7 @@ impl WeechatPlugin for SamplePlugin {
         );
 
         Ok(SamplePlugin {
-            _rust_hook: command,
+            _rust_hook: command.unwrap(),
             _rust_config: config,
             _item: item.unwrap(),
             _signal: signal_hook.unwrap(),
