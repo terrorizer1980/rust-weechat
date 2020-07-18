@@ -107,6 +107,15 @@ mod hashtable;
 mod hdata;
 mod weechat;
 
+#[cfg(feature = "config-macro")]
+#[macro_use]
+mod config_macros;
+
+#[cfg(feature = "config-macro")]
+pub use paste;
+#[cfg(feature = "config-macro")]
+pub use strum;
+
 pub mod buffer;
 pub mod config;
 pub mod hooks;
