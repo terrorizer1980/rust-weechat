@@ -9,10 +9,8 @@ name = "go"
 crate-type = ["cdylib"]
 
 [dependencies]
-libc = "0.2.72"
 fuzzy-matcher = "0.3.5"
 weechat = { path = "../../", features = ["config-macro", "unsound"]}
-weechat-sys = { path = "../../../weechat-sys" }
 
 [workspace]
 

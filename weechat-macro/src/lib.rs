@@ -160,7 +160,8 @@ pub fn weechat_plugin(input: proc_macro::TokenStream) -> proc_macro::TokenStream
 
     let result = quote! {
         #[no_mangle]
-        pub static weechat_plugin_api_version: [u8; weechat_sys::WEECHAT_PLUGIN_API_VERSION_LENGTH] = *weechat_sys::WEECHAT_PLUGIN_API_VERSION;
+        pub static weechat_plugin_api_version: [u8; weechat::weechat_sys::WEECHAT_PLUGIN_API_VERSION_LENGTH] =
+            *weechat::weechat_sys::WEECHAT_PLUGIN_API_VERSION;
 
         #[no_mangle]
         pub static weechat_plugin_name: [u8; #name_len] = *#name;
@@ -186,10 +187,10 @@ pub fn weechat_plugin(input: proc_macro::TokenStream) -> proc_macro::TokenStream
         /// This function needs to be an extern C function and it can't be
         /// mangled, otherwise Weechat will not find the symbol.
         pub unsafe extern "C" fn weechat_plugin_init(
-            plugin: *mut weechat_sys::t_weechat_plugin,
-            argc: libc::c_int,
-            argv: *mut *mut ::libc::c_char,
-        ) -> libc::c_int {
+            plugin: *mut weechat::weechat_sys::t_weechat_plugin,
+            argc: weechat::libc::c_int,
+            argv: *mut *mut weechat::libc::c_char,
+        ) -> weechat::libc::c_int {
             let weechat = unsafe {
                 Weechat::init_from_ptr(plugin)
             };
@@ -199,10 +200,10 @@ pub fn weechat_plugin(input: proc_macro::TokenStream) -> proc_macro::TokenStream
                     unsafe {
                         __PLUGIN = Some(p);
                     }
-                    return weechat_sys::WEECHAT_RC_OK;
+                    return weechat::weechat_sys::WEECHAT_RC_OK;
                 }
                 Err(_e) => {
-                    return weechat_sys::WEECHAT_RC_ERROR;
+                    return weechat::weechat_sys::WEECHAT_RC_ERROR;
                 }
             }
         }
@@ -213,12 +214,14 @@ pub fn weechat_plugin(input: proc_macro::TokenStream) -> proc_macro::TokenStream
         /// # Safety
         /// This function needs to be an extern C function and it can't be
         /// mangled, otherwise Weechat will not find the symbol.
-        pub unsafe extern "C" fn weechat_plugin_end(_plugin: *mut weechat_sys::t_weechat_plugin) -> ::libc::c_int {
+        pub unsafe extern "C" fn weechat_plugin_end(
+            _plugin: *mut weechat::weechat_sys::t_weechat_plugin
+        ) -> weechat::libc::c_int {
             unsafe {
                 __PLUGIN = None;
                 Weechat::free();
             }
-            weechat_sys::WEECHAT_RC_OK
+            weechat::weechat_sys::WEECHAT_RC_OK
         }
 
         impl #plugin {

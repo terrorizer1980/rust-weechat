@@ -9,14 +9,11 @@ name = "ripgrep"
 crate-type = ["dylib"]
 
 [dependencies]
-libc = "0.2.72"
-
 grep-searcher = "0.1.7"
 grep-matcher = "0.1.4"
 grep-regex = "0.1.8"
 
 tokio = { version = "0.2.21", features = [ "rt-threaded", "sync" ] }
-weechat-sys = { path = "../../../weechat-sys" }
 async-trait = "0.1.36"
 
 [dependencies.weechat]

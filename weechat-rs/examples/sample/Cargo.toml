@@ -9,8 +9,6 @@ name = "rust"
 crate-type = ["cdylib"]
 
 [dependencies]
-libc = "0.2.72"
 weechat = { path = "../.." }
-weechat-sys = { path = "../../../weechat-sys" }
 
 [workspace]

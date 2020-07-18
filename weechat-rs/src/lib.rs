@@ -124,6 +124,8 @@ pub mod infolist;
 pub use crate::weechat::{ArgsWeechat, Weechat};
 
 pub use weechat_macro::weechat_plugin;
+pub use weechat_sys;
+pub use libc;
 
 /// Weechat plugin trait.
 ///
