@@ -1198,6 +1198,39 @@ impl Buffer<'_> {
         self.set("display", "1");
     }
 
+    /// Run the given command in the buffer.
+    ///
+    /// # Arguments
+    ///
+    /// * `command` - The command that should run.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use weechat::Weechat;
+    /// # use weechat::buffer::BufferSettings;
+    /// # let buffer_handle = Weechat::buffer_new(BufferSettings::new("test"))
+    /// #    .unwrap();
+    /// # let buffer = buffer_handle.upgrade().unwrap();
+    ///
+    /// // Switch to the core buffer using a command.
+    /// buffer.run_command("/buffer core");
+    /// ```
+    pub fn run_command(&self, command: &str) -> Result<(), ()> {
+        let command = LossyCString::new(command);
+        let weechat = self.weechat();
+        let run_command = weechat.get().command.unwrap();
+
+        let ret =
+            unsafe { run_command(weechat.ptr, self.ptr(), command.as_ptr()) };
+
+        match ret {
+            WEECHAT_RC_OK => Ok(()),
+            WEECHAT_RC_ERROR => Err(()),
+            _ => unreachable!(),
+        }
+    }
+
     fn hdata_pointer(&self) -> *mut t_hdata {
         let weechat = self.weechat();
 
