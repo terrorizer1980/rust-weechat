@@ -1,7 +1,7 @@
 /*
  * weechat-plugin.h - header to compile WeeChat plugins
  *
- * Copyright (C) 2003-2019 Sébastien Helleu <flashcode@flashtux.org>
+ * Copyright (C) 2003-2020 Sébastien Helleu <flashcode@flashtux.org>
  *
  * This file is part of WeeChat, the extensible chat client.
  *
@@ -67,7 +67,7 @@ struct timeval;
  * please change the date with current one; for a second change at same
  * date, increment the 01, otherwise please keep 01.
  */
-#define WEECHAT_PLUGIN_API_VERSION "20190810-01"
+#define WEECHAT_PLUGIN_API_VERSION "20200621-01"
 
 /* macros for defining plugin infos */
 #define WEECHAT_PLUGIN_NAME(__name)                                     \
@@ -371,6 +371,15 @@ struct t_weechat_plugin
     int (*utf8_real_pos) (const char *string, int pos);
     int (*utf8_pos) (const char *string, int real_pos);
     char *(*utf8_strndup) (const char *string, int length);
+
+    /* crypto */
+    int (*crypto_hash) (const void *data, int data_size,
+                        const char *hash_algo, void *hash, int *hash_size);
+    int (*crypto_hash_pbkdf2) (const void *data, int data_size,
+                               const char *hash_algo,
+                               const void *salt, int salt_size,
+                               int iterations,
+                               void *hash, int *hash_size);
 
     /* directories/files */
     int (*mkdir_home) (const char *directory, int mode);
@@ -986,6 +995,7 @@ struct t_weechat_plugin
                                   const char *color_fg,
                                   const char *color_delim,
                                   const char *color_bg,
+                                  const char *color_bg_inactive,
                                   const char *separator,
                                   const char *items);
     int (*bar_set) (struct t_gui_bar *bar, const char *property,
@@ -999,6 +1009,19 @@ struct t_weechat_plugin
     int (*command_options) (struct t_weechat_plugin *plugin,
                             struct t_gui_buffer *buffer, const char *command,
                             struct t_hashtable *options);
+
+    /* completion */
+    struct t_gui_completion *(*completion_new) (struct t_weechat_plugin *plugin,
+                                                struct t_gui_buffer *buffer);
+    int (*completion_search) (struct t_gui_completion *completion,
+                              const char *data, int position, int direction);
+    const char *(*completion_get_string) (struct t_gui_completion *completion,
+                                          const char *property);
+    void (*completion_list_add) (struct t_gui_completion *completion,
+                                 const char *word,
+                                 int nick_completion,
+                                 const char *where);
+    void (*completion_free) (struct t_gui_completion *completion);
 
     /* network */
     int (*network_pass_proxy) (const char *proxy, int sock,
@@ -1306,6 +1329,20 @@ extern int weechat_plugin_end (struct t_weechat_plugin *plugin);
     (weechat_plugin->utf8_pos)(__string, __real_pos)
 #define weechat_utf8_strndup(__string, __length)                        \
     (weechat_plugin->utf8_strndup)(__string, __length)
+
+/* crypto */
+#define weechat_crypto_hash(__data, __data_size, __hash_algo,           \
+                            __hash, __hash_size)                        \
+    (weechat_plugin->crypto_hash)(__data, __data_size, __hash_algo,     \
+                                  __hash, __hash_size)
+#define weechat_crypto_hash_pbkdf2(__data, __data_size, __hash_algo,    \
+                                   __salt, __salt_size, __iterations,   \
+                                   __hash, __hash_size)                 \
+    (weechat_plugin->crypto_hash_pbkdf2)(__data, __data_size,           \
+                                         __hash_algo,                   \
+                                         __salt, __salt_size,           \
+                                         __iterations,                  \
+                                         __hash, __hash_size)
 
 /* directories */
 #define weechat_mkdir_home(__directory, __mode)                         \
@@ -1897,13 +1934,14 @@ extern int weechat_plugin_end (struct t_weechat_plugin *plugin);
                         __condition, __position, __filling_top_bottom,  \
                         __filling_left_right, __size, __size_max,       \
                         __color_fg, __color_delim, __color_bg,          \
-                        __separator, __items)                           \
+                        __color_bg_inactive, __separator, __items)      \
     (weechat_plugin->bar_new)(__name, __hidden, __priority, __type,     \
                               __condition, __position,                  \
                               __filling_top_bottom,                     \
                               __filling_left_right,                     \
                               __size, __size_max, __color_fg,           \
-                              __color_delim, __color_bg, __separator,   \
+                              __color_delim, __color_bg,                \
+                              __color_bg_inactive, __separator,         \
                               __items)
 #define weechat_bar_set(__bar, __property, __value)                     \
     (weechat_plugin->bar_set)(__bar, __property, __value)
@@ -1918,6 +1956,22 @@ extern int weechat_plugin_end (struct t_weechat_plugin *plugin);
 #define weechat_command_options(__buffer, __command, __options)         \
     (weechat_plugin->command_options)(weechat_plugin, __buffer,         \
                                       __command, __options)
+
+/* completion */
+#define weechat_completion_new(__buffer)                                \
+    (weechat_plugin->completion_new)(weechat_plugin, __buffer)
+#define weechat_completion_search(__completion, __data, __position,     \
+                                  __direction)                          \
+    (weechat_plugin->completion_search)(__completion, __data,           \
+                                        __position, __direction)
+#define weechat_completion_get_string(__completion, __property)         \
+    (weechat_plugin->completion_get_string)(__completion, __property)
+#define weechat_completion_list_add(__completion, __word,               \
+                                    __nick_completion, __where)         \
+    (weechat_plugin->completion_list_add)(__completion, __word,         \
+                                          __nick_completion, __where)
+#define weechat_completion_free(__completion)                           \
+    (weechat_plugin->completion_free)(__completion)
 
 /* network */
 #define weechat_network_pass_proxy(__proxy, __sock, __address, __port)  \
