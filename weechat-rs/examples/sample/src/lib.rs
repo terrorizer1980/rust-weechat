@@ -47,7 +47,7 @@ impl SamplePlugin {
 }
 
 impl WeechatPlugin for SamplePlugin {
-    fn init(weechat: &Weechat, _args: ArgsWeechat) -> Result<Self, ()> {
+    fn init(_: &Weechat, _args: ArgsWeechat) -> Result<Self, ()> {
         Weechat::print("Hello Rust!");
 
         let buffer_settings = BufferSettings::new("Test buffer")
@@ -94,8 +94,7 @@ impl WeechatPlugin for SamplePlugin {
 
         let sample_command = CommandSettings::new("rustcommand");
 
-        let command =
-            weechat.hook_command(sample_command, SamplePlugin::rust_command_cb);
+        let command = Command::new(sample_command, SamplePlugin::rust_command_cb);
 
         let mut config = Weechat::config_new_with_callback(
             "rust_sample",

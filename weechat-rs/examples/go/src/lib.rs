@@ -537,7 +537,7 @@ impl CommandCallback for InnerGo {
 }
 
 impl WeechatPlugin for Go {
-    fn init(weechat: &Weechat, _args: ArgsWeechat) -> Result<Self, ()> {
+    fn init(_: &Weechat, _args: ArgsWeechat) -> Result<Self, ()> {
         let config = Config::new()?;
 
         if let Err(e) = config.read() {
@@ -555,7 +555,7 @@ impl WeechatPlugin for Go {
         };
 
         let command_settings = CommandSettings::new("go");
-        let command = weechat.hook_command(command_settings, inner_go.clone())?;
+        let command = Command::new(command_settings, inner_go.clone())?;
 
         Ok(Go {
             _command: command,

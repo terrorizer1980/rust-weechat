@@ -280,7 +280,7 @@ impl CommandCallback for RipgrepCommand {
 }
 
 impl WeechatPlugin for Ripgrep {
-    fn init(weechat: &Weechat, _args: ArgsWeechat) -> Result<Self, ()> {
+    fn init(_: &Weechat, _args: ArgsWeechat) -> Result<Self, ()> {
         let mut config = Weechat::config_new("ripgrep")?;
 
         {
@@ -311,7 +311,7 @@ impl WeechatPlugin for Ripgrep {
 
         let runtime = Rc::new(RefCell::new(Some(runtime)));
 
-        let command = weechat.hook_command(
+        let command = Command::new(
             command_info,
             RipgrepCommand {
                 runtime: runtime.clone(),

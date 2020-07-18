@@ -111,7 +111,7 @@ pub(crate) struct BufferPointers {
     pub(crate) buffer_cell: Option<Rc<Cell<*mut t_gui_buffer>>>,
 }
 
-/// Trait for the buffer inpput callback
+/// Trait for the buffer input callback
 ///
 /// This is the sync version of the callback.
 ///

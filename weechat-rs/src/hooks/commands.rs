@@ -53,9 +53,10 @@ impl<T: FnMut(&Weechat, &Buffer, ArgsWeechat) + 'static> CommandCallback for T {
 }
 
 #[derive(Default)]
-/// Description for a weechat command that should will be hooked.
+/// Description for a new Weechat command that should be created.
+///
 /// The fields of this struct accept the same string formats that are described
-/// in the weechat API documentation.
+/// in the Weechat API documentation.
 pub struct CommandSettings {
     /// Name of the command.
     name: String,
@@ -94,16 +95,25 @@ impl CommandSettings {
         self
     }
 
-    /// Set the
+    /// Add an argument to the command.
+    ///
+    /// Multiple arguments can be added to a command. See the `Command`
+    /// documentation for an example of this.
     ///
     /// # Arguments
     ///
-    /// * `description` - The description of the command.
+    /// * `argument` - The argument that should be added.
     pub fn add_argument<T: Into<String>>(mut self, argument: T) -> Self {
         self.arguments.push(argument.into());
         self
     }
 
+    /// Set the description of the arguments.
+    ///
+    /// # Arguments
+    ///
+    /// * `description` - The argument description that should be set for the
+    ///     command.
     pub fn arguments_description<T: Into<String>>(
         mut self,
         descritpion: T,
@@ -112,6 +122,14 @@ impl CommandSettings {
         self
     }
 
+    /// Add a completion definition to the command.
+    ///
+    /// Multiple arguments can be added to a command. See the `Command`
+    /// documentation for an example of this.
+    ///
+    /// # Arguments
+    ///
+    /// * `completion` - The completion that should be added to the command.
     pub fn add_completion<T: Into<String>>(mut self, completion: T) -> Self {
         self.completion.push(completion.into());
         self
@@ -129,7 +147,24 @@ pub struct CommandRun {
     _hook_data: Box<CommandRunHookData>,
 }
 
+/// Trait for the command-run callback
+///
+/// A blanket implementation for pure `FnMut` functions exists, if data needs to
+/// be passed to the callback implement this over your struct.
 pub trait CommandRunCallback {
+    /// Callback that will be called when the command is ran.
+    ///
+    /// Should return a code signaling if further command callbacks should be
+    /// ran or if the command should be "eaten" by this callback.
+    ///
+    /// # Arguments
+    ///
+    /// * `weechat` - A Weechat context.
+    ///
+    /// * `buffer` - The buffer that received the command.
+    ///
+    /// * `command` - The full command that was executed, including its
+    ///     arguments.
     fn callback(
         &mut self,
         weechat: &Weechat,
@@ -168,6 +203,20 @@ impl CommandRun {
     /// # Panics
     ///
     /// Panics if the method is not called from the main Weechat thread.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use std::borrow::Cow;
+    /// # use weechat::{Weechat, ReturnCode};
+    /// # use weechat::hooks::CommandRun;
+    /// # use weechat::buffer::Buffer;
+    ///
+    /// let buffer_command = CommandRun::new(
+    ///     "2000|/buffer *",
+    ///     |_: &Weechat, _: &Buffer, _: Cow<str>| ReturnCode::OkEat,
+    /// )
+    /// .expect("Can't override buffer command");
+    /// ```
     pub fn new(
         command: &str,
         callback: impl CommandRunCallback + 'static,
@@ -229,7 +278,7 @@ impl CommandRun {
     }
 }
 
-impl Weechat {
+impl Command {
     /// Create a new Weechat command.
     ///
     /// Returns the hook of the command. The command is unhooked if the hook is
@@ -240,8 +289,41 @@ impl Weechat {
     /// * `command_settings` - Settings for the new command.
     ///
     /// * `callback` - The callback that will be called if the command is run.
-    pub fn hook_command(
-        &self,
+    ///
+    /// ```no_run
+    /// # use weechat::{Weechat, ArgsWeechat};
+    /// # use weechat::hooks::{Command, CommandSettings};
+    /// # use weechat::buffer::{Buffer};
+    /// let settings = CommandSettings::new("irc")
+    ///     .description("IRC chat protocol command.")
+    ///     .add_argument("server add <server-name> <hostname>[:<port>]")
+    ///     .add_argument("server delete|list|listfull <server-name>")
+    ///     .add_argument("connect <server-name>")
+    ///     .add_argument("disconnect <server-name>")
+    ///     .add_argument("reconnect <server-name>")
+    ///     .add_argument("help <irc-command> [<irc-subcommand>]")
+    ///     .arguments_description(
+    ///         "     server: List, add, or remove IRC servers.
+    ///     connect: Connect to a IRC server.
+    ///  disconnect: Disconnect from one or all IRC servers.
+    ///   reconnect: Reconnect to server(s).
+    ///        help: Show detailed command help.\n
+    /// Use /irc [command] help to find out more.\n",
+    ///     )
+    ///     .add_completion("server |add|delete|list|listfull")
+    ///     .add_completion("connect")
+    ///     .add_completion("disconnect")
+    ///     .add_completion("reconnect")
+    ///     .add_completion("help server|connect|disconnect|reconnect");
+    ///
+    /// let command = Command::new(
+    ///     settings,
+    ///     |_: &Weechat, buffer: &Buffer, args: ArgsWeechat| {
+    ///         buffer.print(&format!("Command called with args {:?}", args));
+    ///     }
+    /// ).expect("Can't create command");
+    /// ```
+    pub fn new(
         command_settings: CommandSettings,
         callback: impl CommandCallback + 'static,
     ) -> Result<Command, ()> {
@@ -265,6 +347,9 @@ impl Weechat {
             WEECHAT_RC_OK
         }
 
+        Weechat::check_thread();
+        let weechat = unsafe { Weechat::weechat() };
+
         let name = LossyCString::new(command_settings.name);
         let description = LossyCString::new(command_settings.description);
         let args = LossyCString::new(command_settings.arguments.join("||"));
@@ -275,15 +360,15 @@ impl Weechat {
 
         let data = Box::new(CommandHookData {
             callback: Box::new(callback),
-            weechat_ptr: self.ptr,
+            weechat_ptr: weechat.ptr,
         });
 
         let data_ref = Box::leak(data);
 
-        let hook_command = self.get().hook_command.unwrap();
+        let hook_command = weechat.get().hook_command.unwrap();
         let hook_ptr = unsafe {
             hook_command(
-                self.ptr,
+                weechat.ptr,
                 name.as_ptr(),
                 description.as_ptr(),
                 args.as_ptr(),
@@ -298,7 +383,7 @@ impl Weechat {
 
         let hook = Hook {
             ptr: hook_ptr,
-            weechat_ptr: self.ptr,
+            weechat_ptr: weechat.ptr,
         };
 
         if hook_ptr.is_null() {
