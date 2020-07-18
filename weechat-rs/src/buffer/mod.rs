@@ -111,9 +111,22 @@ pub(crate) struct BufferPointers {
     pub(crate) buffer_cell: Option<Rc<Cell<*mut t_gui_buffer>>>,
 }
 
-/// Callback that will be called if the user inputs something into the buffer
-/// input field. This is the non-async version of the callback.
+/// Trait for the buffer inpput callback
+///
+/// This is the sync version of the callback.
+///
+/// A blanket implementation for pure `FnMut` functions exists, if data needs to
+/// be passed to the callback implement this over your struct.
 pub trait BufferInputCallback: 'static {
+    /// Callback that will be called when the buffer receives some input.
+    ///
+    /// # Arguments
+    ///
+    /// * `weechat` - A Weechat context.
+    ///
+    /// * `buffer` - The buffer that received the input
+    ///
+    /// * `input` - The input that was received.
     fn callback(
         &mut self,
         weechat: &Weechat,
@@ -145,8 +158,18 @@ impl<T: FnMut(&Weechat, &Buffer, Cow<str>) -> Result<(), ()> + 'static>
     }
 }
 
+/// Trait for the buffer close callback
+///
+/// A blanket implementation for pure `FnMut` functions exists, if data needs to
+/// be passed to the callback implement this over your struct.
 pub trait BufferCloseCallback {
     /// Callback that will be called before the buffer is closed.
+    ///
+    /// # Arguments
+    ///
+    /// * `weechat` - A Weechat context.
+    ///
+    /// * `buffer` - The buffer that will be closed.
     fn callback(
         &mut self,
         weechat: &Weechat,
@@ -730,7 +753,9 @@ impl Buffer<'_> {
     ///
     /// * `date` - A unix time-stamp representing the date of the message, 0
     ///     means now.
+    ///
     /// * `tags` - A list of tags that will be applied to the printed line.
+    ///
     /// * `message` - The message that will be displayed.
     pub fn print_date_tags(&self, date: i64, tags: &[&str], message: &str) {
         let weechat = self.weechat();
@@ -932,11 +957,16 @@ impl Buffer<'_> {
     }
 
     /// Create and add a new nicklist group to the buffers nicklist.
+    ///
     /// * `name` - Name of the new group.
+    ///
     /// * `color` - Color of the new group.
+    ///
     /// * `visible` - Should the group be visible in the nicklist.
+    ///
     /// * `parent_group` - Parent group that the group should be added to.
     ///     If no group is provided the group is added to the root group.
+    ///
     /// Returns the new nicklist group. The group is not removed if the object
     /// is dropped.
     pub fn add_nicklist_group(
@@ -1005,12 +1035,32 @@ impl Buffer<'_> {
         }
     }
 
+    fn get_integer(&self, property: &str) -> i32 {
+        let weechat = self.weechat();
+
+        let buffer_get = weechat.get().buffer_get_integer.unwrap();
+        let property = LossyCString::new(property);
+
+        unsafe { buffer_get(self.ptr(), property.as_ptr()) }
+    }
+
     /// Get the value of a buffer localvar
+    ///
+    /// # Arguments
+    ///
+    /// * `property` - The name of the property for which the value should be
+    ///     fetched.
     pub fn get_localvar(&self, property: &str) -> Option<Cow<str>> {
         self.get_string(&format!("localvar_{}", property))
     }
 
     /// Set the value of a buffer localvar
+    ///
+    /// # Arguments
+    ///
+    /// * `property` - The property that should be set.
+    ///
+    /// * `value` - The value that the property should get.
     pub fn set_localvar(&self, property: &str, value: &str) {
         self.set(&format!("localvar_set_{}", property), value)
     }
@@ -1031,6 +1081,10 @@ impl Buffer<'_> {
     }
 
     /// Set the name of the buffer.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The new name that should be set.
     pub fn set_name(&self, name: &str) {
         self.set("name", name);
     }
@@ -1041,6 +1095,10 @@ impl Buffer<'_> {
     }
 
     /// Set the short_name of the buffer.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The new short name that should be set.
     pub fn set_short_name(&self, name: &str) {
         self.set("short_name", name);
     }
@@ -1071,6 +1129,9 @@ impl Buffer<'_> {
     }
 
     /// Set the title of the buffer.
+    ///
+    /// # Arguments
+    ///
     /// * `title` - The new title that will be set.
     pub fn set_title(&self, title: &str) {
         self.set("title", title);
