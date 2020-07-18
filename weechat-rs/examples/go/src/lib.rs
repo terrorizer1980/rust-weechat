@@ -34,8 +34,8 @@ use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 config!(
     "go",
     Section look {
-        message: String {
-            "Message to display before the list of buffers.",
+        prompt: String {
+            "Prompt to display before the list of buffers.",
             "Go to: ",
         },
 
@@ -253,10 +253,17 @@ impl BufferList {
         self.buffers.get(self.selected_buffer)
     }
 
+    /// Do we have exactly one result in our buffer list.
     fn has_only_one_result(&self) -> bool {
         self.buffers.len() == 1
     }
 
+    /// Switch to the currently selected buffer.
+    ///
+    /// # Arguments
+    ///
+    /// * `weechat` - The Weechat context that will allow us to find the buffer
+    /// object using our full name of the buffer.
     fn switch_to_selected_buffer(self, weechat: &Weechat) {
         self.get_selected_buffer().map(|buffer| {
             weechat
@@ -327,7 +334,6 @@ struct Hooks {
 }
 
 struct RunningState {
-    #[used]
     /// Hooks that are necessary to enable go-mode.
     hooks: Hooks,
     /// The input of the current buffer before we entered go-mode.
@@ -452,11 +458,9 @@ impl ModifierCallback for InnerGo {
                 .expect("Can't run command");
             None
         } else {
-            let message = self.config.look().message();
-            buffer.set_input_position(1);
             Some(format!(
                 "{}{}  {}",
-                message,
+                self.config.look().prompt(),
                 current_input,
                 state_borrow.buffers
             ))
