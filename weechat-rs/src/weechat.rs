@@ -334,6 +334,31 @@ impl Weechat {
         }
     }
 
+    /// Remove WeeChat colors from a string.
+    ///
+    /// # Arguments
+    ///
+    /// * `string` - The string that should be stripped from Weechat colors.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the method is not called from the main Weechat thread.
+    pub fn remove_color(string: &str) -> String {
+        Weechat::check_thread();
+        let weechat = unsafe { Weechat::weechat() };
+
+        let string = LossyCString::new(string);
+
+        let remove_color = weechat.get().string_remove_color.unwrap();
+
+        let string = unsafe {
+            let ptr = remove_color(string.as_ptr(), ptr::null());
+            CString::from_raw(ptr)
+        };
+
+        string.to_string_lossy().to_string()
+    }
+
     /// Evaluate a Weechat expression and return the result.
     ///
     /// # Arguments
