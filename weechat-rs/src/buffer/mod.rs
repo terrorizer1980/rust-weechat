@@ -364,15 +364,14 @@ impl Weechat {
     }
 
     /// Get the currently open buffer
-    pub fn current(&self) -> Option<Buffer> {
+    pub fn current_buffer(&self) -> Buffer {
         let buffer_search = self.get().buffer_search.unwrap();
 
-        let buf_ptr =
-            unsafe { buffer_search(ptr::null_mut(), ptr::null_mut()) };
+        let buf_ptr = unsafe { buffer_search(ptr::null(), ptr::null()) };
         if buf_ptr.is_null() {
-            None
+            panic!("No open buffer found");
         } else {
-            Some(self.buffer_from_ptr(buf_ptr))
+            self.buffer_from_ptr(buf_ptr)
         }
     }
 
