@@ -18,7 +18,21 @@ pub struct Command {
     _hook_data: Box<CommandHookData>,
 }
 
+/// Trait for the command callback
+///
+/// A blanket implementation for pure `FnMut` functions exists, if data needs to
+/// be passed to the callback implement this over your struct.
 pub trait CommandCallback {
+    /// Callback that will be called when the command is executed.
+    ///
+    /// # Arguments
+    ///
+    /// * `weechat` - A Weechat context.
+    ///
+    /// * `buffer` - The buffer that received the command.
+    ///
+    /// * `arguments` - The arguments that were passed to the command, this will
+    ///     include the command as the first argument.
     fn callback(
         &mut self,
         weechat: &Weechat,
