@@ -166,6 +166,14 @@ pub enum InfolistVariable<'a> {
 }
 
 impl<'a> Infolist<'a> {
+    fn is_pointer_buffer(infolist_name: &str, variable_name: &str) -> bool {
+        match (infolist_name, variable_name) {
+            ("logger_buffer", "buffer") => true,
+            ("buffer", "pointer") => true,
+            _ => false,
+        }
+    }
+
     fn get_fields(&self) -> HashMap<String, InfolistType> {
         let weechat = Weechat::from_ptr(self.weechat_ptr);
 
@@ -193,7 +201,7 @@ impl<'a> Infolist<'a> {
             let field = if infolist_type == "p" {
                 // TODO this should be in a static hashmap, there are more
                 // infolists that contain buffer pointers.
-                if self.infolist_name == "logger_buffer" && name == "buffer" {
+                if Infolist::is_pointer_buffer(&self.infolist_name, name) {
                     InfolistType::Buffer
                 } else {
                     continue;
