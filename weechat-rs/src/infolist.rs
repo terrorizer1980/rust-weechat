@@ -6,6 +6,7 @@
 use std::borrow::Cow;
 use std::collections::{hash_map::Keys, HashMap};
 use std::ffi::CStr;
+use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::ptr;
 use std::time::{Duration, SystemTime};
@@ -25,7 +26,7 @@ pub struct Infolist<'a> {
     phantom_weechat: PhantomData<&'a Weechat>,
 }
 
-#[derive(Eq, Hash, PartialEq)]
+#[derive(Eq, Hash, Debug, PartialEq)]
 /// The type of an infolist variable.
 #[allow(missing_docs)]
 pub enum InfolistType {
@@ -56,6 +57,12 @@ pub struct InfolistItem<'a> {
     weechat_ptr: *mut t_weechat_plugin,
     fields: HashMap<String, InfolistType>,
     infolist: PhantomData<&'a Infolist<'a>>,
+}
+
+impl<'a> Debug for InfolistItem<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_map().entries(self.fields.iter()).finish()
+    }
 }
 
 impl<'a> InfolistItem<'a> {
