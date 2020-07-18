@@ -131,11 +131,8 @@ impl WeechatPlugin for SamplePlugin {
              _signal_name: &str,
              data: Option<SignalData>| {
                 if let Some(data) = data {
-                    match data {
-                        SignalData::Buffer(buffer) => {
-                            buffer.print("Switched buffer")
-                        }
-                        _ => (),
+                    if let SignalData::Buffer(buffer) = data {
+                        buffer.print("Switched buffer")
                     }
                 }
 

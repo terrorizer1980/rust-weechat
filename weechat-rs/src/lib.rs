@@ -71,7 +71,7 @@
 //!         );
 //!
 //!         Ok(SamplePlugin {
-//!             _command: command,
+//!             _command: command.unwrap(),
 //!         })
 //!     }
 //! }
