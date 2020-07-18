@@ -3,8 +3,15 @@ rust: stable
 
 jobs:
   include:
-    - os: linux
-      dist: bionic
+    - stage: Lint
+
+      before_script:
+          - rustup component add rustfmt
+      script:
+          - cargo fmt --all -- --check
+
+    - stage: Build
+      os: linux
 
     - os: osx
 
@@ -19,11 +26,10 @@ jobs:
           - cd ..
           - cd sample
           - cargo build
-
-before_script:
-  - rustup component add rustfmt
+          - cd ..
+          - cd grep
+          - cargo build
 
 script:
   - cargo build
-  - cargo fmt --all -- --check
   - cargo test
