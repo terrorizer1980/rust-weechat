@@ -104,7 +104,12 @@ pub trait ModifierCallback {
 }
 
 impl<
-        T: FnMut(&Weechat, &str, Option<ModifierData>, Cow<str>) -> Option<String>
+        T: FnMut(
+                &Weechat,
+                &str,
+                Option<ModifierData>,
+                Cow<str>,
+            ) -> Option<String>
             + 'static,
     > ModifierCallback for T
 {
