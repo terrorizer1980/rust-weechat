@@ -11,6 +11,7 @@ use crate::buffer::Buffer;
 use crate::{LossyCString, Weechat};
 
 /// Hook for a modifier, the hook is removed when the object is dropped.
+#[cfg_attr(docsrs, doc(cfg(feature = "unsound")))]
 pub struct ModifierHook {
     _hook: Hook,
     _hook_data: Box<ModifierHookData>,
@@ -170,6 +171,7 @@ impl ModifierHook {
     ///     None
     /// });
     /// ```
+    #[cfg_attr(docsrs, doc(cfg(feature = "unsound")))]
     pub fn new(
         modifier_name: &str,
         callback: impl ModifierCallback + 'static,
