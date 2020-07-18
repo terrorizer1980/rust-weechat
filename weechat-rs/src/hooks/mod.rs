@@ -10,6 +10,8 @@ mod bar;
 mod commands;
 mod completion;
 mod fd;
+#[cfg(feature = "unsound")]
+mod modifier;
 mod timer;
 
 pub use bar::{BarItemCallback, BarItemHandle};
@@ -17,7 +19,10 @@ pub use commands::{
     Command, CommandCallback, CommandRun, CommandRunCallback, CommandSettings,
 };
 pub use completion::{Completion, CompletionHook, CompletionPosition};
+
 pub use fd::{FdHook, FdHookCallback, FdHookMode};
+#[cfg(feature = "unsound")]
+pub use modifier::{ModifierCallback, ModifierData, ModifierHook};
 pub use signal::{SignalCallback, SignalData, SignalHook};
 pub use timer::TimerHook;
 
