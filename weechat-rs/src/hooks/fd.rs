@@ -47,6 +47,13 @@ pub trait FdHookCallback {
     type FdObject;
     /// The callback that will be called when data is available to be read or to
     /// be written on the file descriptor based object.
+    ///
+    /// # Arguments
+    ///
+    /// * `weechat` - A Weechat context.
+    ///
+    /// * `fd_object` - The file-descriptor based object that was registered to
+    ///     be watched for reads or writes.
     fn callback(&mut self, weechat: &Weechat, fd_object: &mut Self::FdObject);
 }
 
@@ -79,6 +86,32 @@ impl<F> FdHook<F> {
     /// # Panics
     ///
     /// Panics if the method is not called from the main Weechat thread.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    ///
+    /// # use weechat::{Weechat, hooks::{FdHook, FdHookMode, FdHookCallback}};
+    /// # use pipe_channel::{channel, Receiver, Sender};
+    ///
+    /// struct Data;
+    ///
+    /// impl FdHookCallback for Data {
+    ///     type FdObject = Receiver<String>;
+    ///
+    ///     fn callback(&mut self, _: &Weechat, receiver: &mut Receiver<String>) {
+    ///         if let Ok(data) = receiver.recv() {
+    ///             Weechat::print(&data)
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// let (sender, receiver): (Sender<String>, Receiver<String>) = channel();
+    ///
+    /// let hook = FdHook::new(receiver, FdHookMode::Read, Data)
+    ///     .expect("Can't create executor FD hook");
+    ///
+    /// ```
     pub fn new(
         fd_object: F,
         mode: FdHookMode,
