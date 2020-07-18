@@ -173,7 +173,7 @@ struct CompletionHookData {
     weechat_ptr: *mut t_weechat_plugin,
 }
 
-impl Completion {
+impl CompletionHook {
     /// Create a new completion
     ///
     /// * `name` - The name of the new completion. After this is created the
