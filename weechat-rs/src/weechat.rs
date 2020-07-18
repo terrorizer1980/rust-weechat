@@ -284,6 +284,27 @@ impl Weechat {
         }
     }
 
+    /// Return a string color pair for display.
+    ///
+    /// # Arguments
+    ///
+    /// `foreground_color` - Name of the color that should be used for the
+    ///     foreground.
+    ///
+    /// `background_color` - Name of the color that should be used for the
+    ///     background.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the method is not called from the main Weechat thread.
+    pub fn color_pair(
+        foreground_color: &str,
+        background_color: &str,
+    ) -> String {
+        Weechat::color(&format!("{},{}", foreground_color, background_color))
+            .to_string()
+    }
+
     /// Retrieve a prefix value
     ///
     /// # Arguments:
