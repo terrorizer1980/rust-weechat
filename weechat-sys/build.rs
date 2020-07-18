@@ -18,6 +18,9 @@ fn build(file: &str) -> Result<Bindings, ()> {
         "WEECHAT_HASHTABLE_POINTER",
         "WEECHAT_HASHTABLE_BUFFER",
         "WEECHAT_HASHTABLE_TIME",
+        "WEECHAT_HOOK_SIGNAL_STRING",
+        "WEECHAT_HOOK_SIGNAL_INT",
+        "WEECHAT_HOOK_SIGNAL_POINTER",
     ];
     let mut builder = bindgen::Builder::default().rustfmt_bindings(true);
 
