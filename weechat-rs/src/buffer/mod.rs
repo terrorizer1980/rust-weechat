@@ -709,7 +709,7 @@ impl Buffer<'_> {
         Weechat::from_ptr(ptr)
     }
 
-    fn ptr(&self) -> *mut t_gui_buffer {
+    pub(crate) fn ptr(&self) -> *mut t_gui_buffer {
         match &self.inner {
             InnerBuffers::BorrowedBuffer(b) => b.ptr,
             InnerBuffers::OwnedBuffer(b) => {
@@ -1070,6 +1070,10 @@ impl Buffer<'_> {
     }
 
     /// Set the full name of the buffer
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The new full name that should be set.
     pub fn set_full_name(&self, name: &str) {
         self.set("full_name", name);
     }
@@ -1163,6 +1167,30 @@ impl Buffer<'_> {
     /// Get the contents of the input
     pub fn input(&self) -> Cow<str> {
         self.get_string("input").unwrap()
+    }
+
+    /// Set the content of the buffer input.
+    pub fn set_input(&self, input: &str) {
+        self.set("input", input)
+    }
+
+    /// Get the position of the cursor in the buffer input.
+    pub fn input_position(&self) -> i32 {
+        self.get_integer("input_pos")
+    }
+
+    /// Set the position of the input buffer.
+    ///
+    /// # Arguments
+    ///
+    /// * `position` - The new position of the input.
+    pub fn set_input_position(&self, position: i32) {
+        self.set("input_pos", &position.to_string())
+    }
+
+    /// Get the number of the buffer.
+    pub fn number(&self) -> i32 {
+        self.get_integer("number")
     }
 
     /// Switch to the buffer
