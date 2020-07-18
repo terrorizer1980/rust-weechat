@@ -503,8 +503,7 @@ impl ConfigSection {
         };
 
         let option_ptrs = ConfigOptionPointers::String(option_pointers);
-        self.option_pointers
-            .insert(settings.name.clone(), option_ptrs);
+        self.option_pointers.insert(settings.name, option_ptrs);
 
         let option = StringOption {
             ptr,
@@ -548,8 +547,7 @@ impl ConfigSection {
         };
 
         let option_ptrs = ConfigOptionPointers::Boolean(option_pointers);
-        self.option_pointers
-            .insert(settings.name.clone(), option_ptrs);
+        self.option_pointers.insert(settings.name, option_ptrs);
 
         let option = BooleanOption {
             ptr,
@@ -595,8 +593,7 @@ impl ConfigSection {
         };
 
         let option_ptrs = ConfigOptionPointers::Integer(option_pointers);
-        self.option_pointers
-            .insert(settings.name.clone(), option_ptrs);
+        self.option_pointers.insert(settings.name, option_ptrs);
 
         let option = IntegerOption {
             ptr,
@@ -638,8 +635,7 @@ impl ConfigSection {
         };
 
         let option_ptrs = ConfigOptionPointers::Color(option_pointers);
-        self.option_pointers
-            .insert(settings.name.clone(), option_ptrs);
+        self.option_pointers.insert(settings.name, option_ptrs);
 
         let option = ColorOption {
             ptr,

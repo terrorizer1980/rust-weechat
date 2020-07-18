@@ -28,6 +28,7 @@ enum WeechatVariable {
 }
 
 impl WeechatVariable {
+    #[allow(clippy::wrong_self_convention)]
     fn to_pair(string: &LitStr) -> (usize, Literal) {
         let mut bytes = string.value().into_bytes();
         // Push a null byte since this goes to the C side.

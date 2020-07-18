@@ -21,7 +21,7 @@ impl<'a> Iterator for BufferLines<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.done {
-            return None;
+            None
         } else {
             let weechat = Weechat::from_ptr(self.weechat_ptr);
 
@@ -54,7 +54,7 @@ impl<'a> Iterator for BufferLines<'a> {
 impl<'a> DoubleEndedIterator for BufferLines<'a> {
     fn next_back(&mut self) -> Option<Self::Item> {
         if self.done {
-            return None;
+            None
         } else {
             let weechat = Weechat::from_ptr(self.weechat_ptr);
 

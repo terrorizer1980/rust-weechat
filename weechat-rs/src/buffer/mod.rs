@@ -1278,7 +1278,7 @@ impl Buffer<'_> {
     ///     Weechat::print(&format!("{:?}", line.tags()));
     /// }
     /// ```
-    pub fn lines<'a>(&'a self) -> BufferLines<'a> {
+    pub fn lines(&self) -> BufferLines {
         let weechat = self.weechat();
 
         let own_lines = self.own_lines();
