@@ -147,7 +147,22 @@ pub struct ConfigSection {
     pub(crate) option_pointers: HashMap<String, ConfigOptionPointers>,
 }
 
+/// Trait for the section write callback.
+///
+/// A blanket implementation for pure `FnMut` functions exists, if data needs to
+/// be passed to the callback implement this over your struct.
 pub trait SectionWriteCallback: 'static {
+    /// Callback that will be called when the section needs to be written out.
+    ///
+    /// # Arguments
+    ///
+    /// * `weechat` - A Weechat context.
+    ///
+    /// * `config` - A borrowed version of the Weechat configuration object.
+    ///
+    /// * `section` - The section that is being written, if the Config struct is
+    /// contained inside of `self` make sure not to borrow the same section
+    /// again.
     fn callback(
         &mut self,
         weechat: &Weechat,
@@ -169,7 +184,23 @@ impl<T: FnMut(&Weechat, &Conf, &mut ConfigSection) + 'static>
     }
 }
 
+/// Trait for the section write-default callback.
+///
+/// A blanket implementation for pure `FnMut` functions exists, if data needs to
+/// be passed to the callback implement this over your struct.
 pub trait SectionWriteDefaultCallback: 'static {
+    /// Callback that will be called when the section needs to be populated with
+    /// default values.
+    ///
+    /// # Arguments
+    ///
+    /// * `weechat` - A Weechat context.
+    ///
+    /// * `config` - A borrowed version of the Weechat configuration object.
+    ///
+    /// * `section` - The section that is being populated with default values,
+    /// if the Config struct is contained inside of `self` make sure not to
+    /// borrow the same section again.
     fn callback(
         &mut self,
         weechat: &Weechat,
@@ -191,7 +222,28 @@ impl<T: FnMut(&Weechat, &Conf, &mut ConfigSection) + 'static>
     }
 }
 
+/// Trait for the section read callback.
+///
+/// A blanket implementation for pure `FnMut` functions exists, if data needs to
+/// be passed to the callback implement this over your struct.
 pub trait SectionReadCallback: 'static {
+    /// Callback that will be called when the section is read.
+    ///
+    /// Should return if the option was successfully recognized and changed.
+    ///
+    /// # Arguments
+    ///
+    /// * `weechat` - A Weechat context.
+    ///
+    /// * `config` - A borrowed version of the Weechat configuration object.
+    ///
+    /// * `section` - The section that is being populated with default values,
+    /// if the Config struct is contained inside of `self` make sure not to
+    /// borrow the same section again.
+    ///
+    /// * `option_name` - The name of the option that is currently being read.
+    ///
+    /// * `option_value` - The value of the option that is being read.
     fn callback(
         &mut self,
         weechat: &Weechat,

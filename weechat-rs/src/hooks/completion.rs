@@ -19,7 +19,23 @@ pub struct Completion {
     ptr: *mut t_gui_completion,
 }
 
+/// Trait for the completion callback.
+///
+/// A blanket implementation for pure `FnMut` functions exists, if data needs to
 pub trait CompletionCallback {
+    /// Callback that will be called if when a completion is requested.
+    ///
+    /// # Arguments
+    ///
+    /// * `weechat` - A Weechat context.
+    ///
+    /// * `buffer` - The currently active buffer that requested the completion
+    /// to run.
+    ///
+    /// * `completion_name` - The name of the completion.
+    ///
+    /// * `completion` - The completion object that should be populated with
+    /// completion words by the callback.
     fn callback(
         &mut self,
         weechat: &Weechat,
@@ -110,7 +126,16 @@ impl Completion {
         }
     }
 
-    /// Add a word for completion in a specific position specific if the word is a nick name
+    /// Add a word to the completion giving the position and wether the word is
+    /// a nick.
+    ///
+    /// # Arguments
+    ///
+    /// * `word` - The word that should be added to the completion.
+    ///
+    /// * `is_nick` - Set if the word is a nick.
+    ///
+    /// * `position` - Set the position where the nick should be added to.
     pub fn add_with_options(
         &self,
         word: &str,

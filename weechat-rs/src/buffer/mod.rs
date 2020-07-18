@@ -193,10 +193,22 @@ impl<T: FnMut(&Weechat, &Buffer) -> Result<(), ()> + 'static>
 #[cfg_attr(docsrs, doc(cfg(feature = "async-executor")))]
 #[async_trait(?Send)]
 /// Trait for the buffer input callback.
+///
 /// This is the async version of the callback.
+///
+/// A blanket implementation for pure `FnMut` functions exists, if data needs to
+/// be passed to the callback implement this over your struct.
 pub trait BufferInputCallbackAsync: 'static {
     /// Callback that will be called if the user inputs something into the buffer
     /// input field.
+    ///
+    /// # Arguments
+    ///
+    /// * `weechat` - A Weechat context.
+    ///
+    /// * `buffer` - The buffer that the user inputed some text into.
+    ///
+    /// * `input` - The input that was posted by the user.
     async fn callback(&mut self, buffer: BufferHandle, input: String);
 }
 

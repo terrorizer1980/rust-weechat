@@ -65,7 +65,7 @@
 //!
 //!         let sample_command = CommandSettings::new("rustcommand");
 //!
-//!         let command = weechat.hook_command(
+//!         let command = Command::new(
 //!             sample_command,
 //!             SamplePlugin::rust_command_cb,
 //!         );
