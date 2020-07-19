@@ -1,8 +1,7 @@
 //! Weechat Hook module.
 //!
 //! Weechat hooks are used for many different things, to create commands, to
-//! listen to events on a file descriptor, add completions to weechat, etc.
-//! This module contains hook creation methods for the `Weechat` object.
+//! listen to events on a file descriptor, add completions to Weechat, etc.
 
 mod signal;
 
@@ -14,7 +13,7 @@ mod fd;
 mod modifier;
 mod timer;
 
-pub use bar::{BarItemCallback, BarItemHandle};
+pub use bar::{BarItemCallback, BarItem};
 pub use commands::{
     Command, CommandCallback, CommandRun, CommandRunCallback, CommandSettings,
 };

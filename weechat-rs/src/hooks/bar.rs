@@ -9,7 +9,10 @@ use weechat_sys::{
 use crate::buffer::Buffer;
 use crate::{LossyCString, Weechat};
 
+/// Trait for the bar item callback
 ///
+/// A blanket implementation for pure `FnMut` functions exists, if data needs to
+/// be passed to the callback implement this over your struct.
 pub trait BarItemCallback: 'static {
     /// The callback that should be called after the bar items
     /// is marked to be updated.
@@ -37,14 +40,14 @@ struct BarItemCbData {
 
 /// A handle to a bar item. The bar item is automatically removed when the object is
 /// dropped.
-pub struct BarItemHandle {
+pub struct BarItem {
     name: String,
     ptr: *mut t_gui_bar_item,
     weechat: *mut t_weechat_plugin,
     _data: Box<BarItemCbData>,
 }
 
-impl Drop for BarItemHandle {
+impl Drop for BarItem {
     fn drop(&mut self) {
         let weechat = Weechat::from_ptr(self.weechat);
         let bar_item_remove = weechat.get().bar_item_remove.unwrap();
@@ -52,14 +55,7 @@ impl Drop for BarItemHandle {
     }
 }
 
-impl BarItemHandle {
-    /// Update the content of the bar item, by calling its build callback.
-    pub fn update(&self) {
-        Weechat::bar_item_update(&self.name);
-    }
-}
-
-impl Weechat {
+impl BarItem {
     /// Create a new bar item that can be added by a user.
     ///
     /// # Arguments
@@ -77,20 +73,23 @@ impl Weechat {
     /// ```no_run
     /// # use weechat::Weechat;
     /// # use weechat::buffer::Buffer;
-    /// let item = Weechat::new_bar_item("buffer_plugin", |weechat:&Weechat,
+    /// # use weechat::hooks::BarItem;
+    /// let item = BarItem::new("buffer_plugin", |weechat:&Weechat,
     /// buffer: &Buffer| {
     ///     "rust/sample".to_owned()
     /// });
     /// ```
     ///
-    // TODO: Provide window object, the callback should accept a Window object wrapping a t_gui_window
+    // TODO: Provide window object, the callback should accept a Window object
+    // wrapping a t_gui_window
+    //
     // TODO: If we're going to allow bar items to be searched for like we do for
     // buffers, we need to do something about the multiple ownership that may
     // come from this.
-    pub fn new_bar_item(
+    pub fn new(
         name: &str,
         callback: impl BarItemCallback,
-    ) -> Result<BarItemHandle, ()> {
+    ) -> Result<BarItem, ()> {
         unsafe extern "C" fn c_item_cb(
             pointer: *const c_void,
             _data: *mut c_void,
@@ -140,7 +139,7 @@ impl Weechat {
             return Err(());
         }
 
-        Ok(BarItemHandle {
+        Ok(BarItem {
             name: name.to_owned(),
             ptr: bar_item_ptr,
             weechat: weechat.ptr,
@@ -148,19 +147,8 @@ impl Weechat {
         })
     }
 
-    /// Update the content of a bar item, by calling its build callback.
-    ///
-    /// # Arguments
-    ///
-    /// * `name` - The name of the bar item that should be updated.
-    pub fn bar_item_update(name: &str) {
-        Weechat::check_thread();
-        let weechat = unsafe { Weechat::weechat() };
-
-        let bar_item_update = weechat.get().bar_item_update.unwrap();
-
-        let name = LossyCString::new(name);
-
-        unsafe { bar_item_update(name.as_ptr()) }
+    /// Update the content of the bar item, by calling its build callback.
+    pub fn update(&self) {
+        Weechat::bar_item_update(&self.name);
     }
 }

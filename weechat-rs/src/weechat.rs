@@ -506,6 +506,22 @@ impl Weechat {
         }
     }
 
+    /// Update the content of a bar item, by calling its build callback.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the bar item that should be updated.
+    pub fn bar_item_update(name: &str) {
+        Weechat::check_thread();
+        let weechat = unsafe { Weechat::weechat() };
+
+        let bar_item_update = weechat.get().bar_item_update.unwrap();
+
+        let name = LossyCString::new(name);
+
+        unsafe { bar_item_update(name.as_ptr()) }
+    }
+
     /// Spawn a new `Future` on the main Weechat thread.
     ///
     /// # Panics
