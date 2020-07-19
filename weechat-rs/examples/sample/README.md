@@ -20,18 +20,16 @@ make install
 
 By default this will install the plugin in your `$HOME/.weechat/plugins` directory.
 
-### Custom `weechat-plugin.h`
+## Picking the correct Weechat version.
 
-Weechat might complain about outdated API versions, in that case the used
-`weechat-plugin.h` file that was used to compile the plugin doesn't match the
-one that your Weechat installation expects.
+By default the system-wide `weechat-plugin.h` file will be used if found,
+this behaviour can be overridden with two environment flags.
 
-By default the system-wide installed `weechat-plugin.h` file will be used, this
-can be overridden with an environment variable.
+To prefer a bundled include file `WEECHAT_BUNDLED` should be set to `true`. The
+bundled include file tracks the latest Weechat release.
 
 A custom include file can be set with the `WEECHAT_PLUGIN_FILE` environment
-variable, this environment variable takes a full path to the custom include
-file.
+variable, this environment variable takes a full path to the include file.
 
 After an adequate `weechat-plugin.h` file is found rebuild the plugin like so
 
