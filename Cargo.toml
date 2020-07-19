@@ -3,5 +3,5 @@
 members = [
     "weechat-sys",
     "weechat-macro",
-    "weechat-rs",
+    "weechat",
 ]
