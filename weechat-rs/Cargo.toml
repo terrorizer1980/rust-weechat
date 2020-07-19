@@ -1,6 +1,6 @@
 [package]
 name = "weechat"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Damir Jelić <poljar@termina.org.uk>"]
 
 repository = "https://github.com/poljar/rust-weechat/"
@@ -15,8 +15,13 @@ license = "MIT"
 all-features = true
 
 [features]
+# Support to run futures on the Weechat main thread.
 async-executor = ["async-task", "pipe-channel", "futures", "async-trait"]
+
+# Declarative configuration macro, requires nightly.
 config-macro = ["paste", "strum"]
+
+# Still unsound or experimental features will be hidden behind this flag.
 unsound = []
 
 [dependencies]
@@ -29,8 +34,8 @@ futures = { version = "0.3.5", optional = true }
 paste = { version = "0.1.18", optional = true }
 strum = { version = "0.18.0", optional = true }
 
-weechat-macro = { path = "../weechat-macro" }
-weechat-sys = { path = "../weechat-sys" }
+weechat-macro = { version = "0.2.0", path = "../weechat-macro" }
+weechat-sys = { version = "0.2.0", path = "../weechat-sys" }
 
 [dev-dependencies]
 async-std = { version = "1.6.2", features = [ "unstable" ] }
