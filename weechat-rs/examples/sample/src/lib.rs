@@ -157,7 +157,7 @@ impl Drop for SamplePlugin {
 weechat_plugin!(
     SamplePlugin,
     name: "rust_sample",
-    author: "poljar",
+    author: "Damir Jelić <poljar@termina.org.uk>",
     description: "",
     version: "0.1.0",
     license: "MIT"

@@ -561,7 +561,19 @@ impl WeechatPlugin for Go {
             config: Rc::new(config),
         };
 
-        let command_settings = CommandSettings::new("go");
+        let command_settings = CommandSettings::new("go")
+            .description("Quickly jump to a buffer using fuzzy search.")
+            .add_argument("[name]")
+            .arguments_description(
+                "name: directly jump to a buffer by name (without this \
+                argument an interactive mode is entered).\n\n\
+
+                You can bind this command to a key, for example:\n    \
+                /key bind meta-g /go\n\n\
+
+                You can use tab completion to select the next/previous buffer \
+                in the interactive go-mode.",
+            );
         let command = Command::new(command_settings, inner_go.clone())?;
 
         Ok(Go {
@@ -574,7 +586,7 @@ impl WeechatPlugin for Go {
 weechat_plugin!(
     Go,
     name: "go",
-    author: "Damir Jelić <poljar@termina.org.uk",
+    author: "Damir Jelić <poljar@termina.org.uk>",
     description: "Quickly jump to buffers using fuzzy search",
     version: "0.1.0",
     license: "GPL3"
