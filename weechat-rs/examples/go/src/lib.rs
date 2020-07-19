@@ -108,6 +108,14 @@ struct InputState {
     input_position: i32,
 }
 
+impl InputState {
+    /// Restore the input state on the given buffer.
+    fn restore_for_buffer(&self, buffer: &Buffer) {
+        buffer.set_input(&self.input_string);
+        buffer.set_input_position(self.input_position);
+    }
+}
+
 impl<'a> From<&'a Buffer<'a>> for InputState {
     fn from(buffer: &Buffer) -> Self {
         InputState {
@@ -263,7 +271,7 @@ impl BufferList {
     /// # Arguments
     ///
     /// * `weechat` - The Weechat context that will allow us to find the buffer
-    /// object using our full name of the buffer.
+    ///     object using our full name of the buffer.
     fn switch_to_selected_buffer(self, weechat: &Weechat) {
         self.get_selected_buffer().map(|buffer| {
             weechat
@@ -395,8 +403,7 @@ impl RunningState {
         drop(self.hooks);
 
         let current_buffer = weechat.current_buffer();
-        current_buffer.set_input(&saved_input.input_string);
-        current_buffer.set_input_position(saved_input.input_position);
+        saved_input.restore_for_buffer(&current_buffer);
 
         if switch_to_buffer {
             buffers.switch_to_selected_buffer(weechat);
