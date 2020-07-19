@@ -61,10 +61,7 @@ impl<'a> NickSettings<'a> {
     /// # Arguments
     ///
     /// * `prefix_color` - The color that the prefix should have.
-    pub fn set_prefix_color(
-        mut self,
-        prefix_color: &'a str,
-    ) -> NickSettings<'a> {
+    pub fn set_prefix_color(mut self, prefix_color: &'a str) -> NickSettings<'a> {
         self.prefix_color = prefix_color;
         self
     }

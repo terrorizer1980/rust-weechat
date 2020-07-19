@@ -49,10 +49,7 @@ impl Default for OptionType {
 
 pub trait FromPtrs {
     /// Returns the raw pointer to the config option.
-    fn from_ptrs(
-        option_ptr: *mut t_config_option,
-        weechat_ptr: *mut t_weechat_plugin,
-    ) -> Self;
+    fn from_ptrs(option_ptr: *mut t_config_option, weechat_ptr: *mut t_weechat_plugin) -> Self;
 }
 
 pub trait HidenConfigOptionT {
@@ -136,9 +133,7 @@ pub trait BaseConfigOption: HidenConfigOptionT {
         let weechat = self.get_weechat();
         let option_set = weechat.get().config_option_set.unwrap();
 
-        let ret = unsafe {
-            option_set(self.get_ptr(), value.as_ptr(), run_callback as i32)
-        };
+        let ret = unsafe { option_set(self.get_ptr(), value.as_ptr(), run_callback as i32) };
 
         OptionChanged::from_int(ret)
     }

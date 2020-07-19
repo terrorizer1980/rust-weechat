@@ -104,15 +104,14 @@ impl WeechatExecutor {
             let queue = queue.upgrade();
 
             if let Some(q) = queue {
-                let sender = sender
-                    .expect("Futures queue exists but the channel got dropped");
+                let sender = sender.expect("Futures queue exists but the channel got dropped");
                 let mut weechat_notify = sender
                     .lock()
                     .expect("Weechat notification sender lock is poisoned");
 
-                let mut queue = q.lock().expect(
-                    "Lock of the future queue of the Weechat executor is poisoned",
-                );
+                let mut queue = q
+                    .lock()
+                    .expect("Lock of the future queue of the Weechat executor is poisoned");
 
                 queue.push_back(ExecutorJob::Job(task));
                 weechat_notify
@@ -146,8 +145,7 @@ impl WeechatExecutor {
     where
         F: Future<Output = ()> + Send + 'static,
     {
-        let executor =
-            unsafe { _EXECUTOR.as_ref().expect("Executor wasn't started") };
+        let executor = unsafe { _EXECUTOR.as_ref().expect("Executor wasn't started") };
 
         let future = Box::pin(future);
         let mut queue = executor.non_local_futures.lock().unwrap();
@@ -166,22 +164,17 @@ impl WeechatExecutor {
         F: Future<Output = R> + 'static,
         R: 'static,
     {
-        let executor =
-            unsafe { _EXECUTOR.as_ref().expect("Executor wasn't started") };
+        let executor = unsafe { _EXECUTOR.as_ref().expect("Executor wasn't started") };
 
         executor.spawn_local(future)
     }
 
-    pub(crate) fn spawn_buffer_cb<F, R>(
-        buffer_name: String,
-        future: F,
-    ) -> JoinHandle<R, String>
+    pub(crate) fn spawn_buffer_cb<F, R>(buffer_name: String, future: F) -> JoinHandle<R, String>
     where
         F: Future<Output = R> + 'static,
         R: 'static,
     {
-        let executor =
-            unsafe { _EXECUTOR.as_ref().expect("Executor wasn't started") };
+        let executor = unsafe { _EXECUTOR.as_ref().expect("Executor wasn't started") };
 
         let sender = Arc::downgrade(&executor.sender);
         let queue = Arc::downgrade(&executor.futures);
@@ -191,15 +184,14 @@ impl WeechatExecutor {
             let queue = queue.upgrade();
 
             if let Some(q) = queue {
-                let sender = sender
-                    .expect("Futures queue exists but the channel got dropped");
+                let sender = sender.expect("Futures queue exists but the channel got dropped");
                 let mut weechat_notify = sender
                     .lock()
                     .expect("Weechat notification sender lock is poisoned");
 
-                let mut queue = q.lock().expect(
-                    "Lock of the future queue of the Weechat executor is poisoned",
-                );
+                let mut queue = q
+                    .lock()
+                    .expect("Lock of the future queue of the Weechat executor is poisoned");
 
                 queue.push_back(ExecutorJob::BufferJob(task));
                 weechat_notify
@@ -208,8 +200,7 @@ impl WeechatExecutor {
             }
         };
 
-        let (task, handle) =
-            async_task::spawn_local(future, schedule, buffer_name);
+        let (task, handle) = async_task::spawn_local(future, schedule, buffer_name);
 
         task.schedule();
 

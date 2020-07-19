@@ -69,8 +69,7 @@ impl Weechat {
         pointer: *mut c_void,
         name: &str,
     ) -> i32 {
-        let hdata_get_var_array_size =
-            self.get().hdata_get_var_array_size.unwrap();
+        let hdata_get_var_array_size = self.get().hdata_get_var_array_size.unwrap();
         let name = LossyCString::new(name);
 
         hdata_get_var_array_size(hdata, pointer, name.as_ptr())

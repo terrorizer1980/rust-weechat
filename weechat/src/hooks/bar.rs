@@ -2,9 +2,7 @@
 use core::ptr;
 use libc::c_char;
 use std::os::raw::c_void;
-use weechat_sys::{
-    t_gui_bar_item, t_gui_buffer, t_gui_window, t_hashtable, t_weechat_plugin,
-};
+use weechat_sys::{t_gui_bar_item, t_gui_buffer, t_gui_window, t_hashtable, t_weechat_plugin};
 
 use crate::buffer::Buffer;
 use crate::{LossyCString, Weechat};
@@ -86,10 +84,7 @@ impl BarItem {
     // TODO: If we're going to allow bar items to be searched for like we do for
     // buffers, we need to do something about the multiple ownership that may
     // come from this.
-    pub fn new(
-        name: &str,
-        callback: impl BarItemCallback,
-    ) -> Result<BarItem, ()> {
+    pub fn new(name: &str, callback: impl BarItemCallback) -> Result<BarItem, ()> {
         unsafe extern "C" fn c_item_cb(
             pointer: *const c_void,
             _data: *mut c_void,
@@ -98,8 +93,7 @@ impl BarItem {
             buffer: *mut t_gui_buffer,
             _extra_info: *mut t_hashtable,
         ) -> *mut c_char {
-            let data: &mut BarItemCbData =
-                { &mut *(pointer as *mut BarItemCbData) };
+            let data: &mut BarItemCbData = { &mut *(pointer as *mut BarItemCbData) };
             let weechat = Weechat::from_ptr(data.weechat_ptr);
             let buffer = weechat.buffer_from_ptr(buffer);
 

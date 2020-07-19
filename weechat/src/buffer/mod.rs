@@ -21,8 +21,7 @@ use futures::future::LocalBoxFuture;
 use crate::{LossyCString, Weechat};
 use libc::{c_char, c_int};
 use weechat_sys::{
-    t_gui_buffer, t_gui_nick, t_hdata, t_weechat_plugin, WEECHAT_RC_ERROR,
-    WEECHAT_RC_OK,
+    t_gui_buffer, t_gui_nick, t_hdata, t_weechat_plugin, WEECHAT_RC_ERROR, WEECHAT_RC_OK,
 };
 
 pub use crate::buffer::lines::{BufferLine, BufferLines, LineData};
@@ -127,17 +126,10 @@ pub trait BufferInputCallback: 'static {
     /// * `buffer` - The buffer that received the input
     ///
     /// * `input` - The input that was received.
-    fn callback(
-        &mut self,
-        weechat: &Weechat,
-        buffer: &Buffer,
-        input: Cow<str>,
-    ) -> Result<(), ()>;
+    fn callback(&mut self, weechat: &Weechat, buffer: &Buffer, input: Cow<str>) -> Result<(), ()>;
 }
 
-impl<T: FnMut(&Weechat, &Buffer, Cow<str>) -> Result<(), ()> + 'static>
-    BufferInputCallback for T
-{
+impl<T: FnMut(&Weechat, &Buffer, Cow<str>) -> Result<(), ()> + 'static> BufferInputCallback for T {
     /// Callback that will be called if the user inputs something into the buffer
     /// input field.
     ///
@@ -148,12 +140,7 @@ impl<T: FnMut(&Weechat, &Buffer, Cow<str>) -> Result<(), ()> + 'static>
     /// * `buffer` - The buffer that the user inputed some text into.
     ///
     /// * `input` - The input that was posted by the user.
-    fn callback(
-        &mut self,
-        weechat: &Weechat,
-        buffer: &Buffer,
-        input: Cow<str>,
-    ) -> Result<(), ()> {
+    fn callback(&mut self, weechat: &Weechat, buffer: &Buffer, input: Cow<str>) -> Result<(), ()> {
         self(weechat, buffer, input)
     }
 }
@@ -170,21 +157,11 @@ pub trait BufferCloseCallback {
     /// * `weechat` - A Weechat context.
     ///
     /// * `buffer` - The buffer that will be closed.
-    fn callback(
-        &mut self,
-        weechat: &Weechat,
-        buffer: &Buffer,
-    ) -> Result<(), ()>;
+    fn callback(&mut self, weechat: &Weechat, buffer: &Buffer) -> Result<(), ()>;
 }
 
-impl<T: FnMut(&Weechat, &Buffer) -> Result<(), ()> + 'static>
-    BufferCloseCallback for T
-{
-    fn callback(
-        &mut self,
-        weechat: &Weechat,
-        buffer: &Buffer,
-    ) -> Result<(), ()> {
+impl<T: FnMut(&Weechat, &Buffer) -> Result<(), ()> + 'static> BufferCloseCallback for T {
+    fn callback(&mut self, weechat: &Weechat, buffer: &Buffer) -> Result<(), ()> {
         self(weechat, buffer)
     }
 }
@@ -214,9 +191,8 @@ pub trait BufferInputCallbackAsync: 'static {
 
 #[cfg(feature = "async")]
 #[async_trait(?Send)]
-impl<
-        T: FnMut(BufferHandle, String) -> LocalBoxFuture<'static, ()> + 'static,
-    > BufferInputCallbackAsync for T
+impl<T: FnMut(BufferHandle, String) -> LocalBoxFuture<'static, ()> + 'static>
+    BufferInputCallbackAsync for T
 {
     async fn callback(&mut self, buffer: BufferHandle, input: String) {
         self(buffer, input).await
@@ -261,10 +237,7 @@ impl BufferSettingsAsync {
     ///
     /// * `callback` - An async function that will be called once a user inputs
     ///     data into the buffer input line.
-    pub fn input_callback(
-        mut self,
-        callback: impl BufferInputCallbackAsync,
-    ) -> Self {
+    pub fn input_callback(mut self, callback: impl BufferInputCallbackAsync) -> Self {
         self.input_callback = Some(Box::new(callback));
         self
     }
@@ -275,10 +248,7 @@ impl BufferSettingsAsync {
     ///
     /// * `callback` - The callback that should be called before a buffer is
     ///     closed.
-    pub fn close_callback(
-        mut self,
-        callback: impl BufferCloseCallback + 'static,
-    ) -> Self {
+    pub fn close_callback(mut self, callback: impl BufferCloseCallback + 'static) -> Self {
         self.close_callback = Some(Box::new(callback));
         self
     }
@@ -305,10 +275,7 @@ impl BufferSettings {
     ///
     /// * `callback` - A function or a struct that implements the
     /// BufferCloseCallback trait.
-    pub fn input_callback(
-        mut self,
-        callback: impl BufferInputCallback + 'static,
-    ) -> Self {
+    pub fn input_callback(mut self, callback: impl BufferInputCallback + 'static) -> Self {
         self.input_callback = Some(Box::new(callback));
         self
     }
@@ -318,10 +285,7 @@ impl BufferSettings {
     /// # Arguments
     ///
     /// * `callback` - The callback that should be called before a buffer is
-    pub fn close_callback(
-        mut self,
-        callback: impl BufferCloseCallback + 'static,
-    ) -> Self {
+    pub fn close_callback(mut self, callback: impl BufferCloseCallback + 'static) -> Self {
         self.close_callback = Some(Box::new(callback));
         self
     }
@@ -341,19 +305,13 @@ impl Weechat {
     ///     the current buffer is returned (buffer displayed by current
     ///     window); if the name starts with (?i), the search is case
     ///     insensitive.
-    pub fn buffer_search(
-        &self,
-        plugin_name: &str,
-        buffer_name: &str,
-    ) -> Option<Buffer> {
+    pub fn buffer_search(&self, plugin_name: &str, buffer_name: &str) -> Option<Buffer> {
         let buffer_search = self.get().buffer_search.unwrap();
 
         let plugin_name = LossyCString::new(plugin_name);
         let buffer_name = LossyCString::new(buffer_name);
 
-        let buf_ptr = unsafe {
-            buffer_search(plugin_name.as_ptr(), buffer_name.as_ptr())
-        };
+        let buf_ptr = unsafe { buffer_search(plugin_name.as_ptr(), buffer_name.as_ptr()) };
 
         if buf_ptr.is_null() {
             None
@@ -362,10 +320,7 @@ impl Weechat {
         }
     }
 
-    pub(crate) fn buffer_from_ptr(
-        &self,
-        buffer_ptr: *mut t_gui_buffer,
-    ) -> Buffer {
+    pub(crate) fn buffer_from_ptr(&self, buffer_ptr: *mut t_gui_buffer) -> Buffer {
         Buffer {
             inner: InnerBuffers::BorrowedBuffer(InnerBuffer {
                 weechat: self.ptr,
@@ -427,9 +382,7 @@ impl Weechat {
     /// ```
     #[cfg(feature = "async")]
     #[cfg_attr(feature = "docs", doc(cfg(r#async)))]
-    pub fn buffer_new_with_async(
-        settings: BufferSettingsAsync,
-    ) -> Result<BufferHandle, ()> {
+    pub fn buffer_new_with_async(settings: BufferSettingsAsync) -> Result<BufferHandle, ()> {
         unsafe extern "C" fn c_input_cb(
             pointer: *const c_void,
             _data: *mut c_void,
@@ -456,10 +409,7 @@ impl Weechat {
             };
             if let Some(cb) = pointers.input_cb.as_mut() {
                 let future = cb.callback(buffer_handle, input_data.to_string());
-                Weechat::spawn_buffer_cb(
-                    buffer.full_name().to_string(),
-                    future,
-                );
+                Weechat::spawn_buffer_cb(buffer.full_name().to_string(), future);
             }
 
             WEECHAT_RC_OK
@@ -499,8 +449,7 @@ impl Weechat {
         Weechat::check_thread();
         let weechat = unsafe { Weechat::weechat() };
 
-        let c_input_cb: Option<WeechatInputCbT> = match settings.input_callback
-        {
+        let c_input_cb: Option<WeechatInputCbT> = match settings.input_callback {
             Some(_) => Some(c_input_cb),
             None => None,
         };
@@ -597,8 +546,7 @@ impl Weechat {
         ) -> c_int {
             let input_data = CStr::from_ptr(input_data).to_string_lossy();
 
-            let pointers: &mut BufferPointers =
-                { &mut *(pointer as *mut BufferPointers) };
+            let pointers: &mut BufferPointers = { &mut *(pointer as *mut BufferPointers) };
 
             let weechat = Weechat::from_ptr(pointers.weechat);
             let buffer = weechat.buffer_from_ptr(buffer);
@@ -650,8 +598,7 @@ impl Weechat {
         Weechat::check_thread();
         let weechat = unsafe { Weechat::weechat() };
 
-        let c_input_cb: Option<WeechatInputCbT> = match settings.input_callback
-        {
+        let c_input_cb: Option<WeechatInputCbT> = match settings.input_callback {
             Some(_) => Some(c_input_cb),
             None => None,
         };
@@ -728,10 +675,7 @@ impl Buffer<'_> {
                 let ptr = b.buffer_handle.buffer_ptr.get();
 
                 if ptr.is_null() {
-                    panic!(
-                        "Buffer {} has been closed.",
-                        b.buffer_handle.buffer_name
-                    )
+                    panic!("Buffer {} has been closed.", b.buffer_handle.buffer_name)
                 } else {
                     ptr
                 }
@@ -798,14 +742,11 @@ impl Buffer<'_> {
     pub fn search_nicklist_group(&self, name: &str) -> Option<NickGroup> {
         let weechat = self.weechat();
 
-        let nicklist_search_group =
-            weechat.get().nicklist_search_group.unwrap();
+        let nicklist_search_group = weechat.get().nicklist_search_group.unwrap();
 
         let name = LossyCString::new(name);
 
-        let group = unsafe {
-            nicklist_search_group(self.ptr(), ptr::null_mut(), name.as_ptr())
-        };
+        let group = unsafe { nicklist_search_group(self.ptr(), ptr::null_mut(), name.as_ptr()) };
 
         if group.is_null() {
             None
@@ -869,8 +810,7 @@ impl Buffer<'_> {
     /// error otherwise.
     pub fn add_nick(&self, nick_settings: NickSettings) -> Result<Nick, ()> {
         let weechat = self.weechat();
-        let nick_ptr =
-            Buffer::add_nick_helper(&weechat, self.ptr(), nick_settings, None);
+        let nick_ptr = Buffer::add_nick_helper(&weechat, self.ptr(), nick_settings, None);
 
         if nick_ptr.is_null() {
             return Err(());
@@ -898,8 +838,7 @@ impl Buffer<'_> {
 
         match group {
             Some(group) => {
-                let nicklist_remove_group =
-                    weechat.get().nicklist_remove_group.unwrap();
+                let nicklist_remove_group = weechat.get().nicklist_remove_group.unwrap();
 
                 unsafe {
                     nicklist_remove_group(self.ptr(), group.ptr);
@@ -924,8 +863,7 @@ impl Buffer<'_> {
 
         match nick {
             Some(nick) => {
-                let nicklist_remove_nick =
-                    weechat.get().nicklist_remove_nick.unwrap();
+                let nicklist_remove_nick = weechat.get().nicklist_remove_nick.unwrap();
 
                 unsafe {
                     nicklist_remove_nick(self.ptr(), nick.ptr);
@@ -1233,8 +1171,7 @@ impl Buffer<'_> {
         let weechat = self.weechat();
         let run_command = weechat.get().command.unwrap();
 
-        let ret =
-            unsafe { run_command(weechat.ptr, self.ptr(), command.as_ptr()) };
+        let ret = unsafe { run_command(weechat.ptr, self.ptr(), command.as_ptr()) };
 
         match ret {
             WEECHAT_RC_OK => Ok(()),
@@ -1254,9 +1191,7 @@ impl Buffer<'_> {
 
         let hdata = self.hdata_pointer();
 
-        unsafe {
-            weechat.hdata_pointer(hdata, self.ptr() as *mut c_void, "own_lines")
-        }
+        unsafe { weechat.hdata_pointer(hdata, self.ptr() as *mut c_void, "own_lines") }
     }
 
     /// Get the number of lines that the buffer has printed out.

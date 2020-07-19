@@ -11,17 +11,15 @@ use std::ptr;
 use std::rc::Rc;
 
 use weechat_sys::{
-    t_config_file, t_config_option, t_config_section, t_weechat_plugin,
-    WEECHAT_RC_OK,
+    t_config_file, t_config_option, t_config_section, t_weechat_plugin, WEECHAT_RC_OK,
 };
 
 use crate::config::section::{
-    ConfigSection, ConfigSectionPointers, ConfigSectionSettings, SectionHandle,
-    SectionHandleMut, SectionReadCbT, SectionWriteCbT,
+    ConfigSection, ConfigSectionPointers, ConfigSectionSettings, SectionHandle, SectionHandleMut,
+    SectionReadCbT, SectionWriteCbT,
 };
 use crate::config::{
-    BaseConfigOption, BooleanOption, ColorOption, ConfigOption, IntegerOption,
-    StringOption,
+    BaseConfigOption, BooleanOption, ColorOption, ConfigOption, IntegerOption, StringOption,
 };
 use crate::{LossyCString, Weechat};
 
@@ -153,8 +151,7 @@ impl Weechat {
             _data: *mut c_void,
             config_pointer: *mut t_config_file,
         ) -> c_int {
-            let pointers: &mut ConfigPointers =
-                { &mut *(pointer as *mut ConfigPointers) };
+            let pointers: &mut ConfigPointers = { &mut *(pointer as *mut ConfigPointers) };
 
             let cb = &mut pointers
                 .reload_cb
@@ -279,8 +276,7 @@ impl Weechat {
             return None;
         }
 
-        let option_type =
-            weechat.config_option_get_string(ptr, "type").unwrap();
+        let option_type = weechat.config_option_get_string(ptr, "type").unwrap();
 
         Some(Weechat::option_from_type_and_ptr(
             self.ptr,
@@ -306,22 +302,14 @@ impl Weechat {
     }
 
     /// Set the value of a plugin option
-    pub fn set_plugin_option(
-        &self,
-        option: &str,
-        value: &str,
-    ) -> OptionChanged {
+    pub fn set_plugin_option(&self, option: &str, value: &str) -> OptionChanged {
         let config_set_plugin = self.get().config_set_plugin.unwrap();
 
         let option_name = LossyCString::new(option);
         let value = LossyCString::new(value);
 
         unsafe {
-            let result = config_set_plugin(
-                self.ptr,
-                option_name.as_ptr(),
-                value.as_ptr(),
-            );
+            let result = config_set_plugin(self.ptr, option_name.as_ptr(), value.as_ptr());
 
             OptionChanged::from_int(result as i32)
         }
@@ -506,9 +494,7 @@ impl Config {
             None => (None, None),
         };
 
-        let (c_write_default_cb, write_default_cb) = match section_settings
-            .write_default_callback
-        {
+        let (c_write_default_cb, write_default_cb) = match section_settings.write_default_callback {
             Some(cb) => (Some(c_write_default_cb as SectionWriteCbT), Some(cb)),
             None => (None, None),
         };
@@ -610,10 +596,7 @@ impl Config {
     /// This will panic if it is being called in a section read/write callback
     /// of the same section that is being retrieved or if the section is already
     /// borrowed.
-    pub fn search_section_mut(
-        &mut self,
-        section_name: &str,
-    ) -> Option<SectionHandleMut> {
+    pub fn search_section_mut(&mut self, section_name: &str) -> Option<SectionHandleMut> {
         if !self.sections.contains_key(section_name) {
             None
         } else {
@@ -663,10 +646,7 @@ impl Conf {
     /// # Arguments
     ///
     /// * `option` - The option that will be written to the configuration file.
-    pub fn write_option<'a, O: AsRef<dyn BaseConfigOption + 'a>>(
-        &self,
-        option: O,
-    ) {
+    pub fn write_option<'a, O: AsRef<dyn BaseConfigOption + 'a>>(&self, option: O) {
         let weechat = Weechat::from_ptr(self.weechat_ptr);
         let write_option = weechat.get().config_write_option.unwrap();
 

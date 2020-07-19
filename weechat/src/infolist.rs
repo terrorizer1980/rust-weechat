@@ -97,9 +97,7 @@ impl<'a> InfolistItem<'a> {
 
         let infolist_pointer = weechat.get().infolist_pointer.unwrap();
 
-        let ptr = unsafe {
-            infolist_pointer(self.ptr, name.as_ptr()) as *mut t_gui_buffer
-        };
+        let ptr = unsafe { infolist_pointer(self.ptr, name.as_ptr()) as *mut t_gui_buffer };
 
         if ptr.is_null() {
             return None;
@@ -136,9 +134,7 @@ impl<'a> InfolistItem<'a> {
         let infolist_type = self.fields.get(key)?;
 
         let variable = match infolist_type {
-            InfolistType::Integer => {
-                InfolistVariable::Integer(self.integer(key))
-            }
+            InfolistType::Integer => InfolistVariable::Integer(self.integer(key)),
             InfolistType::String => InfolistVariable::String(self.string(key)?),
             InfolistType::Time => InfolistVariable::Time(self.time(key)?),
             InfolistType::Buffer => InfolistVariable::Buffer(self.buffer(key)?),

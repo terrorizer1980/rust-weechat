@@ -125,8 +125,7 @@ impl<F> FdHook<F> {
             _data: *mut c_void,
             _fd: i32,
         ) -> c_int {
-            let hook_data: &mut FdHookData<F> =
-                { &mut *(pointer as *mut FdHookData<F>) };
+            let hook_data: &mut FdHookData<F> = { &mut *(pointer as *mut FdHookData<F>) };
             let cb = &mut hook_data.callback;
             let mut fd_object = &mut hook_data.fd_object;
             let weechat = Weechat::from_ptr(hook_data.weechat_ptr);

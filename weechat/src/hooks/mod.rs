@@ -14,12 +14,8 @@ mod modifier;
 mod timer;
 
 pub use bar::{BarItem, BarItemCallback};
-pub use commands::{
-    Command, CommandCallback, CommandRun, CommandRunCallback, CommandSettings,
-};
-pub use completion::{
-    Completion, CompletionCallback, CompletionHook, CompletionPosition,
-};
+pub use commands::{Command, CommandCallback, CommandRun, CommandRunCallback, CommandSettings};
+pub use completion::{Completion, CompletionCallback, CompletionHook, CompletionPosition};
 
 pub use fd::{FdHook, FdHookCallback, FdHookMode};
 #[cfg(feature = "unsound")]

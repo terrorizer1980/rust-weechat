@@ -92,6 +92,7 @@ pub trait WeechatPlugin: Sized {
 }
 
 #[cfg(feature = "async")]
+#[cfg_attr(feature = "docs", doc(cfg(r#async)))]
 pub use executor::JoinHandle;
 
 /// Status values for Weechat callbacks
@@ -112,8 +113,7 @@ impl LossyCString {
     pub(crate) fn new<T: AsRef<str>>(t: T) -> CString {
         match CString::new(t.as_ref()) {
             Ok(cstr) => cstr,
-            Err(_) => CString::new(t.as_ref().replace('\0', ""))
-                .expect("string has no nulls"),
+            Err(_) => CString::new(t.as_ref().replace('\0', "")).expect("string has no nulls"),
         }
     }
 }

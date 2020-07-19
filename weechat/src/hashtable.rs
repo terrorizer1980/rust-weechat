@@ -6,17 +6,12 @@ use weechat_sys::{t_hashtable, WEECHAT_HASHTABLE_STRING};
 use crate::{LossyCString, Weechat};
 
 impl Weechat {
-    pub(crate) fn hashmap_to_weechat(
-        &self,
-        hashmap: HashMap<&str, &str>,
-    ) -> *mut t_hashtable {
+    pub(crate) fn hashmap_to_weechat(&self, hashmap: HashMap<&str, &str>) -> *mut t_hashtable {
         let hashtable_new = self.get().hashtable_new.unwrap();
 
-        let table_type: *const i8 =
-            WEECHAT_HASHTABLE_STRING as *const _ as *const i8;
+        let table_type: *const i8 = WEECHAT_HASHTABLE_STRING as *const _ as *const i8;
 
-        let hashtable =
-            unsafe { hashtable_new(8, table_type, table_type, None, None) };
+        let hashtable = unsafe { hashtable_new(8, table_type, table_type, None, None) };
 
         for (key, value) in hashmap {
             let key = LossyCString::new(key);

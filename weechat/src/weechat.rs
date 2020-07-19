@@ -37,9 +37,7 @@ impl ArgsWeechat {
         let argc = argc as isize;
         let args: Vec<String> = (0..argc)
             .map(|i| {
-                let cstr = unsafe {
-                    CStr::from_ptr(*argv.offset(i) as *const libc::c_char)
-                };
+                let cstr = unsafe { CStr::from_ptr(*argv.offset(i) as *const libc::c_char) };
 
                 String::from_utf8_lossy(&cstr.to_bytes().to_vec()).to_string()
             })
@@ -226,13 +224,7 @@ impl Weechat {
         let msg = LossyCString::new(msg);
 
         unsafe {
-            printf_date_tags(
-                ptr::null_mut(),
-                0,
-                ptr::null(),
-                fmt.as_ptr(),
-                msg.as_ptr(),
-            );
+            printf_date_tags(ptr::null_mut(), 0, ptr::null(), fmt.as_ptr(), msg.as_ptr());
         }
     }
 
@@ -297,12 +289,8 @@ impl Weechat {
     /// # Panics
     ///
     /// Panics if the method is not called from the main Weechat thread.
-    pub fn color_pair(
-        foreground_color: &str,
-        background_color: &str,
-    ) -> String {
-        Weechat::color(&format!("{},{}", foreground_color, background_color))
-            .to_string()
+    pub fn color_pair(foreground_color: &str, background_color: &str) -> String {
+        Weechat::color(&format!("{},{}", foreground_color, background_color)).to_string()
     }
 
     /// Retrieve a prefix value
@@ -353,8 +341,7 @@ impl Weechat {
         let arguments = LossyCString::new(arguments);
 
         unsafe {
-            let info =
-                info_get(weechat.ptr, info_name.as_ptr(), arguments.as_ptr());
+            let info = info_get(weechat.ptr, info_name.as_ptr(), arguments.as_ptr());
             if info.is_null() {
                 None
             } else {
@@ -404,8 +391,7 @@ impl Weechat {
         Weechat::check_thread();
         let weechat = unsafe { Weechat::weechat() };
 
-        let string_eval_expression =
-            weechat.get().string_eval_expression.unwrap();
+        let string_eval_expression = weechat.get().string_eval_expression.unwrap();
 
         let expr = LossyCString::new(expression);
 
@@ -581,10 +567,7 @@ impl Weechat {
     }
 
     #[cfg(feature = "async")]
-    pub(crate) fn spawn_buffer_cb<F, R>(
-        buffer_name: String,
-        future: F,
-    ) -> JoinHandle<R, String>
+    pub(crate) fn spawn_buffer_cb<F, R>(buffer_name: String, future: F) -> JoinHandle<R, String>
     where
         F: Future<Output = R> + 'static,
         R: 'static,

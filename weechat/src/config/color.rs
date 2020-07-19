@@ -1,6 +1,4 @@
-use crate::config::config_options::{
-    ConfigOptions, FromPtrs, HidenConfigOptionT,
-};
+use crate::config::config_options::{ConfigOptions, FromPtrs, HidenConfigOptionT};
 use crate::config::{BaseConfigOption, ConfigSection};
 use crate::Weechat;
 use std::borrow::Cow;
@@ -100,10 +98,7 @@ impl<'a> ColorOption<'a> {
 }
 
 impl<'a> FromPtrs for ColorOption<'a> {
-    fn from_ptrs(
-        option_ptr: *mut t_config_option,
-        weechat_ptr: *mut t_weechat_plugin,
-    ) -> Self {
+    fn from_ptrs(option_ptr: *mut t_config_option, weechat_ptr: *mut t_weechat_plugin) -> Self {
         ColorOption {
             ptr: option_ptr,
             weechat_ptr,

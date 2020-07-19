@@ -62,16 +62,13 @@ impl<'a> SignalData<'a> {
         //
         // https://weechat.org/files/doc/stable/weechat_plugin_api.en.html#_hook_signal
         match signal_name {
-            "irc_channel_opened" | "irc_pv_opened" | "irc_server_opened" => {
-                true
-            }
+            "irc_channel_opened" | "irc_pv_opened" | "irc_server_opened" => true,
 
             "logger_start" | "logger_stop" | "logger_backlog" => true,
 
             "spell_suggest" => true,
 
-            "buffer_opened" | "buffer_closing" | "buffer_closed"
-            | "buffer_cleared" => true,
+            "buffer_opened" | "buffer_closing" | "buffer_closed" | "buffer_cleared" => true,
 
             "buffer_filters_enabled"
             | "buffer_filters_disabled"
@@ -94,9 +91,7 @@ impl<'a> SignalData<'a> {
 
             "hotlist_changed" => true,
 
-            "input_search"
-            | "input_text_changed"
-            | "input_text_cursor_moved" => true,
+            "input_search" | "input_text_changed" | "input_text_cursor_moved" => true,
 
             // TODO nicklist group signals have a string representation of a
             // pointer concatenated to the group name
@@ -167,9 +162,7 @@ pub trait SignalCallback {
     ) -> ReturnCode;
 }
 
-impl<T: FnMut(&Weechat, &str, Option<SignalData>) -> ReturnCode + 'static>
-    SignalCallback for T
-{
+impl<T: FnMut(&Weechat, &str, Option<SignalData>) -> ReturnCode + 'static> SignalCallback for T {
     fn callback(
         &mut self,
         weechat: &Weechat,
@@ -217,10 +210,7 @@ impl SignalHook {
     /// );
     ///
     /// ```
-    pub fn new(
-        signal_name: &str,
-        callback: impl SignalCallback + 'static,
-    ) -> Result<Self, ()> {
+    pub fn new(signal_name: &str, callback: impl SignalCallback + 'static) -> Result<Self, ()> {
         unsafe extern "C" fn c_hook_cb(
             pointer: *const c_void,
             _data: *mut c_void,
@@ -228,22 +218,15 @@ impl SignalHook {
             data_type: *const c_char,
             signal_data: *mut c_void,
         ) -> c_int {
-            let hook_data: &mut SignalHookData =
-                { &mut *(pointer as *mut SignalHookData) };
+            let hook_data: &mut SignalHookData = { &mut *(pointer as *mut SignalHookData) };
             let cb = &mut hook_data.callback;
 
-            let data_type =
-                CStr::from_ptr(data_type).to_str().unwrap_or_default();
-            let signal_name =
-                CStr::from_ptr(signal_name).to_str().unwrap_or_default();
+            let data_type = CStr::from_ptr(data_type).to_str().unwrap_or_default();
+            let signal_name = CStr::from_ptr(signal_name).to_str().unwrap_or_default();
 
             let weechat = Weechat::from_ptr(hook_data.weechat_ptr);
-            let data = SignalData::from_type_and_name(
-                &weechat,
-                signal_name,
-                data_type,
-                signal_data,
-            );
+            let data =
+                SignalData::from_type_and_name(&weechat, signal_name, data_type, signal_data);
 
             cb.callback(&weechat, signal_name, data) as i32
         }
@@ -317,10 +300,7 @@ impl Weechat {
     /// ```
     ///
     /// [reference]: https://weechat.org/files/doc/stable/weechat_plugin_api.en.html#_hook_signal_send
-    pub fn hook_signal_send<'a, D: Into<SignalData<'a>>>(
-        signal_name: &str,
-        data: D,
-    ) -> ReturnCode {
+    pub fn hook_signal_send<'a, D: Into<SignalData<'a>>>(signal_name: &str, data: D) -> ReturnCode {
         Weechat::check_thread();
         let weechat = unsafe { Weechat::weechat() };
 
@@ -333,8 +313,7 @@ impl Weechat {
             unsafe {
                 signal_send(
                     signal_name.as_ptr(),
-                    weechat_sys::WEECHAT_HOOK_SIGNAL_STRING as *const _
-                        as *const i8,
+                    weechat_sys::WEECHAT_HOOK_SIGNAL_STRING as *const _ as *const i8,
                     string.as_ptr() as *mut _,
                 )
             }
@@ -350,9 +329,7 @@ impl Weechat {
                 ),
                 SignalData::String(_) => unreachable!(),
             };
-            unsafe {
-                signal_send(signal_name.as_ptr(), data_type as *const i8, ptr)
-            }
+            unsafe { signal_send(signal_name.as_ptr(), data_type as *const i8, ptr) }
         };
 
         match ret {

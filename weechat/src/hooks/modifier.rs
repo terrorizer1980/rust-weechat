@@ -104,15 +104,8 @@ pub trait ModifierCallback {
     ) -> Option<String>;
 }
 
-impl<
-        T: FnMut(
-                &Weechat,
-                &str,
-                Option<ModifierData>,
-                Cow<str>,
-            ) -> Option<String>
-            + 'static,
-    > ModifierCallback for T
+impl<T: FnMut(&Weechat, &str, Option<ModifierData>, Cow<str>) -> Option<String> + 'static>
+    ModifierCallback for T
 {
     /// Callback that will be called when a modifier is fired.
     ///
@@ -172,10 +165,7 @@ impl ModifierHook {
     /// });
     /// ```
     #[cfg_attr(feature = "docs", doc(cfg(unsound)))]
-    pub fn new(
-        modifier_name: &str,
-        callback: impl ModifierCallback + 'static,
-    ) -> Result<Self, ()> {
+    pub fn new(modifier_name: &str, callback: impl ModifierCallback + 'static) -> Result<Self, ()> {
         unsafe extern "C" fn c_hook_cb(
             pointer: *const c_void,
             _data: *mut c_void,
@@ -183,12 +173,10 @@ impl ModifierHook {
             modifier_data: *const c_char,
             string: *const c_char,
         ) -> *mut c_char {
-            let hook_data: &mut ModifierHookData =
-                { &mut *(pointer as *mut ModifierHookData) };
+            let hook_data: &mut ModifierHookData = { &mut *(pointer as *mut ModifierHookData) };
             let cb = &mut hook_data.callback;
 
-            let modifier_name =
-                CStr::from_ptr(modifier_name).to_str().unwrap_or_default();
+            let modifier_name = CStr::from_ptr(modifier_name).to_str().unwrap_or_default();
 
             let string = if string.is_null() {
                 Cow::from("")
@@ -198,11 +186,9 @@ impl ModifierHook {
 
             let weechat = Weechat::from_ptr(hook_data.weechat_ptr);
 
-            let data =
-                ModifierData::from_name(&weechat, modifier_name, modifier_data);
+            let data = ModifierData::from_name(&weechat, modifier_name, modifier_data);
 
-            let modified_string =
-                cb.callback(&weechat, modifier_name, data, string);
+            let modified_string = cb.callback(&weechat, modifier_name, data, string);
 
             if let Some(modified_string) = modified_string {
                 let string_length = modified_string.len();

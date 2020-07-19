@@ -5,8 +5,7 @@ use std::os::raw::c_void;
 use std::ptr;
 
 use weechat_sys::{
-    t_gui_buffer, t_gui_completion, t_weechat_plugin, WEECHAT_RC_ERROR,
-    WEECHAT_RC_OK,
+    t_gui_buffer, t_gui_completion, t_weechat_plugin, WEECHAT_RC_ERROR, WEECHAT_RC_OK,
 };
 
 use crate::buffer::Buffer;
@@ -45,10 +44,8 @@ pub trait CompletionCallback {
     ) -> Result<(), ()>;
 }
 
-impl<
-        T: FnMut(&Weechat, &Buffer, Cow<str>, &Completion) -> Result<(), ()>
-            + 'static,
-    > CompletionCallback for T
+impl<T: FnMut(&Weechat, &Buffer, Cow<str>, &Completion) -> Result<(), ()> + 'static>
+    CompletionCallback for T
 {
     fn callback(
         &mut self,
@@ -136,27 +133,16 @@ impl Completion {
     /// * `is_nick` - Set if the word is a nick.
     ///
     /// * `position` - Set the position where the nick should be added to.
-    pub fn add_with_options(
-        &self,
-        word: &str,
-        is_nick: bool,
-        position: CompletionPosition,
-    ) {
+    pub fn add_with_options(&self, word: &str, is_nick: bool, position: CompletionPosition) {
         let weechat = Weechat::from_ptr(self.weechat_ptr);
 
-        let hook_completion_list_add =
-            weechat.get().hook_completion_list_add.unwrap();
+        let hook_completion_list_add = weechat.get().hook_completion_list_add.unwrap();
 
         let word = LossyCString::new(word);
         let method = LossyCString::new(position.value());
 
         unsafe {
-            hook_completion_list_add(
-                self.ptr,
-                word.as_ptr(),
-                is_nick as i32,
-                method.as_ptr(),
-            );
+            hook_completion_list_add(self.ptr, word.as_ptr(), is_nick as i32, method.as_ptr());
         }
     }
 }
@@ -195,14 +181,12 @@ impl CompletionHook {
             buffer: *mut t_gui_buffer,
             completion: *mut t_gui_completion,
         ) -> c_int {
-            let hook_data: &mut CompletionHookData =
-                { &mut *(pointer as *mut CompletionHookData) };
+            let hook_data: &mut CompletionHookData = { &mut *(pointer as *mut CompletionHookData) };
             let cb = &mut hook_data.callback;
             let weechat = Weechat::from_ptr(hook_data.weechat_ptr);
             let buffer = weechat.buffer_from_ptr(buffer);
 
-            let completion_item =
-                CStr::from_ptr(completion_item).to_string_lossy();
+            let completion_item = CStr::from_ptr(completion_item).to_string_lossy();
 
             let ret = cb.callback(
                 &weechat,

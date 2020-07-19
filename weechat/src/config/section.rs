@@ -8,16 +8,14 @@ use std::ptr;
 use std::rc::Weak;
 
 use std::marker::PhantomData;
-use weechat_sys::{
-    t_config_file, t_config_option, t_config_section, t_weechat_plugin,
-};
+use weechat_sys::{t_config_file, t_config_option, t_config_section, t_weechat_plugin};
 
 use crate::config::config_options::CheckCB;
 use crate::config::config_options::{OptionPointers, OptionType};
 use crate::config::{
-    BaseConfigOption, BooleanOption, BooleanOptionSettings, ColorOption,
-    ColorOptionSettings, Conf, ConfigOptions, IntegerOption,
-    IntegerOptionSettings, OptionChanged, StringOption, StringOptionSettings,
+    BaseConfigOption, BooleanOption, BooleanOptionSettings, ColorOption, ColorOptionSettings, Conf,
+    ConfigOptions, IntegerOption, IntegerOptionSettings, OptionChanged, StringOption,
+    StringOptionSettings,
 };
 use crate::{LossyCString, Weechat};
 
@@ -163,23 +161,11 @@ pub trait SectionWriteCallback: 'static {
     /// * `section` - The section that is being written, if the Config struct is
     /// contained inside of `self` make sure not to borrow the same section
     /// again.
-    fn callback(
-        &mut self,
-        weechat: &Weechat,
-        config: &Conf,
-        section: &mut ConfigSection,
-    );
+    fn callback(&mut self, weechat: &Weechat, config: &Conf, section: &mut ConfigSection);
 }
 
-impl<T: FnMut(&Weechat, &Conf, &mut ConfigSection) + 'static>
-    SectionWriteCallback for T
-{
-    fn callback(
-        &mut self,
-        weechat: &Weechat,
-        config: &Conf,
-        section: &mut ConfigSection,
-    ) {
+impl<T: FnMut(&Weechat, &Conf, &mut ConfigSection) + 'static> SectionWriteCallback for T {
+    fn callback(&mut self, weechat: &Weechat, config: &Conf, section: &mut ConfigSection) {
         self(weechat, config, section)
     }
 }
@@ -201,23 +187,11 @@ pub trait SectionWriteDefaultCallback: 'static {
     /// * `section` - The section that is being populated with default values,
     /// if the Config struct is contained inside of `self` make sure not to
     /// borrow the same section again.
-    fn callback(
-        &mut self,
-        weechat: &Weechat,
-        config: &Conf,
-        section: &mut ConfigSection,
-    );
+    fn callback(&mut self, weechat: &Weechat, config: &Conf, section: &mut ConfigSection);
 }
 
-impl<T: FnMut(&Weechat, &Conf, &mut ConfigSection) + 'static>
-    SectionWriteDefaultCallback for T
-{
-    fn callback(
-        &mut self,
-        weechat: &Weechat,
-        config: &Conf,
-        section: &mut ConfigSection,
-    ) {
+impl<T: FnMut(&Weechat, &Conf, &mut ConfigSection) + 'static> SectionWriteDefaultCallback for T {
+    fn callback(&mut self, weechat: &Weechat, config: &Conf, section: &mut ConfigSection) {
         self(weechat, config, section)
     }
 }
@@ -254,16 +228,8 @@ pub trait SectionReadCallback: 'static {
     ) -> OptionChanged;
 }
 
-impl<
-        T: FnMut(
-                &Weechat,
-                &Conf,
-                &mut ConfigSection,
-                &str,
-                &str,
-            ) -> OptionChanged
-            + 'static,
-    > SectionReadCallback for T
+impl<T: FnMut(&Weechat, &Conf, &mut ConfigSection, &str, &str) -> OptionChanged + 'static>
+    SectionReadCallback for T
 {
     fn callback(
         &mut self,
@@ -306,8 +272,7 @@ pub struct ConfigSectionSettings {
     pub(crate) write_callback: Option<Box<dyn SectionWriteCallback>>,
 
     /// A function called when default values for the section must be written to the disk
-    pub(crate) write_default_callback:
-        Option<Box<dyn SectionWriteDefaultCallback>>,
+    pub(crate) write_default_callback: Option<Box<dyn SectionWriteDefaultCallback>>,
 }
 
 impl ConfigSectionSettings {
@@ -343,10 +308,7 @@ impl ConfigSectionSettings {
     ///         OptionChanged::Changed
     /// });
     /// ```
-    pub fn set_read_callback(
-        mut self,
-        callback: impl SectionReadCallback,
-    ) -> Self {
+    pub fn set_read_callback(mut self, callback: impl SectionReadCallback) -> Self {
         self.read_callback = Some(Box::new(callback));
         self
     }
@@ -504,16 +466,13 @@ impl ConfigSection {
         let config_search_option = weechat.get().config_search_option.unwrap();
         let name = LossyCString::new(option_name);
 
-        let ptr = unsafe {
-            config_search_option(self.config_ptr, self.ptr, name.as_ptr())
-        };
+        let ptr = unsafe { config_search_option(self.config_ptr, self.ptr, name.as_ptr()) };
 
         if ptr.is_null() {
             return None;
         }
 
-        let option_type =
-            weechat.config_option_get_string(ptr, "type").unwrap();
+        let option_type = weechat.config_option_get_string(ptr, "type").unwrap();
 
         Some(Weechat::option_from_type_and_ptr(
             self.weechat_ptr,
@@ -662,10 +621,7 @@ impl ConfigSection {
     ///
     /// # Arguments
     /// * `settings` - Settings that decide how the option should be created.
-    pub fn new_color_option(
-        &mut self,
-        settings: ColorOptionSettings,
-    ) -> Result<ColorOption, ()> {
+    pub fn new_color_option(&mut self, settings: ColorOptionSettings) -> Result<ColorOption, ()> {
         let ret = self.new_option(
             OptionDescription {
                 name: &settings.name,
@@ -717,8 +673,7 @@ impl ConfigSection {
             T: ConfigOptions,
         {
             let value = CStr::from_ptr(value).to_string_lossy();
-            let pointers: &mut OptionPointers<T> =
-                { &mut *(pointer as *mut OptionPointers<T>) };
+            let pointers: &mut OptionPointers<T> = { &mut *(pointer as *mut OptionPointers<T>) };
 
             let weechat = Weechat::from_ptr(pointers.weechat_ptr);
             let option = T::from_ptrs(option_pointer, pointers.weechat_ptr);
@@ -739,8 +694,7 @@ impl ConfigSection {
         ) where
             T: ConfigOptions,
         {
-            let pointers: &mut OptionPointers<T> =
-                { &mut *(pointer as *mut OptionPointers<T>) };
+            let pointers: &mut OptionPointers<T> = { &mut *(pointer as *mut OptionPointers<T>) };
 
             let weechat = Weechat::from_ptr(pointers.weechat_ptr);
             let option = T::from_ptrs(option_pointer, pointers.weechat_ptr);
@@ -757,8 +711,7 @@ impl ConfigSection {
         ) where
             T: ConfigOptions,
         {
-            let pointers: &mut OptionPointers<T> =
-                { &mut *(pointer as *mut OptionPointers<T>) };
+            let pointers: &mut OptionPointers<T> = { &mut *(pointer as *mut OptionPointers<T>) };
 
             let weechat = Weechat::from_ptr(pointers.weechat_ptr);
             let option = T::from_ptrs(option_pointer, pointers.weechat_ptr);
@@ -772,8 +725,7 @@ impl ConfigSection {
 
         let name = LossyCString::new(option_description.name);
         let description = LossyCString::new(option_description.description);
-        let option_type =
-            LossyCString::new(option_description.option_type.as_str());
+        let option_type = LossyCString::new(option_description.option_type.as_str());
         let string_values = LossyCString::new(option_description.string_values);
         let default_value = LossyCString::new(option_description.default_value);
         let value = LossyCString::new(option_description.value);
@@ -800,8 +752,7 @@ impl ConfigSection {
             delete_cb,
         });
 
-        let option_pointers_ref: &OptionPointers<T> =
-            Box::leak(option_pointers);
+        let option_pointers_ref: &OptionPointers<T> = Box::leak(option_pointers);
 
         let config_new_option = weechat.get().config_new_option.unwrap();
         let ptr = unsafe {

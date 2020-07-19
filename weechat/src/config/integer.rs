@@ -1,6 +1,4 @@
-use crate::config::config_options::{
-    ConfigOptions, FromPtrs, HidenConfigOptionT,
-};
+use crate::config::config_options::{ConfigOptions, FromPtrs, HidenConfigOptionT};
 use crate::config::{BaseConfigOption, ConfigSection};
 use crate::Weechat;
 use std::marker::PhantomData;
@@ -150,10 +148,7 @@ impl<'a> IntegerOption<'a> {
 }
 
 impl<'a> FromPtrs for IntegerOption<'a> {
-    fn from_ptrs(
-        option_ptr: *mut t_config_option,
-        weechat_ptr: *mut t_weechat_plugin,
-    ) -> Self {
+    fn from_ptrs(option_ptr: *mut t_config_option, weechat_ptr: *mut t_weechat_plugin) -> Self {
         IntegerOption {
             ptr: option_ptr,
             weechat_ptr,

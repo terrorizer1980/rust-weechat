@@ -30,8 +30,7 @@ impl<'a> NickGroup<'a> {
         let get_string = weechat.get().nicklist_group_get_string.unwrap();
         let c_property = LossyCString::new(property);
 
-        let ret =
-            unsafe { get_string(self.buf_ptr, self.ptr, c_property.as_ptr()) };
+        let ret = unsafe { get_string(self.buf_ptr, self.ptr, c_property.as_ptr()) };
 
         if ret.is_null() {
             None
@@ -82,12 +81,7 @@ impl<'a> NickGroup<'a> {
     /// error otherwise.
     pub fn add_nick(&self, nick_settings: NickSettings) -> Result<Nick, ()> {
         let weechat = self.get_weechat();
-        let nick_ptr = Buffer::add_nick_helper(
-            &weechat,
-            self.buf_ptr,
-            nick_settings,
-            Some(self),
-        );
+        let nick_ptr = Buffer::add_nick_helper(&weechat, self.buf_ptr, nick_settings, Some(self));
 
         if nick_ptr.is_null() {
             return Err(());
@@ -110,8 +104,7 @@ impl<'a> NickGroup<'a> {
     /// Returns a `Nick` if one is found, None otherwise.
     pub fn search_nick(&self, nick: &str) -> Option<Nick> {
         let weechat = self.get_weechat();
-        let nick =
-            Buffer::search_nick_helper(&weechat, self.buf_ptr, nick, None);
+        let nick = Buffer::search_nick_helper(&weechat, self.buf_ptr, nick, None);
 
         if nick.is_null() {
             None

@@ -27,9 +27,8 @@ impl<'a> Iterator for BufferLines<'a> {
 
             let line_hdata = unsafe { weechat.hdata_get("line") };
 
-            let line_data_pointer = unsafe {
-                weechat.hdata_pointer(line_hdata, self.first_line, "data")
-            };
+            let line_data_pointer =
+                unsafe { weechat.hdata_pointer(line_hdata, self.first_line, "data") };
 
             if line_data_pointer.is_null() {
                 return None;
@@ -39,8 +38,7 @@ impl<'a> Iterator for BufferLines<'a> {
                 self.done = true;
             }
 
-            self.first_line =
-                unsafe { weechat.hdata_move(line_hdata, self.first_line, 1) };
+            self.first_line = unsafe { weechat.hdata_move(line_hdata, self.first_line, 1) };
 
             Some(BufferLine {
                 weechat,
@@ -60,9 +58,8 @@ impl<'a> DoubleEndedIterator for BufferLines<'a> {
 
             let line_hdata = unsafe { weechat.hdata_get("line") };
 
-            let line_data_pointer = unsafe {
-                weechat.hdata_pointer(line_hdata, self.last_line, "data")
-            };
+            let line_data_pointer =
+                unsafe { weechat.hdata_pointer(line_hdata, self.last_line, "data") };
 
             if line_data_pointer.is_null() {
                 return None;
@@ -72,8 +69,7 @@ impl<'a> DoubleEndedIterator for BufferLines<'a> {
                 self.done = true;
             }
 
-            self.last_line =
-                unsafe { weechat.hdata_move(line_hdata, self.last_line, -1) };
+            self.last_line = unsafe { weechat.hdata_move(line_hdata, self.last_line, -1) };
 
             Some(BufferLine {
                 weechat,
@@ -110,11 +106,8 @@ impl<'a> BufferLine<'a> {
 
     fn update_line(&self, hashmap: HashMap<&str, &str>) {
         unsafe {
-            self.weechat.hdata_update(
-                self.hdata(),
-                self.line_data_pointer,
-                hashmap,
-            );
+            self.weechat
+                .hdata_update(self.hdata(), self.line_data_pointer, hashmap);
         }
     }
 
@@ -122,11 +115,8 @@ impl<'a> BufferLine<'a> {
     /// (usually `|`) is considered the prefix.
     pub fn prefix(&self) -> Cow<str> {
         unsafe {
-            self.weechat.hdata_string(
-                self.hdata(),
-                self.line_data_pointer,
-                "prefix",
-            )
+            self.weechat
+                .hdata_string(self.hdata(), self.line_data_pointer, "prefix")
         }
     }
 
@@ -144,11 +134,8 @@ impl<'a> BufferLine<'a> {
     /// Get the message of the line.
     pub fn message(&self) -> Cow<str> {
         unsafe {
-            self.weechat.hdata_string(
-                self.hdata(),
-                self.line_data_pointer,
-                "message",
-            )
+            self.weechat
+                .hdata_string(self.hdata(), self.line_data_pointer, "message")
         }
     }
 
@@ -167,11 +154,8 @@ impl<'a> BufferLine<'a> {
     /// Get the date of the line.
     pub fn date(&self) -> i64 {
         unsafe {
-            self.weechat.hdata_time(
-                self.hdata(),
-                self.line_data_pointer,
-                "date",
-            )
+            self.weechat
+                .hdata_time(self.hdata(), self.line_data_pointer, "date")
         }
     }
 
@@ -190,11 +174,8 @@ impl<'a> BufferLine<'a> {
     /// Get the date the line was printed.
     pub fn date_printed(&self) -> i64 {
         unsafe {
-            self.weechat.hdata_time(
-                self.hdata(),
-                self.line_data_pointer,
-                "date_printed",
-            )
+            self.weechat
+                .hdata_time(self.hdata(), self.line_data_pointer, "date_printed")
         }
     }
 
@@ -213,11 +194,9 @@ impl<'a> BufferLine<'a> {
     /// Is the line highlighted.
     pub fn highlighted(&self) -> bool {
         unsafe {
-            self.weechat.hdata_char(
-                self.hdata(),
-                self.line_data_pointer,
-                "highlight",
-            ) != 0
+            self.weechat
+                .hdata_char(self.hdata(), self.line_data_pointer, "highlight")
+                != 0
         }
     }
 

@@ -70,8 +70,7 @@ impl Weechat {
             _data: *mut c_void,
             remaining: i32,
         ) -> c_int {
-            let hook_data: &mut TimerHookData =
-                { &mut *(pointer as *mut TimerHookData) };
+            let hook_data: &mut TimerHookData = { &mut *(pointer as *mut TimerHookData) };
             let cb = &mut hook_data.callback;
 
             cb.callback(

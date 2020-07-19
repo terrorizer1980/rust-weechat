@@ -95,10 +95,7 @@ impl<'a> BooleanOption<'a> {
 }
 
 impl<'a> FromPtrs for BooleanOption<'a> {
-    fn from_ptrs(
-        option_ptr: *mut t_config_option,
-        weechat_ptr: *mut t_weechat_plugin,
-    ) -> Self {
+    fn from_ptrs(option_ptr: *mut t_config_option, weechat_ptr: *mut t_weechat_plugin) -> Self {
         BooleanOption {
             ptr: option_ptr,
             weechat_ptr,

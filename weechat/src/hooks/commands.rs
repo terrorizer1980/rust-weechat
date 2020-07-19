@@ -33,21 +33,11 @@ pub trait CommandCallback {
     ///
     /// * `arguments` - The arguments that were passed to the command, this will
     ///     include the command as the first argument.
-    fn callback(
-        &mut self,
-        weechat: &Weechat,
-        buffer: &Buffer,
-        arguments: ArgsWeechat,
-    );
+    fn callback(&mut self, weechat: &Weechat, buffer: &Buffer, arguments: ArgsWeechat);
 }
 
 impl<T: FnMut(&Weechat, &Buffer, ArgsWeechat) + 'static> CommandCallback for T {
-    fn callback(
-        &mut self,
-        weechat: &Weechat,
-        buffer: &Buffer,
-        arguments: ArgsWeechat,
-    ) {
+    fn callback(&mut self, weechat: &Weechat, buffer: &Buffer, arguments: ArgsWeechat) {
         self(weechat, buffer, arguments)
     }
 }
@@ -114,10 +104,7 @@ impl CommandSettings {
     ///
     /// * `description` - The argument description that should be set for the
     ///     command.
-    pub fn arguments_description<T: Into<String>>(
-        mut self,
-        descritpion: T,
-    ) -> Self {
+    pub fn arguments_description<T: Into<String>>(mut self, descritpion: T) -> Self {
         self.argument_descriptoin = descritpion.into();
         self
     }
@@ -165,23 +152,11 @@ pub trait CommandRunCallback {
     ///
     /// * `command` - The full command that was executed, including its
     ///     arguments.
-    fn callback(
-        &mut self,
-        weechat: &Weechat,
-        buffer: &Buffer,
-        command: Cow<str>,
-    ) -> ReturnCode;
+    fn callback(&mut self, weechat: &Weechat, buffer: &Buffer, command: Cow<str>) -> ReturnCode;
 }
 
-impl<T: FnMut(&Weechat, &Buffer, Cow<str>) -> ReturnCode + 'static>
-    CommandRunCallback for T
-{
-    fn callback(
-        &mut self,
-        weechat: &Weechat,
-        buffer: &Buffer,
-        command: Cow<str>,
-    ) -> ReturnCode {
+impl<T: FnMut(&Weechat, &Buffer, Cow<str>) -> ReturnCode + 'static> CommandRunCallback for T {
+    fn callback(&mut self, weechat: &Weechat, buffer: &Buffer, command: Cow<str>) -> ReturnCode {
         self(weechat, buffer, command)
     }
 }
@@ -217,18 +192,14 @@ impl CommandRun {
     /// )
     /// .expect("Can't override buffer command");
     /// ```
-    pub fn new(
-        command: &str,
-        callback: impl CommandRunCallback + 'static,
-    ) -> Result<Self, ()> {
+    pub fn new(command: &str, callback: impl CommandRunCallback + 'static) -> Result<Self, ()> {
         unsafe extern "C" fn c_hook_cb(
             pointer: *const c_void,
             _data: *mut c_void,
             buffer: *mut t_gui_buffer,
             command: *const std::os::raw::c_char,
         ) -> c_int {
-            let hook_data: &mut CommandRunHookData =
-                { &mut *(pointer as *mut CommandRunHookData) };
+            let hook_data: &mut CommandRunHookData = { &mut *(pointer as *mut CommandRunHookData) };
             let cb = &mut hook_data.callback;
 
             let weechat = Weechat::from_ptr(hook_data.weechat_ptr);
@@ -335,8 +306,7 @@ impl Command {
             argv: *mut *mut c_char,
             _argv_eol: *mut *mut c_char,
         ) -> c_int {
-            let hook_data: &mut CommandHookData =
-                { &mut *(pointer as *mut CommandHookData) };
+            let hook_data: &mut CommandHookData = { &mut *(pointer as *mut CommandHookData) };
             let weechat = Weechat::from_ptr(hook_data.weechat_ptr);
             let buffer = weechat.buffer_from_ptr(buffer);
             let cb = &mut hook_data.callback;
@@ -353,10 +323,8 @@ impl Command {
         let name = LossyCString::new(command_settings.name);
         let description = LossyCString::new(command_settings.description);
         let args = LossyCString::new(command_settings.arguments.join("||"));
-        let args_description =
-            LossyCString::new(command_settings.argument_descriptoin);
-        let completion =
-            LossyCString::new(command_settings.completion.join("||"));
+        let args_description = LossyCString::new(command_settings.argument_descriptoin);
+        let completion = LossyCString::new(command_settings.completion.join("||"));
 
         let data = Box::new(CommandHookData {
             callback: Box::new(callback),
