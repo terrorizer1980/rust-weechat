@@ -1,6 +1,6 @@
 [package]
 name = "weechat"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Damir Jelić <poljar@termina.org.uk>"]
 
 repository = "https://github.com/poljar/rust-weechat/"
