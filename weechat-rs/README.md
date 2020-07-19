@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/poljar/rust-weechat.svg?branch=master)](https://travis-ci.org/poljar/rust-weechat)
-[![Docs](https://docs.rs/weechat/badge.svg)](https://docs.rs/weechat/badge.svg)
+[![Docs](https://docs.rs/weechat/badge.svg)](https://docs.rs/weechat)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 # Rust-Weechat
@@ -21,7 +21,7 @@ Experimental or unsound features are gated behind feature flags.
 
 ## Example
 
-Example plugins can be found in the [examples](examples) folder of this repo.
+Example plugins can be found in the [examples] part of the repository.
 
 The following example shows a minimal working Rust plugin.
 
@@ -77,3 +77,4 @@ variable, this environment variable takes a full path to the include file.
 
 [Weechat]: weechat.org/
 [API]: https://weechat.org/files/doc/stable/weechat_plugin_api.en.html
+[examples]: https://github.com/poljar/rust-weechat/tree/master/weechat-rs/examples.
