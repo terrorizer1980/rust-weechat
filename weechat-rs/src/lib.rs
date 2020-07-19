@@ -91,7 +91,7 @@ pub trait WeechatPlugin: Sized {
     fn init(weechat: &Weechat, args: ArgsWeechat) -> Result<Self, ()>;
 }
 
-#[cfg(feature = "async-executor")]
+#[cfg(feature = "async")]
 pub use executor::JoinHandle;
 
 /// Status values for Weechat callbacks
