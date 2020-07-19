@@ -13,7 +13,7 @@ mod fd;
 mod modifier;
 mod timer;
 
-pub use bar::{BarItemCallback, BarItem};
+pub use bar::{BarItem, BarItemCallback};
 pub use commands::{
     Command, CommandCallback, CommandRun, CommandRunCallback, CommandSettings,
 };
