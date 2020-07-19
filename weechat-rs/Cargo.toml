@@ -12,17 +12,20 @@ description = "Weechat API bindings for Rust"
 license = "MIT"
 
 [package.metadata.docs.rs]
-all-features = true
+features = ["docs"]
+rustdoc-args = ["--cfg", "feature=\"docs\""]
 
 [features]
 # Support to run futures on the Weechat main thread.
-async-executor = ["async-task", "pipe-channel", "futures", "async-trait"]
+async = ["async-task", "pipe-channel", "futures", "async-trait"]
 
 # Declarative configuration macro, requires nightly.
-config-macro = ["paste", "strum"]
+config_macro = ["paste", "strum"]
 
 # Still unsound or experimental features will be hidden behind this flag.
 unsound = []
+
+docs = ["async", "unsound", "config_macro"]
 
 [dependencies]
 libc = "0.2.72"

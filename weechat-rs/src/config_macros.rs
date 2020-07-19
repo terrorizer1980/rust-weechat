@@ -265,7 +265,8 @@ macro_rules! section {
 ///    }
 /// );
 /// ```
-#[cfg_attr(docsrs, doc(cfg(feature = "config-macro")))]
+#[cfg(feature = "config_macro")]
+#[cfg_attr(feature = "docs", doc(cfg(config_macro)))]
 #[macro_export]
 macro_rules! config {
     ($config_name:literal, $(Section $section:ident { $($option:tt)* }), * $(,)?) => {

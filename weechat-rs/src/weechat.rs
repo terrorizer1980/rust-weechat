@@ -9,11 +9,11 @@ use std::panic::PanicInfo;
 use std::path::PathBuf;
 use std::{ptr, vec};
 
-#[cfg(feature = "async-executor")]
+#[cfg(feature = "async")]
 use crate::executor::WeechatExecutor;
-#[cfg(feature = "async-executor")]
+#[cfg(feature = "async")]
 pub use async_task::JoinHandle;
-#[cfg(feature = "async-executor")]
+#[cfg(feature = "async")]
 use std::future::Future;
 
 /// An iterator over the arguments of a Weechat command, yielding a String value
@@ -108,7 +108,7 @@ impl Weechat {
 
         std::panic::set_hook(Box::new(Weechat::panic_hook));
 
-        #[cfg(feature = "async-executor")]
+        #[cfg(feature = "async")]
         WeechatExecutor::start();
         Weechat { ptr }
     }
@@ -127,7 +127,7 @@ impl Weechat {
                 info
             ));
         } else {
-            #[cfg(feature = "async-executor")]
+            #[cfg(feature = "async")]
             {
                 if current_thread_id != weechat_thread {
                     Weechat::spawn_from_thread(Weechat::thread_panic(
@@ -136,14 +136,14 @@ impl Weechat {
                     ))
                 }
             }
-            #[cfg(not(feature = "async-executor"))]
+            #[cfg(not(feature = "async"))]
             {
                 println!("thread '{}' panicked: {}", thread_name, info);
             }
         }
     }
 
-    #[cfg(feature = "async-executor")]
+    #[cfg(feature = "async")]
     async fn thread_panic(thread_name: String, message: String) {
         Weechat::print(&format!(
             "{}Thread '{}{}{}' {}.",
@@ -161,7 +161,7 @@ impl Weechat {
     /// This should never be called by the user. This is called internally.
     #[doc(hidden)]
     pub unsafe fn free() {
-        #[cfg(feature = "async-executor")]
+        #[cfg(feature = "async")]
         WeechatExecutor::free();
     }
 
@@ -540,8 +540,8 @@ impl Weechat {
     /// Weechat::spawn(task(rx));
     /// block_on(tx.send("Hello wordl".to_string()));
     /// ```
-    #[cfg(feature = "async-executor")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "async-executor")))]
+    #[cfg(feature = "async")]
+    #[cfg_attr(feature = "docs", doc(cfg(r#async)))]
     pub fn spawn<F, R>(future: F) -> JoinHandle<R, ()>
     where
         F: Future<Output = R> + 'static,
@@ -555,8 +555,8 @@ impl Weechat {
     ///
     /// This can be called from any thread and will execute the future on the
     /// main Weechat thread.
-    #[cfg(feature = "async-executor")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "async-executor")))]
+    #[cfg(feature = "async")]
+    #[cfg_attr(feature = "docs", doc(cfg(r#async)))]
     pub fn spawn_from_thread<F>(future: F)
     where
         F: Future<Output = ()> + Send + 'static,
@@ -564,7 +564,7 @@ impl Weechat {
         WeechatExecutor::spawn_from_non_main(future)
     }
 
-    #[cfg(feature = "async-executor")]
+    #[cfg(feature = "async")]
     pub(crate) fn spawn_buffer_cb<F, R>(
         buffer_name: String,
         future: F,

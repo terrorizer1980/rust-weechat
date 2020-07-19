@@ -18,7 +18,7 @@ async-trait = "0.1.36"
 
 [dependencies.weechat]
 path = "../../"
-features = ["async-executor"]
+features = ["async"]
 
 [dependencies.clap]
 version = "2.33.1"

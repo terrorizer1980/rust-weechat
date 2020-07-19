@@ -13,9 +13,9 @@ use std::ptr;
 use std::cell::Cell;
 use std::rc::Rc;
 
-#[cfg(feature = "async-executor")]
+#[cfg(feature = "async")]
 use async_trait::async_trait;
-#[cfg(feature = "async-executor")]
+#[cfg(feature = "async")]
 use futures::future::LocalBoxFuture;
 
 use crate::{LossyCString, Weechat};
@@ -96,7 +96,7 @@ impl BufferHandle {
     }
 }
 
-#[cfg(feature = "async-executor")]
+#[cfg(feature = "async")]
 pub(crate) struct BufferPointersAsync {
     pub(crate) weechat: *mut t_weechat_plugin,
     pub(crate) input_cb: Option<Box<dyn BufferInputCallbackAsync>>,
@@ -189,8 +189,8 @@ impl<T: FnMut(&Weechat, &Buffer) -> Result<(), ()> + 'static>
     }
 }
 
-#[cfg(feature = "async-executor")]
-#[cfg_attr(docsrs, doc(cfg(feature = "async-executor")))]
+#[cfg(feature = "async")]
+#[cfg_attr(feature = "docs", doc(cfg(r#async)))]
 #[async_trait(?Send)]
 /// Trait for the buffer input callback.
 ///
@@ -212,7 +212,7 @@ pub trait BufferInputCallbackAsync: 'static {
     async fn callback(&mut self, buffer: BufferHandle, input: String);
 }
 
-#[cfg(feature = "async-executor")]
+#[cfg(feature = "async")]
 #[async_trait(?Send)]
 impl<
         T: FnMut(BufferHandle, String) -> LocalBoxFuture<'static, ()> + 'static,
@@ -223,8 +223,8 @@ impl<
     }
 }
 
-#[cfg(feature = "async-executor")]
-#[cfg_attr(docsrs, doc(cfg(feature = "async-executor")))]
+#[cfg(feature = "async")]
+#[cfg_attr(feature = "docs", doc(cfg(r#async)))]
 /// Settings for the creation of a buffer.
 pub struct BufferSettingsAsync {
     pub(crate) name: String,
@@ -239,7 +239,7 @@ pub struct BufferSettings {
     pub(crate) close_callback: Option<Box<dyn BufferCloseCallback>>,
 }
 
-#[cfg(feature = "async-executor")]
+#[cfg(feature = "async")]
 impl BufferSettingsAsync {
     /// Create new default buffer creation settings.
     ///
@@ -425,8 +425,8 @@ impl Weechat {
     /// buffer.enable_nicklist();
     /// buffer.print("Hello world");
     /// ```
-    #[cfg(feature = "async-executor")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "async-executor")))]
+    #[cfg(feature = "async")]
+    #[cfg_attr(feature = "docs", doc(cfg(r#async)))]
     pub fn buffer_new_with_async(
         settings: BufferSettingsAsync,
     ) -> Result<BufferHandle, ()> {

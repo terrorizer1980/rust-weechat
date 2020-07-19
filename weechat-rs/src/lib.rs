@@ -1,84 +1,27 @@
-//! # `rust-weechat`
+//! # `weechat`
 //!
-//! rust-weechat implements high level bindings for the Weechat plugin API.
+//! This crate implements high level bindings for the Weechat plugin API.
 //!
-//! The bindings make it possible to create powerful Weechat plugins using rust.
+//! The bindings make it possible to create powerful Weechat plugins using Rust.
 //!
 //! ```no_run
-//! use std::borrow::Cow;
-//! use weechat::buffer::{Buffer, BufferSettings, NickSettings};
-//! use weechat::hooks::{CommandSettings, Command};
-//! use weechat::{weechat_plugin, ArgsWeechat, Weechat, WeechatPlugin};
+//! use weechat::{
+//!    buffer::Buffer,
+//!    weechat_plugin, ArgsWeechat, Weechat, WeechatPlugin,
+//! };
 //!
-//! struct SamplePlugin {
-//!     _command: Command,
-//! }
+//! struct HelloWorld;
 //!
-//! impl SamplePlugin {
-//!     fn input_cb(
-//!         _weechat: &Weechat,
-//!         buffer: &Buffer,
-//!         input: Cow<str>,
-//!     ) -> Result<(), ()> {
-//!         buffer.print(&input);
-//!         Ok(())
-//!     }
-//!
-//!     fn close_cb(_weechat: &Weechat, _buffer: &Buffer) -> Result<(), ()> {
-//!         Weechat::print("Closing buffer");
-//!         Ok(())
-//!     }
-//!
-//!     fn rust_command_cb(_weechat: &Weechat, buffer: &Buffer, args: ArgsWeechat) {
-//!        buffer.print("Hello world");
-//!
-//!        for arg in args {
-//!            buffer.print(&arg)
-//!        }
-//!    }
-//! }
-//!
-//! impl WeechatPlugin for SamplePlugin {
-//!     fn init(weechat: &Weechat, _args: ArgsWeechat) -> Result<Self, ()> {
-//!         Weechat::print("Hello Rust!");
-//!
-//!         let buffer_settings = BufferSettings::new("Test buffer")
-//!             .input_callback(SamplePlugin::input_cb)
-//!             .close_callback(SamplePlugin::close_cb);
-//!
-//!         let buffer_handle =
-//!             Weechat::buffer_new(buffer_settings).expect("Can't create buffer");
-//!
-//!         let buffer = buffer_handle.upgrade().expect("Buffer already closed?");
-//!
-//!         let op_group = buffer
-//!             .add_nicklist_group("operators", "blue", true, None)
-//!             .expect("Can't create nick group");
-//!         let emma = op_group
-//!             .add_nick(
-//!                 NickSettings::new("Emma")
-//!                     .set_color("magenta")
-//!                     .set_prefix("&")
-//!                     .set_prefix_color("green"),
-//!             )
-//!             .expect("Can't add nick to group");
-//!
-//!         let sample_command = CommandSettings::new("rustcommand");
-//!
-//!         let command = Command::new(
-//!             sample_command,
-//!             SamplePlugin::rust_command_cb,
-//!         );
-//!
-//!         Ok(SamplePlugin {
-//!             _command: command.unwrap(),
-//!         })
+//! impl WeechatPlugin for HelloWorld {
+//!     fn init(_: &Weechat, _: ArgsWeechat) -> Result<Self, ()> {
+//!         Weechat::print("Hello from Rust");
+//!         Ok(Self)
 //!     }
 //! }
 //!
-//! impl Drop for SamplePlugin {
+//! impl Drop for HelloWorld {
 //!     fn drop(&mut self) {
-//!         Weechat::print("Bye rust");
+//!         Weechat::print("Bye from Rust");
 //!     }
 //! }
 //! ```
@@ -88,32 +31,33 @@
 //!
 //! ```ignore
 //! weechat_plugin!(
-//!     SamplePlugin,
-//!     name: "rust_sample",
-//!     author: "poljar",
-//!     description: "",
-//!     version: "0.1.0",
+//!     HelloWorld,
+//!     name: "hello",
+//!     author: "Damir Jelić <poljar@termina.org.uk>",
+//!     description: "Simple hello world Rust plugin",
+//!     version: "1.0.0",
 //!     license: "MIT"
 //! );
 //! ```
 
 #![deny(missing_docs)]
+#![cfg_attr(feature = "docs", feature(doc_cfg))]
 
 use std::ffi::CString;
 
-#[cfg(feature = "async-executor")]
+#[cfg(feature = "async")]
 mod executor;
 mod hashtable;
 mod hdata;
 mod weechat;
 
-#[cfg(feature = "config-macro")]
+#[cfg(feature = "config_macro")]
 #[macro_use]
 mod config_macros;
 
-#[cfg(feature = "config-macro")]
+#[cfg(feature = "config_macro")]
 pub use paste;
-#[cfg(feature = "config-macro")]
+#[cfg(feature = "config_macro")]
 pub use strum;
 
 pub mod buffer;
@@ -131,9 +75,12 @@ pub use weechat_sys;
 ///
 /// Implement this trait over your struct to implement a Weechat plugin. The
 /// init method will get called when Weechat loads the plugin, while the
+///
 /// Drop method will be called when Weechat unloads the plugin.
 pub trait WeechatPlugin: Sized {
-    /// Initialize the plugin.
+    /// The initialization method for the plugin.
+    ///
+    /// This will be called when Weechat loads the pluign.
     ///
     /// # Arguments
     ///
