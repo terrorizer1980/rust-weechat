@@ -5,7 +5,7 @@ use weechat::config::{
     BooleanOption, BooleanOptionSettings, Conf, Config, ConfigSectionSettings,
 };
 use weechat::hooks::{
-    BarItemHandle, Command, CommandSettings, SignalData, SignalHook,
+    BarItem, Command, CommandSettings, SignalData, SignalHook,
 };
 use weechat::{
     weechat_plugin, ArgsWeechat, ReturnCode, Weechat, WeechatPlugin,
@@ -14,7 +14,7 @@ use weechat::{
 struct SamplePlugin {
     _rust_hook: Command,
     _rust_config: Config,
-    _item: BarItemHandle,
+    _item: BarItem,
     _signal: SignalHook,
 }
 
@@ -119,7 +119,7 @@ impl WeechatPlugin for SamplePlugin {
                 .new_boolean_option(option_settings)
                 .expect("Can't create option");
         }
-        let item = Weechat::new_bar_item(
+        let item = BarItem::new(
             "buffer_plugin",
             |_weechat: &Weechat, _buffer: &Buffer| "rust/sample".to_owned(),
         );
