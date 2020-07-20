@@ -4,4 +4,10 @@ members = [
     "weechat-sys",
     "weechat-macro",
     "weechat",
+    "weechat/examples/*",
 ]
+
+[profile.release]
+opt-level = 'z'
+codegen-units = 1
+lto = true

@@ -24,5 +24,3 @@ features = ["async"]
 version = "2.33.1"
 default-features = false
 features = [ "suggestions" ]
-
-[workspace]

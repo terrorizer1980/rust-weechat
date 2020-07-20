@@ -10,12 +10,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 fuzzy-matcher = "0.3.5"
-weechat = { path = "../../", features = ["config_macro", "unsound"]}
 
-[workspace]
-
-[profile.release]
-opt-level = 'z'
-codegen-units = 1
-lto = true
-panic = 'abort'
+[dependencies.weechat]
+path = "../../"
+features = ["config_macro", "unsound"]

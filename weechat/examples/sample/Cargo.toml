@@ -1,5 +1,5 @@
 [package]
-name = "weechat-rust-sample-plugin"
+name = "weechat-sample"
 version = "0.1.0"
 authors = ["Damir Jelić <poljar@termina.org.uk>"]
 edition = "2018"
@@ -10,5 +10,3 @@ crate-type = ["cdylib"]
 
 [dependencies]
 weechat = { path = "../.." }
-
-[workspace]

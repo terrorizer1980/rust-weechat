@@ -18,17 +18,8 @@ jobs:
     - os: linux
       rust: nightly
       script:
-          - cargo build --all-features
-          - cargo test --all-features
-          - cd weechat/examples
-          - cd go
-          - cargo build
-          - cd ..
-          - cd sample
-          - cargo build
-          - cd ..
-          - cd grep
-          - cargo build
+          cargo build --all-features
+          cargo test --all-features
 
 script:
   - cargo build
