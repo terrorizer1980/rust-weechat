@@ -95,10 +95,9 @@ struct InnerGo {
 
 impl InnerGo {
     fn stop(&self, weechat: &Weechat, switch_buffer: bool) {
-        self.running_state
-            .borrow_mut()
-            .take()
-            .map(|s| s.stop(weechat, switch_buffer));
+        if let Some(state) = self.running_state.borrow_mut().take() {
+            state.stop(weechat, switch_buffer);
+        }
     }
 }
 
@@ -272,13 +271,11 @@ impl BufferList {
     /// * `weechat` - The Weechat context that will allow us to find the buffer
     ///     object using our full name of the buffer.
     fn switch_to_selected_buffer(self, weechat: &Weechat) {
-        self.get_selected_buffer().map(|buffer| {
-            weechat
-                .buffer_search("==", &buffer.full_name)
-                .map(|buffer| {
-                    buffer.switch_to();
-                });
-        });
+        if let Some(buffer) = self.get_selected_buffer() {
+            if let Some(buffer) = weechat.buffer_search("==", &buffer.full_name) {
+                buffer.switch_to();
+            }
+        }
     }
 }
 
@@ -433,13 +430,9 @@ impl ModifierCallback for InnerGo {
 
         let mut state = self.running_state.borrow_mut();
 
-        let state_borrow = if let Some(state) = state.as_mut() {
-            state
-        } else {
-            // If there's no state anymore we're exiting and the modifier will
-            // get unhooked.
-            return None;
-        };
+        // If there's no state anymore we're exiting and the modifier will
+        // get unhooked.
+        let state_borrow = state.as_mut()?;
 
         // The input line will have some color at the end of the line, remove
         // colors and trim out whitespace at the beginning.
@@ -455,7 +448,7 @@ impl ModifierCallback for InnerGo {
                 _ => buffers.filter(&current_input),
             };
 
-            state_borrow.last_input = current_input.to_string();
+            state_borrow.last_input = current_input;
             state_borrow.buffers = buffers;
         };
 
@@ -489,14 +482,18 @@ impl CommandRunCallback for InnerGo {
             }
             "/input complete_next" => {
                 let mut state = self.running_state.borrow_mut();
-                state.as_mut().map(|s| s.buffers.select_next_buffer());
+                if let Some(state) = state.as_mut(){
+                    state.buffers.select_next_buffer();
+                }
                 Weechat::hook_signal_send("input_text_changed", "");
 
                 ReturnCode::OkEat
             }
             "/input complete_previous" => {
                 let mut state = self.running_state.borrow_mut();
-                state.as_mut().map(|s| s.buffers.select_prev_buffer());
+                if let Some(state) = state.as_mut() {
+                    state.buffers.select_prev_buffer();
+                }
                 Weechat::hook_signal_send("input_text_changed", "");
 
                 ReturnCode::OkEat
