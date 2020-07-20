@@ -468,7 +468,7 @@ impl ModifierCallback for InnerGo {
             Some(format!(
                 "{}{}  {}",
                 self.config.look().prompt(),
-                current_input,
+                string,
                 state_borrow.buffers
             ))
         }
