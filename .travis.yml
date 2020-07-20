@@ -18,8 +18,8 @@ jobs:
     - os: linux
       rust: nightly
       script:
-          cargo build --all-features
-          cargo test --all-features
+          - cargo build --all-features
+          - cargo test --all-features
 
 script:
   - cargo build
