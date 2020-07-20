@@ -16,7 +16,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Instant;
 
-use weechat::{infolist::InfolistVariable, Args, Weechat, Plugin};
+use weechat::{infolist::InfolistVariable, Args, Plugin, Weechat};
 
 use weechat::buffer::{Buffer, BufferCloseCallback, BufferInputCallback};
 use weechat::config::{BooleanOptionSettings, Config, ConfigOption, ConfigSectionSettings};

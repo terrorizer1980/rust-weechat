@@ -22,11 +22,11 @@ use weechat::{
     buffer::Buffer,
     config,
     hooks::{
-        Command, CommandCallback, CommandRun, CommandRunCallback,
-        CommandSettings, ModifierCallback, ModifierData, ModifierHook,
+        Command, CommandCallback, CommandRun, CommandRunCallback, CommandSettings,
+        ModifierCallback, ModifierData, ModifierHook,
     },
     infolist::InfolistVariable,
-    weechat_plugin, Args, ReturnCode, Weechat, Plugin,
+    weechat_plugin, Args, Plugin, ReturnCode, Weechat,
 };
 
 use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
@@ -180,8 +180,7 @@ impl BufferList {
         let mut buffers = Vec::new();
 
         for item in info_list {
-            let buffer =
-                item.get("pointer").expect("Infolist doesn't have a buffer");
+            let buffer = item.get("pointer").expect("Infolist doesn't have a buffer");
 
             if let InfolistVariable::Buffer(b) = buffer {
                 buffers.push(BufferData::from(&b));
@@ -207,13 +206,13 @@ impl BufferList {
             .buffers
             .iter()
             .filter_map(|buffer_data| {
-                matcher.fuzzy_match(&buffer_data.short_name, &pattern).map(
-                    |score| {
+                matcher
+                    .fuzzy_match(&buffer_data.short_name, &pattern)
+                    .map(|score| {
                         let mut new_buffer = buffer_data.clone();
                         new_buffer.score = score;
                         new_buffer
-                    },
-                )
+                    })
             })
             .collect();
 
@@ -301,10 +300,7 @@ impl std::fmt::Display for BufferList {
             .enumerate()
             .map(|(i, buffer_data)| {
                 let number_color = if i == self.selected_buffer {
-                    Weechat::color_pair(
-                        &number_selected_fg,
-                        &number_selected_bg,
-                    )
+                    Weechat::color_pair(&number_selected_fg, &number_selected_bg)
                 } else {
                     Weechat::color_pair(&number_fg, &number_bg)
                 };
@@ -348,25 +344,22 @@ impl Hooks {
             .expect("Can't override input command");
 
         // Disable buffer commands while in go mode.
-        let buffer_command = CommandRun::new(
-            "2000|/buffer *",
-            |_: &Weechat, _: &Buffer, _: Cow<str>| ReturnCode::OkEat,
-        )
-        .expect("Can't override buffer command");
+        let buffer_command =
+            CommandRun::new("2000|/buffer *", |_: &Weechat, _: &Buffer, _: Cow<str>| {
+                ReturnCode::OkEat
+            })
+            .expect("Can't override buffer command");
 
         // Disable window commands while in go mode.
-        let window_command = CommandRun::new(
-            "2000|/window *",
-            |_: &Weechat, _: &Buffer, _: Cow<str>| ReturnCode::OkEat,
-        )
-        .expect("Can't override window command");
+        let window_command =
+            CommandRun::new("2000|/window *", |_: &Weechat, _: &Buffer, _: Cow<str>| {
+                ReturnCode::OkEat
+            })
+            .expect("Can't override window command");
 
         // Override our buffer input text so we can display the go buffer line.
-        let modifier = ModifierHook::new(
-            "input_text_display_with_cursor",
-            inner_go.clone(),
-        )
-        .expect("Can't hook the input text modifier");
+        let modifier = ModifierHook::new("input_text_display_with_cursor", inner_go.clone())
+            .expect("Can't hook the input text modifier");
 
         Hooks {
             input_command,
@@ -466,9 +459,7 @@ impl ModifierCallback for InnerGo {
             state_borrow.buffers = buffers;
         };
 
-        if state_borrow.buffers.has_only_one_result()
-            && self.config.behaviour().autojump()
-        {
+        if state_borrow.buffers.has_only_one_result() && self.config.behaviour().autojump() {
             buffer
                 .run_command("/wait 1ms /input return")
                 .expect("Can't run command");
@@ -486,15 +477,8 @@ impl ModifierCallback for InnerGo {
 
 /// Callback for our `/input` command override.
 impl CommandRunCallback for InnerGo {
-    fn callback(
-        &mut self,
-        weechat: &Weechat,
-        _: &Buffer,
-        command: Cow<str>,
-    ) -> ReturnCode {
-        if command.starts_with("/input search_text")
-            || command.starts_with("/input jump")
-        {
+    fn callback(&mut self, weechat: &Weechat, _: &Buffer, command: Cow<str>) -> ReturnCode {
+        if command.starts_with("/input search_text") || command.starts_with("/input jump") {
             return ReturnCode::OkEat;
         }
 
@@ -524,12 +508,7 @@ impl CommandRunCallback for InnerGo {
 
 /// Callback for our `/go` command.
 impl CommandCallback for InnerGo {
-    fn callback(
-        &mut self,
-        weechat: &Weechat,
-        buffer: &Buffer,
-        mut arguments: Args,
-    ) {
+    fn callback(&mut self, weechat: &Weechat, buffer: &Buffer, mut arguments: Args) {
         if self.running_state.borrow().is_none() {
             // Skip our "/go" command in the argument list.
             arguments.next();
@@ -544,8 +523,7 @@ impl CommandCallback for InnerGo {
                     .filter(&pattern)
                     .switch_to_selected_buffer(weechat);
             } else {
-                *self.running_state.borrow_mut() =
-                    Some(RunningState::new(self, weechat, buffer));
+                *self.running_state.borrow_mut() = Some(RunningState::new(self, weechat, buffer));
                 buffer.set_input("");
             }
         } else {

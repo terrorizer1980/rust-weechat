@@ -7,9 +7,7 @@ use weechat::config::{
 use weechat::hooks::{
     BarItem, Command, CommandSettings, SignalData, SignalHook,
 };
-use weechat::{
-    weechat_plugin, Args, ReturnCode, Weechat, Plugin,
-};
+use weechat::{weechat_plugin, Args, Plugin, ReturnCode, Weechat};
 
 struct SamplePlugin {
     _rust_hook: Command,
@@ -94,7 +92,8 @@ impl Plugin for SamplePlugin {
 
         let sample_command = CommandSettings::new("rustcommand");
 
-        let command = Command::new(sample_command, SamplePlugin::rust_command_cb);
+        let command =
+            Command::new(sample_command, SamplePlugin::rust_command_cb);
 
         let mut config = Config::new_with_callback(
             "rust_sample",
