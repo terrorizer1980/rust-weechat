@@ -26,7 +26,7 @@ use weechat::{
         CommandSettings, ModifierCallback, ModifierData, ModifierHook,
     },
     infolist::InfolistVariable,
-    weechat_plugin, Args, ReturnCode, Weechat, WeechatPlugin,
+    weechat_plugin, Args, ReturnCode, Weechat, Plugin,
 };
 
 use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
@@ -554,7 +554,7 @@ impl CommandCallback for InnerGo {
     }
 }
 
-impl WeechatPlugin for Go {
+impl Plugin for Go {
     fn init(_: &Weechat, _args: Args) -> Result<Self, ()> {
         let config = Config::new()?;
 

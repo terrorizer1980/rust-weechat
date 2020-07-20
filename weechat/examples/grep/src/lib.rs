@@ -16,7 +16,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Instant;
 
-use weechat::{infolist::InfolistVariable, Args, Weechat, WeechatPlugin};
+use weechat::{infolist::InfolistVariable, Args, Weechat, Plugin};
 
 use weechat::buffer::{Buffer, BufferCloseCallback, BufferInputCallback};
 use weechat::config::{BooleanOptionSettings, Config, ConfigOption, ConfigSectionSettings};
@@ -279,7 +279,7 @@ impl CommandCallback for RipgrepCommand {
     }
 }
 
-impl WeechatPlugin for Ripgrep {
+impl Plugin for Ripgrep {
     fn init(_: &Weechat, _args: Args) -> Result<Self, ()> {
         let mut config = Weechat::config_new("ripgrep")?;
 

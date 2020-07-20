@@ -28,12 +28,12 @@ The following example shows a minimal working Rust plugin.
 ```rust
 use weechat::{
     buffer::Buffer,
-    weechat_plugin, Args, Weechat, WeechatPlugin,
+    weechat_plugin, Args, Weechat, Plugin,
 };
 
 struct HelloWorld;
 
-impl WeechatPlugin for HelloWorld {
+impl Plugin for HelloWorld {
     fn init(_: &Weechat, _: Args) -> Result<Self, ()> {
         Weechat::print("Hello from Rust");
         Ok(Self)

@@ -7,12 +7,12 @@
 //! ```no_run
 //! use weechat::{
 //!    buffer::Buffer,
-//!    weechat_plugin, Args, Weechat, WeechatPlugin,
+//!    weechat_plugin, Args, Weechat, Plugin,
 //! };
 //!
 //! struct HelloWorld;
 //!
-//! impl WeechatPlugin for HelloWorld {
+//! impl Plugin for HelloWorld {
 //!     fn init(_: &Weechat, _: Args) -> Result<Self, ()> {
 //!         Weechat::print("Hello from Rust");
 //!         Ok(Self)
@@ -72,7 +72,7 @@ pub use weechat_sys;
 /// init method will get called when Weechat loads the plugin, while the
 ///
 /// Drop method will be called when Weechat unloads the plugin.
-pub trait WeechatPlugin: Sized {
+pub trait Plugin: Sized {
     /// The initialization method for the plugin.
     ///
     /// This will be called when Weechat loads the pluign.

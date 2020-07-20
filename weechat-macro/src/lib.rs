@@ -78,7 +78,7 @@ impl Parse for WeechatPluginInfo {
         let plugin: syn::Ident = input.parse().map_err(|_e| {
             Error::new(
                 input.span(),
-                "a struct that implements the WeechatPlugin trait needs to be given",
+                "a struct that implements the Plugin trait needs to be given",
             )
         })?;
         input.parse::<syn::Token![,]>()?;
@@ -125,16 +125,16 @@ impl Parse for WeechatPluginInfo {
     }
 }
 
-/// Register a struct that implements the `WeechatPlugin` trait as a plugin.
+/// Register a struct that implements the `Plugin` trait as a Weechat plugin.
 ///
 /// This configures the Weechat init and end method as well as additonal plugin
 /// metadata.
 ///
 /// # Example
 /// ```
-/// # use weechat::{weechat_plugin, Args, Weechat, WeechatPlugin};
+/// # use weechat::{weechat_plugin, Args, Weechat, Plugin};
 /// # struct SamplePlugin;
-/// # impl WeechatPlugin for SamplePlugin {
+/// # impl Plugin for SamplePlugin {
 /// #    fn init(weechat: &Weechat, _args: Args) -> Result<Self, ()> {
 /// #        Ok(SamplePlugin)
 /// #    }
@@ -202,7 +202,7 @@ pub fn weechat_plugin(input: proc_macro::TokenStream) -> proc_macro::TokenStream
                 Weechat::init_from_ptr(plugin)
             };
             let args = Args::new(argc, argv);
-            match <#plugin as ::weechat::WeechatPlugin>::init(&weechat, args) {
+            match <#plugin as ::weechat::Plugin>::init(&weechat, args) {
                 Ok(p) => {
                     unsafe {
                         __PLUGIN = Some(p);

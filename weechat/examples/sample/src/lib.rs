@@ -8,7 +8,7 @@ use weechat::hooks::{
     BarItem, Command, CommandSettings, SignalData, SignalHook,
 };
 use weechat::{
-    weechat_plugin, Args, ReturnCode, Weechat, WeechatPlugin,
+    weechat_plugin, Args, ReturnCode, Weechat, Plugin,
 };
 
 struct SamplePlugin {
@@ -46,7 +46,7 @@ impl SamplePlugin {
     }
 }
 
-impl WeechatPlugin for SamplePlugin {
+impl Plugin for SamplePlugin {
     fn init(_: &Weechat, _args: Args) -> Result<Self, ()> {
         Weechat::print("Hello Rust!");
 
