@@ -167,24 +167,31 @@ pub fn weechat_plugin(input: proc_macro::TokenStream) -> proc_macro::TokenStream
 
     let result = quote! {
         #[no_mangle]
+        #[doc(hidden)]
         pub static weechat_plugin_api_version: [u8; weechat::weechat_sys::WEECHAT_PLUGIN_API_VERSION_LENGTH] =
             *weechat::weechat_sys::WEECHAT_PLUGIN_API_VERSION;
 
         #[no_mangle]
+        #[doc(hidden)]
         pub static weechat_plugin_name: [u8; #name_len] = *#name;
 
         #[no_mangle]
+        #[doc(hidden)]
         pub static weechat_plugin_author: [u8; #author_len] = *#author;
 
         #[no_mangle]
+        #[doc(hidden)]
         pub static weechat_plugin_description: [u8; #description_len] = *#description;
 
         #[no_mangle]
+        #[doc(hidden)]
         pub static weechat_plugin_version: [u8; #version_len] = *#version;
 
         #[no_mangle]
+        #[doc(hidden)]
         pub static weechat_plugin_license: [u8; #license_len] = *#license;
 
+        #[doc(hidden)]
         static mut __PLUGIN: Option<#plugin> = None;
 
         #[no_mangle]
@@ -193,6 +200,7 @@ pub fn weechat_plugin(input: proc_macro::TokenStream) -> proc_macro::TokenStream
         /// # Safety
         /// This function needs to be an extern C function and it can't be
         /// mangled, otherwise Weechat will not find the symbol.
+        #[doc(hidden)]
         pub unsafe extern "C" fn weechat_plugin_init(
             plugin: *mut weechat::weechat_sys::t_weechat_plugin,
             argc: weechat::libc::c_int,
@@ -215,12 +223,13 @@ pub fn weechat_plugin(input: proc_macro::TokenStream) -> proc_macro::TokenStream
             }
         }
 
-        #[no_mangle]
         /// This function is called when plugin is unloaded by WeeChat.
         ///
         /// # Safety
         /// This function needs to be an extern C function and it can't be
         /// mangled, otherwise Weechat will not find the symbol.
+        #[no_mangle]
+        #[doc(hidden)]
         pub unsafe extern "C" fn weechat_plugin_end(
             _plugin: *mut weechat::weechat_sys::t_weechat_plugin
         ) -> weechat::libc::c_int {
@@ -232,6 +241,12 @@ pub fn weechat_plugin(input: proc_macro::TokenStream) -> proc_macro::TokenStream
         }
 
         impl #plugin {
+            /// Get a reference to our created plugin.
+            ///
+            /// # Panic
+            ///
+            /// Panics if this is called before the plugin `init()` method is
+            /// done.
             pub fn get() -> &'static mut #plugin {
                 unsafe {
                     match &mut __PLUGIN {
