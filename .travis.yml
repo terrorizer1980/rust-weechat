@@ -20,7 +20,7 @@ jobs:
       script:
           - cargo build --all-features
           - cargo test --all-features
-          - cd weechat-rs/examples
+          - cd weechat/examples
           - cd go
           - cargo build
           - cd ..
