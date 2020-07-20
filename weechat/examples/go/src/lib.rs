@@ -482,7 +482,7 @@ impl CommandRunCallback for InnerGo {
             }
             "/input complete_next" => {
                 let mut state = self.running_state.borrow_mut();
-                if let Some(state) = state.as_mut(){
+                if let Some(state) = state.as_mut() {
                     state.buffers.select_next_buffer();
                 }
                 Weechat::hook_signal_send("input_text_changed", "");

@@ -59,10 +59,9 @@ fn main() {
                 let path = PathBuf::from(file)
                     .canonicalize()
                     .expect("Can't canonicalize path");
-                build(path.to_str().unwrap_or_default()).unwrap_or_else(|_| panic!(
-                    "Unable to generate bindings with the provided {:?}",
-                    path
-                ))
+                build(path.to_str().unwrap_or_default()).unwrap_or_else(|_| {
+                    panic!("Unable to generate bindings with the provided {:?}", path)
+                })
             }
             Err(_) => {
                 let bindings = build("src/wrapper.h");
