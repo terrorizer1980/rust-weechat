@@ -281,7 +281,7 @@ impl CommandCallback for RipgrepCommand {
 
 impl Plugin for Ripgrep {
     fn init(_: &Weechat, _args: Args) -> Result<Self, ()> {
-        let mut config = Weechat::config_new("ripgrep")?;
+        let mut config = Config::new("ripgrep")?;
 
         {
             let section_settings = ConfigSectionSettings::new("main");
