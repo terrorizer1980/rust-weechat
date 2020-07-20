@@ -45,20 +45,44 @@ macro_rules! option_create {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! option_getter {
-    ($option_type:ident, $option_name:ident, $output_type:ty) => {
+    ($option_type:ident, $name:ident, $string_name:expr, $description:literal, $output_type:ty) => {
         $crate::paste::item! {
             #[allow(dead_code)]
-            pub fn [<$option_name>](&self) -> $output_type {
-                let option_name = stringify!($option_name);
-
-                if let ConfigOption::[<$option_type>](o) = self.0.search_option(option_name)
+            #[doc = "Get the value for the `"]
+            #[doc = $string_name]
+            #[doc = "` option.\n"]
+            #[doc = $description]
+            pub fn [<$name>](&self) -> $output_type {
+                if let ConfigOption::[<$option_type>](o) = self.0.search_option($string_name)
                     .expect(&format!("Couldn't find option {} in section {}",
-                                     option_name, self.0.name()))
+                                     $string_name, self.0.name()))
                 {
                     $output_type::from(o.value())
                 } else {
                     panic!("Incorect option type for option {} in section {}",
-                           option_name, self.0.name());
+                           $string_name, self.0.name());
+                }
+            }
+        }
+    };
+
+    (EvaluatedString, $name:ident, $string_name:expr, $description:literal) => {
+        $crate::paste::item! {
+            pub fn [<$name>](&self) -> String {
+                let option = self.0.search_option($string_name)
+                    .expect(&format!("Couldn't find option {} in section {}",
+                                     $string_name, self.0.name()));
+
+                if let ConfigOption::String(o) = option {
+                    Weechat::eval_string_expression(&o.value())
+                        .expect(&format!(
+                            "Can't evaluate string expression for option {} in section {}",
+                            $string_name,
+                            self.0.name())
+                        )
+                } else {
+                    panic!("Incorect option type for option {} in section {}",
+                           $string_name, self.0.name());
                 }
             }
         }
@@ -68,55 +92,34 @@ macro_rules! option_getter {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! option {
-    (String, $option_name:ident, $($args:tt)*) => {
-        $crate::option_create!(String, String, $option_name, $($args)*);
-        $crate::option_getter!(String, $option_name, String);
+    (String, $name:ident, $description:literal, $($args:tt)*) => {
+        $crate::option_create!(String, String, $name, $description, $($args)*);
+        $crate::option_getter!(String, $name, stringify!($name), $description, String);
     };
 
-    (Color, $option_name:ident, $($args:tt)*) => {
-        $crate::option_create!(Color, Color, $option_name, $($args)*);
-        $crate::option_getter!(Color, $option_name, String);
+    (Color, $name:ident, $description:literal, $($args:tt)*) => {
+        $crate::option_create!(Color, Color, $name, $description, $($args)*);
+        $crate::option_getter!(Color, $name, stringify!($name), $description, String);
     };
 
-    (bool, $option_name:ident, $($args:tt)*) => {
-        $crate::option_create!(Boolean, Boolean, $option_name, $($args)*);
-        $crate::option_getter!(Boolean, $option_name, bool);
+    (bool, $name:ident, $description:literal, $($args:tt)*) => {
+        $crate::option_create!(Boolean, Boolean, $name, $description, $($args)*);
+        $crate::option_getter!(Boolean, $name, stringify!($name), $description, bool);
     };
 
-    (Integer, $option_name:ident, $($args:tt)*) => {
-        $crate::option_create!(Integer, Integer, $option_name, $($args)*);
-        $crate::option_getter!(Integer, $option_name, i64);
+    (Integer, $name:ident, $description:literal, $($args:tt)*) => {
+        $crate::option_create!(Integer, Integer, $name, $description, $($args)*);
+        $crate::option_getter!(Integer, $name, stringify!($name), $description, i64);
     };
 
-    (Enum, $option_name:ident, $description:literal, $out_type:ty $(,)?) => {
-        $crate::option_create!(Enum, Integer, $option_name, $description, $out_type);
-        $crate::option_getter!(Integer, $option_name, $out_type);
+    (Enum, $name:ident, $description:literal, $out_type:ty $(,)?) => {
+        $crate::option_create!(Enum, Integer, $name, $description, $out_type);
+        $crate::option_getter!(Integer, $name, stringify!($name), $description, $out_type);
     };
 
-    (EvaluatedString, $option_name:ident, $($args:tt)*) => {
-        $crate::option_create!(String, String, $option_name, $($args)*);
-
-        $crate::paste::item! {
-            pub fn [<$option_name>](&self) -> String {
-                let option_name = stringify!($option_name);
-
-                let option = self.0.search_option(option_name)
-                    .expect(&format!("Couldn't find option {} in section {}",
-                                     option_name, self.0.name()));
-
-                if let ConfigOption::String(o) = option {
-                    Weechat::eval_string_expression(&o.value())
-                        .expect(&format!(
-                            "Can't evaluate string expression for option {} in section {}",
-                            option_name,
-                            self.0.name())
-                        )
-                } else {
-                    panic!("Incorect option type for option {} in section {}",
-                           option_name, self.0.name());
-                }
-            }
-        }
+    (EvaluatedString, $name:ident, $description:literal, $($args:tt)*) => {
+        $crate::option_create!(String, String, $name, $description, $($args)*);
+        $crate::option_getter!(EvaluatedString, $name, stringify!($name), $description);
     };
 }
 
@@ -128,7 +131,7 @@ macro_rules! section {
             pub struct [<$section:camel Section>]<'a>(SectionHandle<'a>);
 
             impl<'a> [<$section:camel Section>]<'a> {
-                pub fn create(config: &mut Config) {
+                fn create(config: &mut Config) {
                     let section_settings = ConfigSectionSettings::new(stringify!($section));
 
                     let mut $section = config.new_section(section_settings)
@@ -137,7 +140,7 @@ macro_rules! section {
                     [<$section:camel Section>]::create_options(&mut $section);
                 }
 
-                pub fn create_options(section: &mut SectionHandleMut) {
+                fn create_options(section: &mut SectionHandleMut) {
                     $(
                         [<$section:camel Section>]::[<create_option_ $option_name>](section);
                     )*
@@ -149,6 +152,24 @@ macro_rules! section {
             }
         }
     }
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! section_getter {
+    ($section:ident, $section_name:expr) => {
+        $crate::paste::item! {
+            #[doc = "Get the `"]
+            #[doc = $section_name]
+            #[doc = "` section."]
+            pub fn $section(&self) -> [<$section:camel Section>] {
+                let section = self.0.search_section($section_name)
+                    .expect(&format!("Couldn't find section {}", $section_name));
+
+                $crate::paste::item! { [<$section:camel Section>](section) }
+            }
+        }
+    };
 }
 
 /// Declare a Weechat configuration file.
@@ -276,6 +297,7 @@ macro_rules! config {
             SectionHandle, SectionHandleMut, StringOptionSettings,
             ConfigOption, ConfigSection, ConfigSectionSettings,
             BooleanOptionSettings, IntegerOptionSettings, ColorOptionSettings,
+            ConfigReloadCallback,
         };
         pub struct Config(weechat::config::Config);
 
@@ -294,14 +316,33 @@ macro_rules! config {
         }
 
         impl Config {
-            fn new() -> Result<Self, ()> {
-                let config = Weechat::config_new($config_name)?;
+            /// Create a new Weechat configuration file, returns a `Config` object.
+            /// The configuration file is freed when the `Config` object is dropped.
+            pub fn new() -> Result<Self, ()> {
+                let config = weechat::config::Config::new($config_name)?;
                 let mut config = Config(config);
 
                 config.create_sections();
 
                 Ok(config)
             }
+
+            /// Create a new Weechat configuration file with the given reload
+            /// callback.
+            pub fn new_with_callback(
+                reload_callback: impl ConfigReloadCallback,
+            ) -> Result<Self, ()> {
+                let config = weechat::config::Config::new_with_callback(
+                    $config_name,
+                    reload_callback
+                )?;
+                let mut config = Config(config);
+
+                config.create_sections();
+
+                Ok(config)
+            }
+
 
             $crate::paste::item! {
                 fn create_sections(&mut self) {
@@ -311,18 +352,9 @@ macro_rules! config {
                 }
             }
 
-            $crate::paste::item! {
-                $(
-                    #[allow(dead_code)]
-                    pub fn $section(&self) -> [<$section:camel Section>] {
-                        let section_name = stringify!($section);
-                        let section = self.0.search_section(section_name)
-                            .expect(&format!("Couldn't find section {}", section_name));
-
-                        $crate::paste::item! { [<$section:camel Section>](section) }
-                    }
-                )*
-            }
+            $(
+                $crate::section_getter!($section, stringify!($section));
+            )*
         }
 
         $(

@@ -95,6 +95,97 @@ impl<T: FnMut(&Weechat, &Conf) + 'static> ConfigReloadCallback for T {
 }
 
 impl Weechat {
+    pub(crate) fn config_option_get_string(
+        &self,
+        pointer: *mut t_config_option,
+        property: &str,
+    ) -> Option<Cow<str>> {
+        let get_string = self.get().config_option_get_string.unwrap();
+        let property = LossyCString::new(property);
+
+        unsafe {
+            let string = get_string(pointer, property.as_ptr());
+            if string.is_null() {
+                None
+            } else {
+                Some(CStr::from_ptr(string).to_string_lossy())
+            }
+        }
+    }
+
+    /// Search an option with a full name.
+    /// # Arguments
+    ///
+    /// * `option_name` - The full name of the option that should be searched for
+    /// (format: "file.section.option").
+    pub fn config_get(&self, option_name: &str) -> Option<ConfigOption> {
+        let weechat = Weechat::from_ptr(self.ptr);
+        let config_get = weechat.get().config_get.unwrap();
+        let name = LossyCString::new(option_name);
+
+        let ptr = unsafe { config_get(name.as_ptr()) };
+
+        if ptr.is_null() {
+            return None;
+        }
+
+        let option_type = weechat.config_option_get_string(ptr, "type").unwrap();
+
+        Some(Config::option_from_type_and_ptr(
+            self.ptr,
+            ptr,
+            option_type.as_ref(),
+        ))
+    }
+
+    /// Get value of a plugin option
+    pub fn get_plugin_option(&self, option: &str) -> Option<Cow<str>> {
+        let config_get_plugin = self.get().config_get_plugin.unwrap();
+
+        let option_name = LossyCString::new(option);
+
+        unsafe {
+            let option = config_get_plugin(self.ptr, option_name.as_ptr());
+            if option.is_null() {
+                None
+            } else {
+                Some(CStr::from_ptr(option).to_string_lossy())
+            }
+        }
+    }
+
+    /// Set the value of a plugin option
+    pub fn set_plugin_option(&self, option: &str, value: &str) -> OptionChanged {
+        let config_set_plugin = self.get().config_set_plugin.unwrap();
+
+        let option_name = LossyCString::new(option);
+        let value = LossyCString::new(value);
+
+        unsafe {
+            let result = config_set_plugin(self.ptr, option_name.as_ptr(), value.as_ptr());
+
+            OptionChanged::from_int(result as i32)
+        }
+    }
+}
+
+impl Drop for Config {
+    fn drop(&mut self) {
+        let weechat = Weechat::from_ptr(self.inner.weechat_ptr);
+        let config_free = weechat.get().config_free.unwrap();
+
+        // Drop the sections first.
+        self.sections.clear();
+
+        unsafe {
+            // Now drop the config.
+            Box::from_raw(self._config_data);
+            config_free(self.inner.ptr)
+        };
+    }
+}
+
+impl Config {
     /// Create a new Weechat configuration file, returns a `Config` object.
     /// The configuration file is freed when the `Config` object is dropped.
     ///
@@ -104,8 +195,8 @@ impl Weechat {
     /// # Panics
     ///
     /// Panics if the method is not called from the main Weechat thread.
-    pub fn config_new(name: &str) -> Result<Config, ()> {
-        Weechat::config_new_helper(name, None)
+    pub fn new(name: &str) -> Result<Config, ()> {
+        Config::config_new_helper(name, None)
     }
 
     /// Create a new Weechat configuration file, returns a `Config` object.
@@ -122,9 +213,9 @@ impl Weechat {
     ///
     /// ```no_run
     /// use weechat::Weechat;
-    /// use weechat::config::Conf;
+    /// use weechat::config::{Conf, Config};
     ///
-    /// let config = Weechat::config_new_with_callback("server_buffer",
+    /// let config = Config::new_with_callback("server_buffer",
     ///     |weechat: &Weechat, conf: &Conf| {
     ///         Weechat::print("Config was reloaded");
     ///     }
@@ -134,12 +225,12 @@ impl Weechat {
     /// # Panics
     ///
     /// Panics if the method is not called from the main Weechat thread.
-    pub fn config_new_with_callback(
+    pub fn new_with_callback(
         name: &str,
         reload_callback: impl ConfigReloadCallback,
     ) -> Result<Config, ()> {
         let callback = Box::new(reload_callback);
-        Weechat::config_new_helper(name, Some(callback))
+        Config::config_new_helper(name, Some(callback))
     }
 
     fn config_new_helper(
@@ -212,24 +303,6 @@ impl Weechat {
         })
     }
 
-    pub(crate) fn config_option_get_string(
-        &self,
-        pointer: *mut t_config_option,
-        property: &str,
-    ) -> Option<Cow<str>> {
-        let get_string = self.get().config_option_get_string.unwrap();
-        let property = LossyCString::new(property);
-
-        unsafe {
-            let string = get_string(pointer, property.as_ptr());
-            if string.is_null() {
-                None
-            } else {
-                Some(CStr::from_ptr(string).to_string_lossy())
-            }
-        }
-    }
-
     pub(crate) fn option_from_type_and_ptr<'a>(
         weechat_ptr: *mut t_weechat_plugin,
         option_ptr: *mut t_config_option,
@@ -259,80 +332,6 @@ impl Weechat {
             _ => unreachable!(),
         }
     }
-
-    /// Search an option with a full name.
-    /// # Arguments
-    ///
-    /// * `option_name` - The full name of the option that should be searched for
-    /// (format: "file.section.option").
-    pub fn config_get(&self, option_name: &str) -> Option<ConfigOption> {
-        let weechat = Weechat::from_ptr(self.ptr);
-        let config_get = weechat.get().config_get.unwrap();
-        let name = LossyCString::new(option_name);
-
-        let ptr = unsafe { config_get(name.as_ptr()) };
-
-        if ptr.is_null() {
-            return None;
-        }
-
-        let option_type = weechat.config_option_get_string(ptr, "type").unwrap();
-
-        Some(Weechat::option_from_type_and_ptr(
-            self.ptr,
-            ptr,
-            option_type.as_ref(),
-        ))
-    }
-
-    /// Get value of a plugin option
-    pub fn get_plugin_option(&self, option: &str) -> Option<Cow<str>> {
-        let config_get_plugin = self.get().config_get_plugin.unwrap();
-
-        let option_name = LossyCString::new(option);
-
-        unsafe {
-            let option = config_get_plugin(self.ptr, option_name.as_ptr());
-            if option.is_null() {
-                None
-            } else {
-                Some(CStr::from_ptr(option).to_string_lossy())
-            }
-        }
-    }
-
-    /// Set the value of a plugin option
-    pub fn set_plugin_option(&self, option: &str, value: &str) -> OptionChanged {
-        let config_set_plugin = self.get().config_set_plugin.unwrap();
-
-        let option_name = LossyCString::new(option);
-        let value = LossyCString::new(value);
-
-        unsafe {
-            let result = config_set_plugin(self.ptr, option_name.as_ptr(), value.as_ptr());
-
-            OptionChanged::from_int(result as i32)
-        }
-    }
-}
-
-impl Drop for Config {
-    fn drop(&mut self) {
-        let weechat = Weechat::from_ptr(self.inner.weechat_ptr);
-        let config_free = weechat.get().config_free.unwrap();
-
-        // Drop the sections first.
-        self.sections.clear();
-
-        unsafe {
-            // Now drop the config.
-            Box::from_raw(self._config_data);
-            config_free(self.inner.ptr)
-        };
-    }
-}
-
-impl Config {
     fn return_value_to_error(return_value: c_int) -> std::io::Result<()> {
         match return_value {
             weechat_sys::WEECHAT_CONFIG_READ_OK => Ok(()),

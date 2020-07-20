@@ -14,7 +14,7 @@ use crate::config::config_options::CheckCB;
 use crate::config::config_options::{OptionPointers, OptionType};
 use crate::config::{
     BaseConfigOption, BooleanOption, BooleanOptionSettings, ColorOption, ColorOptionSettings, Conf,
-    ConfigOptions, IntegerOption, IntegerOptionSettings, OptionChanged, StringOption,
+    Config, ConfigOptions, IntegerOption, IntegerOptionSettings, OptionChanged, StringOption,
     StringOptionSettings,
 };
 use crate::{LossyCString, Weechat};
@@ -474,7 +474,7 @@ impl ConfigSection {
 
         let option_type = weechat.config_option_get_string(ptr, "type").unwrap();
 
-        Some(Weechat::option_from_type_and_ptr(
+        Some(Config::option_from_type_and_ptr(
             self.weechat_ptr,
             ptr,
             option_type.as_ref(),

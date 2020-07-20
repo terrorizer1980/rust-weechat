@@ -4,9 +4,9 @@
 //!
 //! ```no_run
 //! use weechat::Weechat;
-//! use weechat::config::{BooleanOptionSettings, ConfigSectionSettings, BooleanOption};
+//! use weechat::config::{Config, BooleanOptionSettings, ConfigSectionSettings, BooleanOption};
 //!
-//! let mut config = Weechat::config_new("my_plugin")
+//! let mut config = Config::new("my_plugin")
 //!     .expect("Can't create new config");
 //!
 //! let server_section_options = ConfigSectionSettings::new("look");
