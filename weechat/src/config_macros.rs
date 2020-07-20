@@ -163,8 +163,6 @@ macro_rules! section {
 /// The config still needs to be created in the `init()` method of the plugin
 /// using `Config::new()`.
 ///
-/// This feature requires Rust nightly.
-///
 /// # Example
 /// ```
 /// # use weechat::{Weechat, config};
