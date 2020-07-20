@@ -77,4 +77,4 @@ variable, this environment variable takes a full path to the include file.
 
 [Weechat]: weechat.org/
 [API]: https://weechat.org/files/doc/stable/weechat_plugin_api.en.html
-[examples]: https://github.com/poljar/rust-weechat/tree/master/weechat/examples.
+[examples]: https://github.com/poljar/rust-weechat/tree/master/weechat/examples
