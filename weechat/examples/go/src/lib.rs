@@ -83,8 +83,8 @@ config!(
 );
 
 struct Go {
-    _command: Command,
-    _inner_go: InnerGo,
+    #[used]
+    command: Command,
 }
 
 #[derive(Clone)]
@@ -341,20 +341,8 @@ struct Hooks {
     window_command: CommandRun,
 }
 
-struct RunningState {
-    /// Hooks that are necessary to enable go-mode.
-    hooks: Hooks,
-    /// The input of the current buffer before we entered go-mode.
-    saved_input: InputState,
-    /// Our stored input while in go-mode.
-    last_input: String,
-    /// The current list of buffers we are presenting, will initially contain
-    /// all buffers but will get filtered down as we input patterns.
-    buffers: BufferList,
-}
-
-impl RunningState {
-    fn new(inner_go: &InnerGo, weechat: &Weechat, buffer: &Buffer) -> Self {
+impl Hooks {
+    fn new(inner_go: &InnerGo) -> Self {
         // Override our input command.
         let input_command = CommandRun::new("2000|/input *", inner_go.clone())
             .expect("Can't override input command");
@@ -380,19 +368,39 @@ impl RunningState {
         )
         .expect("Can't hook the input text modifier");
 
+        Hooks {
+            input_command,
+            buffer_command,
+            window_command,
+            modifier,
+        }
+    }
+}
+
+struct RunningState {
+    /// Hooks that are necessary to enable go-mode.
+    hooks: Hooks,
+    /// The input of the current buffer before we entered go-mode.
+    saved_input: InputState,
+    /// Our stored input while in go-mode.
+    last_input: String,
+    /// The current list of buffers we are presenting, will initially contain
+    /// all buffers but will get filtered down as we input patterns.
+    buffers: BufferList,
+}
+
+impl RunningState {
+    fn new(inner_go: &InnerGo, weechat: &Weechat, buffer: &Buffer) -> Self {
         RunningState {
-            hooks: Hooks {
-                input_command,
-                buffer_command,
-                window_command,
-                modifier,
-            },
+            hooks: Hooks::new(inner_go),
             last_input: "".to_owned(),
             saved_input: InputState::from(buffer),
             buffers: BufferList::new(weechat, inner_go.config.clone()),
         }
     }
 
+    /// Stop the interactive go-mode and optionally switch to the currently
+    /// selected buffer.
     fn stop(self, weechat: &Weechat, switch_to_buffer: bool) {
         let buffers = self.buffers;
         let saved_input = self.saved_input;
@@ -411,6 +419,7 @@ impl RunningState {
     }
 }
 
+/// Callback for our modifier hook.
 impl ModifierCallback for InnerGo {
     fn callback(
         &mut self,
@@ -475,6 +484,7 @@ impl ModifierCallback for InnerGo {
     }
 }
 
+/// Callback for our `/input` command override.
 impl CommandRunCallback for InnerGo {
     fn callback(
         &mut self,
@@ -512,21 +522,22 @@ impl CommandRunCallback for InnerGo {
     }
 }
 
+/// Callback for our `/go` command.
 impl CommandCallback for InnerGo {
     fn callback(
         &mut self,
         weechat: &Weechat,
         buffer: &Buffer,
-        mut arguments: ArgsWeechat,
+        mut arguments: Args,
     ) {
         if self.running_state.borrow().is_none() {
             // Skip our "/go" command in the argument list.
             arguments.next();
             let mut arguments = arguments.peekable();
 
-            // If there is an argument use rest of the arguments as the pattern
-            // to find a buffer and switch to one if one is found, otherwise
-            // start the interactive go-mode.
+            // If there is an argument use the rest of the arguments as the
+            // pattern to find a buffer and switch to one if one is found,
+            // otherwise start the interactive go-mode.
             if arguments.peek().is_some() {
                 let pattern = arguments.collect::<Vec<String>>().join(" ");
                 BufferList::new(weechat, self.config.clone())
@@ -535,7 +546,7 @@ impl CommandCallback for InnerGo {
             } else {
                 *self.running_state.borrow_mut() =
                     Some(RunningState::new(self, weechat, buffer));
-                buffer.set_input("")
+                buffer.set_input("");
             }
         } else {
             self.stop(weechat, false);
@@ -574,12 +585,9 @@ impl WeechatPlugin for Go {
                 You can use tab completion to select the next/previous buffer \
                 in the interactive go-mode.",
             );
-        let command = Command::new(command_settings, inner_go.clone())?;
+        let command = Command::new(command_settings, inner_go)?;
 
-        Ok(Go {
-            _command: command,
-            _inner_go: inner_go,
-        })
+        Ok(Go { command })
     }
 }
 
