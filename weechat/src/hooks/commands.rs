@@ -7,7 +7,7 @@ use std::ptr;
 use weechat_sys::{t_gui_buffer, t_weechat_plugin, WEECHAT_RC_OK};
 
 use crate::buffer::Buffer;
-use crate::{ArgsWeechat, LossyCString, ReturnCode, Weechat};
+use crate::{Args, LossyCString, ReturnCode, Weechat};
 
 use super::Hook;
 
@@ -33,11 +33,11 @@ pub trait CommandCallback {
     ///
     /// * `arguments` - The arguments that were passed to the command, this will
     ///     include the command as the first argument.
-    fn callback(&mut self, weechat: &Weechat, buffer: &Buffer, arguments: ArgsWeechat);
+    fn callback(&mut self, weechat: &Weechat, buffer: &Buffer, arguments: Args);
 }
 
-impl<T: FnMut(&Weechat, &Buffer, ArgsWeechat) + 'static> CommandCallback for T {
-    fn callback(&mut self, weechat: &Weechat, buffer: &Buffer, arguments: ArgsWeechat) {
+impl<T: FnMut(&Weechat, &Buffer, Args) + 'static> CommandCallback for T {
+    fn callback(&mut self, weechat: &Weechat, buffer: &Buffer, arguments: Args) {
         self(weechat, buffer, arguments)
     }
 }
@@ -262,7 +262,7 @@ impl Command {
     /// * `callback` - The callback that will be called if the command is run.
     ///
     /// ```no_run
-    /// # use weechat::{Weechat, ArgsWeechat};
+    /// # use weechat::{Weechat, Args};
     /// # use weechat::hooks::{Command, CommandSettings};
     /// # use weechat::buffer::{Buffer};
     /// let settings = CommandSettings::new("irc")
@@ -289,7 +289,7 @@ impl Command {
     ///
     /// let command = Command::new(
     ///     settings,
-    ///     |_: &Weechat, buffer: &Buffer, args: ArgsWeechat| {
+    ///     |_: &Weechat, buffer: &Buffer, args: Args| {
     ///         buffer.print(&format!("Command called with args {:?}", args));
     ///     }
     /// ).expect("Can't create command");
@@ -310,7 +310,7 @@ impl Command {
             let weechat = Weechat::from_ptr(hook_data.weechat_ptr);
             let buffer = weechat.buffer_from_ptr(buffer);
             let cb = &mut hook_data.callback;
-            let args = ArgsWeechat::new(argc, argv);
+            let args = Args::new(argc, argv);
 
             cb.callback(&weechat, &buffer, args);
 

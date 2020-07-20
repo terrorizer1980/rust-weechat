@@ -7,13 +7,13 @@
 //! ```no_run
 //! use weechat::{
 //!    buffer::Buffer,
-//!    weechat_plugin, ArgsWeechat, Weechat, WeechatPlugin,
+//!    weechat_plugin, Args, Weechat, WeechatPlugin,
 //! };
 //!
 //! struct HelloWorld;
 //!
 //! impl WeechatPlugin for HelloWorld {
-//!     fn init(_: &Weechat, _: ArgsWeechat) -> Result<Self, ()> {
+//!     fn init(_: &Weechat, _: Args) -> Result<Self, ()> {
 //!         Weechat::print("Hello from Rust");
 //!         Ok(Self)
 //!     }
@@ -24,12 +24,7 @@
 //!         Weechat::print("Bye from Rust");
 //!     }
 //! }
-//! ```
 //!
-//! The above plugin implementation still needs to be registered as a Weechat
-//! plugin:
-//!
-//! ```ignore
 //! weechat_plugin!(
 //!     HelloWorld,
 //!     name: "hello",
@@ -65,7 +60,7 @@ pub mod config;
 pub mod hooks;
 pub mod infolist;
 
-pub use crate::weechat::{ArgsWeechat, Weechat};
+pub use crate::weechat::{Args, Weechat};
 
 pub use libc;
 pub use weechat_macro::weechat_plugin;
@@ -88,7 +83,7 @@ pub trait WeechatPlugin: Sized {
     ///     duration of the init callback.
     ///
     /// * `args` - Arguments passed to the plugin when it is loaded.
-    fn init(weechat: &Weechat, args: ArgsWeechat) -> Result<Self, ()>;
+    fn init(weechat: &Weechat, args: Args) -> Result<Self, ()>;
 }
 
 #[cfg(feature = "async")]

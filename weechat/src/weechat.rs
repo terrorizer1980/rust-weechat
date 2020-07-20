@@ -18,12 +18,12 @@ use std::future::Future;
 
 /// An iterator over the arguments of a Weechat command, yielding a String value
 /// for each argument.
-pub struct ArgsWeechat {
+pub struct Args {
     iter: vec::IntoIter<String>,
 }
 
-impl ArgsWeechat {
-    /// Create an ArgsWeechat object from the underlying weechat C types.
+impl Args {
+    /// Create an Args object from the underlying weechat C types.
     /// Expects the strings in argv to be valid utf8, if not invalid UTF-8
     /// sequences are replaced with the replacement character.
     ///
@@ -33,7 +33,7 @@ impl ArgsWeechat {
     /// needs to be public because it's used in the macro expansion of the
     /// plugin init method.
     #[doc(hidden)]
-    pub fn new(argc: c_int, argv: *mut *mut c_char) -> ArgsWeechat {
+    pub fn new(argc: c_int, argv: *mut *mut c_char) -> Args {
         let argc = argc as isize;
         let args: Vec<String> = (0..argc)
             .map(|i| {
@@ -42,19 +42,19 @@ impl ArgsWeechat {
                 String::from_utf8_lossy(&cstr.to_bytes().to_vec()).to_string()
             })
             .collect();
-        ArgsWeechat {
+        Args {
             iter: args.into_iter(),
         }
     }
 }
 
-impl std::fmt::Debug for ArgsWeechat {
+impl std::fmt::Debug for Args {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_list().entries(self.iter.clone()).finish()
     }
 }
 
-impl Iterator for ArgsWeechat {
+impl Iterator for Args {
     type Item = String;
 
     fn next(&mut self) -> Option<String> {
@@ -66,13 +66,13 @@ impl Iterator for ArgsWeechat {
     }
 }
 
-impl ExactSizeIterator for ArgsWeechat {
+impl ExactSizeIterator for Args {
     fn len(&self) -> usize {
         self.iter.len()
     }
 }
 
-impl DoubleEndedIterator for ArgsWeechat {
+impl DoubleEndedIterator for Args {
     fn next_back(&mut self) -> Option<String> {
         self.iter.next_back()
     }

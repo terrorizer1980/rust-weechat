@@ -131,11 +131,11 @@ impl Parse for WeechatPluginInfo {
 /// metadata.
 ///
 /// # Example
-/// ```ignore
-/// # use weechat::{weechat_plugin, ArgsWeechat, Weechat, WeechatPlugin};
+/// ```
+/// # use weechat::{weechat_plugin, Args, Weechat, WeechatPlugin};
 /// # struct SamplePlugin;
 /// # impl WeechatPlugin for SamplePlugin {
-/// #    fn init(weechat: &Weechat, _args: ArgsWeechat) -> Result<Self, ()> {
+/// #    fn init(weechat: &Weechat, _args: Args) -> Result<Self, ()> {
 /// #        Ok(SamplePlugin)
 /// #    }
 /// # }
@@ -201,7 +201,7 @@ pub fn weechat_plugin(input: proc_macro::TokenStream) -> proc_macro::TokenStream
             let weechat = unsafe {
                 Weechat::init_from_ptr(plugin)
             };
-            let args = ArgsWeechat::new(argc, argv);
+            let args = Args::new(argc, argv);
             match <#plugin as ::weechat::WeechatPlugin>::init(&weechat, args) {
                 Ok(p) => {
                     unsafe {

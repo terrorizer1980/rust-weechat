@@ -8,7 +8,7 @@ use weechat::hooks::{
     BarItem, Command, CommandSettings, SignalData, SignalHook,
 };
 use weechat::{
-    weechat_plugin, ArgsWeechat, ReturnCode, Weechat, WeechatPlugin,
+    weechat_plugin, Args, ReturnCode, Weechat, WeechatPlugin,
 };
 
 struct SamplePlugin {
@@ -33,7 +33,7 @@ impl SamplePlugin {
         Ok(())
     }
 
-    fn rust_command_cb(_weechat: &Weechat, buffer: &Buffer, args: ArgsWeechat) {
+    fn rust_command_cb(_weechat: &Weechat, buffer: &Buffer, args: Args) {
         buffer.print("Hello world");
 
         for arg in args {
@@ -47,7 +47,7 @@ impl SamplePlugin {
 }
 
 impl WeechatPlugin for SamplePlugin {
-    fn init(_: &Weechat, _args: ArgsWeechat) -> Result<Self, ()> {
+    fn init(_: &Weechat, _args: Args) -> Result<Self, ()> {
         Weechat::print("Hello Rust!");
 
         let buffer_settings = BufferSettings::new("Test buffer")
