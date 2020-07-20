@@ -96,7 +96,7 @@ impl Plugin for SamplePlugin {
 
         let command = Command::new(sample_command, SamplePlugin::rust_command_cb);
 
-        let mut config = Weechat::config_new_with_callback(
+        let mut config = Config::new_with_callback(
             "rust_sample",
             |_weechat: &Weechat, _config: &Conf| {
                 Weechat::print("Reloaded config");
