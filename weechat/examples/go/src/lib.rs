@@ -271,10 +271,11 @@ impl BufferList {
     /// * `weechat` - The Weechat context that will allow us to find the buffer
     ///     object using our full name of the buffer.
     fn switch_to_selected_buffer(self, weechat: &Weechat) {
-        if let Some(buffer) = self.get_selected_buffer() {
-            if let Some(buffer) = weechat.buffer_search("==", &buffer.full_name) {
-                buffer.switch_to();
-            }
+        if let Some(buffer) = self
+            .get_selected_buffer()
+            .and_then(|buffer| weechat.buffer_search("==", &buffer.full_name))
+        {
+            buffer.switch_to();
         }
     }
 }
@@ -480,6 +481,7 @@ impl CommandRunCallback for InnerGo {
                 self.stop(weechat, true);
                 ReturnCode::OkEat
             }
+
             "/input complete_next" => {
                 let mut state = self.running_state.borrow_mut();
                 if let Some(state) = state.as_mut() {
@@ -489,6 +491,7 @@ impl CommandRunCallback for InnerGo {
 
                 ReturnCode::OkEat
             }
+
             "/input complete_previous" => {
                 let mut state = self.running_state.borrow_mut();
                 if let Some(state) = state.as_mut() {
@@ -498,6 +501,7 @@ impl CommandRunCallback for InnerGo {
 
                 ReturnCode::OkEat
             }
+
             _ => ReturnCode::Ok,
         }
     }
