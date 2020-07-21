@@ -21,7 +21,7 @@ pub use fd::{FdHook, FdHookCallback, FdHookMode};
 #[cfg(feature = "unsound")]
 pub use modifier::{ModifierCallback, ModifierData, ModifierHook};
 pub use signal::{SignalCallback, SignalData, SignalHook};
-pub use timer::TimerHook;
+pub use timer::{TimerHook, TimerCallback, RemainingCalls};
 
 use crate::Weechat;
 use weechat_sys::{t_hook, t_weechat_plugin};
