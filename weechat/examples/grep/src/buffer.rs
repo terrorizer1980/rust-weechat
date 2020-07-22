@@ -1,7 +1,7 @@
 use crate::RipgrepCommand;
 use std::path::Path;
 use std::time::Duration;
-use weechat::buffer::{BufferHandle, BufferBuilder};
+use weechat::buffer::{BufferBuilder, BufferHandle};
 use weechat::Weechat;
 
 pub struct GrepBuffer {
