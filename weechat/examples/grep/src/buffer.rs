@@ -1,7 +1,7 @@
 use crate::RipgrepCommand;
 use std::path::Path;
 use std::time::Duration;
-use weechat::buffer::{BufferHandle, BufferSettings};
+use weechat::buffer::{BufferHandle, BufferBuilder};
 use weechat::Weechat;
 
 pub struct GrepBuffer {
@@ -10,11 +10,12 @@ pub struct GrepBuffer {
 
 impl GrepBuffer {
     pub fn new(command: &RipgrepCommand) -> GrepBuffer {
-        let settings = BufferSettings::new("ripgrep")
+        let buffer_handle = BufferBuilder::new("ripgrep")
             .close_callback(command.clone())
-            .input_callback(command.clone());
+            .input_callback(command.clone())
+            .build()
+            .expect("Can't create ripgrep buffer");
 
-        let buffer_handle = Weechat::buffer_new(settings).unwrap();
         let buffer = buffer_handle.upgrade().unwrap();
 
         buffer.disable_nicklist();

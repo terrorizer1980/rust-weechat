@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use std::time::Instant;
-use weechat::buffer::{Buffer, BufferSettings, NickSettings};
+use weechat::buffer::{Buffer, BufferBuilder, NickSettings};
 use weechat::config::{
     BooleanOption, BooleanOptionSettings, Conf, Config, ConfigSectionSettings,
 };
@@ -48,12 +48,11 @@ impl Plugin for SamplePlugin {
     fn init(_: &Weechat, _args: Args) -> Result<Self, ()> {
         Weechat::print("Hello Rust!");
 
-        let buffer_settings = BufferSettings::new("Test buffer")
+        let buffer_handle = BufferBuilder::new("Test buffer")
             .input_callback(SamplePlugin::input_cb)
-            .close_callback(SamplePlugin::close_cb);
-
-        let buffer_handle =
-            Weechat::buffer_new(buffer_settings).expect("Can't create buffer");
+            .close_callback(SamplePlugin::close_cb)
+            .build()
+            .expect("Can't create buffer");
 
         let buffer = buffer_handle.upgrade().expect("Buffer already closed?");
 

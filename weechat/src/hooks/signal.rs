@@ -287,8 +287,9 @@ impl Weechat {
     ///
     /// ```no_run
     /// # use weechat::Weechat;
-    /// # use weechat::buffer::BufferSettings;
-    /// # let buffer_handle = Weechat::buffer_new(BufferSettings::new("test"))
+    /// # use weechat::buffer::BufferBuilder;
+    /// # let buffer_handle = BufferBuilder::new("test")
+    /// #    .build()
     /// #    .unwrap();
     /// # let buffer = buffer_handle.upgrade().unwrap();
     ///

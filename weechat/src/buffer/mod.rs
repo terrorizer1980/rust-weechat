@@ -202,29 +202,63 @@ impl<T: FnMut(BufferHandle, String) -> LocalBoxFuture<'static, ()> + 'static>
 #[cfg(feature = "async")]
 #[cfg_attr(feature = "docs", doc(cfg(r#async)))]
 /// Settings for the creation of a buffer.
-pub struct BufferSettingsAsync {
+pub struct BufferBuilderAsync {
     pub(crate) name: String,
     pub(crate) input_callback: Option<Box<dyn BufferInputCallbackAsync>>,
     pub(crate) close_callback: Option<Box<dyn BufferCloseCallback>>,
 }
 
 /// Settings for the creation of a buffer.
-pub struct BufferSettings {
+pub struct BufferBuilder {
     pub(crate) name: String,
     pub(crate) input_callback: Option<Box<dyn BufferInputCallback>>,
     pub(crate) close_callback: Option<Box<dyn BufferCloseCallback>>,
 }
 
 #[cfg(feature = "async")]
-impl BufferSettingsAsync {
+impl BufferBuilderAsync {
     /// Create new default buffer creation settings.
     ///
     /// # Arguments
     ///
     /// * `name` - The name of the new buffer. Needs to be unique across a
     /// plugin, otherwise the buffer creation will fail.
+    ///
+    /// Returns a Buffer if one has been created, otherwise an empty Error.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the method is not called from the main Weechat thread.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use futures::future::{FutureExt, LocalBoxFuture};
+    /// # use weechat::Weechat;
+    /// # use weechat::buffer::{BufferHandle, Buffer, BufferBuilderAsync};
+    /// fn input_cb(buffer: BufferHandle, input: String) -> LocalBoxFuture<'static, ()> {
+    ///     async move {
+    ///         let buffer = buffer.upgrade().unwrap();
+    ///         buffer.print(&input);
+    ///     }.boxed_local()
+    /// }
+    ///
+    /// let buffer_handle = BufferBuilderAsync::new("test_buffer")
+    ///     .input_callback(input_cb)
+    ///     .close_callback(|weechat: &Weechat, buffer: &Buffer| {
+    ///         Ok(())
+    /// })
+    ///     .build()
+    ///     .expect("Can't create new buffer");
+    ///
+    /// let buffer = buffer_handle
+    ///     .upgrade()
+    ///     .expect("Can't upgrade newly created buffer");
+    ///
+    /// buffer.enable_nicklist();
+    /// buffer.print("Hello world");
+    /// ```
     pub fn new(name: &str) -> Self {
-        BufferSettingsAsync {
+        BufferBuilderAsync {
             name: name.to_owned(),
             input_callback: None,
             close_callback: None,
@@ -252,17 +286,54 @@ impl BufferSettingsAsync {
         self.close_callback = Some(Box::new(callback));
         self
     }
+
+    /// Build the configured buffer.
+    pub fn build(self) -> Result<BufferHandle, ()> {
+        Weechat::buffer_new_with_async(self)
+    }
 }
 
-impl BufferSettings {
-    /// Create new default buffer creation settings.
+impl BufferBuilder {
+    /// Create new default buffer builder.
     ///
     /// # Arguments
     ///
     /// * `name` - The name of the new buffer. Needs to be unique across a
     /// plugin, otherwise the buffer creation will fail.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the method is not called from the main Weechat thread.
+    ///
+    /// Returns a Buffer if one has been created, otherwise an empty Error.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use std::borrow::Cow;
+    /// # use weechat::Weechat;
+    /// # use weechat::buffer::{Buffer, BufferHandle, BufferBuilder};
+    /// fn input_cb(weechat: &Weechat, buffer: &Buffer, input: Cow<str>) -> Result<(), ()> {
+    ///     buffer.print(&input);
+    ///     Ok(())
+    /// }
+    ///
+    /// let buffer_handle = BufferBuilder::new("test_buffer")
+    ///     .input_callback(input_cb)
+    ///     .close_callback(|weechat: &Weechat, buffer: &Buffer| {
+    ///         Ok(())
+    /// })
+    ///     .build()
+    ///     .expect("Can't create new buffer");
+    ///
+    /// let buffer = buffer_handle
+    ///     .upgrade()
+    ///     .expect("Can't upgrade newly created buffer");
+    ///
+    /// buffer.enable_nicklist();
+    /// buffer.print("Hello world");
+    /// ```
     pub fn new(name: &str) -> Self {
-        BufferSettings {
+        BufferBuilder {
             name: name.to_owned(),
             input_callback: None,
             close_callback: None,
@@ -288,6 +359,11 @@ impl BufferSettings {
     pub fn close_callback(mut self, callback: impl BufferCloseCallback + 'static) -> Self {
         self.close_callback = Some(Box::new(callback));
         self
+    }
+
+    /// Build the configured buffer.
+    pub fn build(self) -> Result<BufferHandle, ()> {
+        Weechat::buffer_new(self)
     }
 }
 
@@ -342,47 +418,9 @@ impl Weechat {
         }
     }
 
-    /// Create a new Weechat buffer with an async input callback.
-    ///
-    /// * `settings` - Settings for the new buffer.
-    ///
-    /// Returns a Buffer if one has been created, otherwise an empty Error.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the method is not called from the main Weechat thread.
-    ///
-    /// # Example
-    /// ```no_run
-    /// # use futures::future::{FutureExt, LocalBoxFuture};
-    /// # use weechat::Weechat;
-    /// # use weechat::buffer::{BufferHandle, Buffer, BufferSettingsAsync};
-    /// fn input_cb(buffer: BufferHandle, input: String) -> LocalBoxFuture<'static, ()> {
-    ///     async move {
-    ///         let buffer = buffer.upgrade().unwrap();
-    ///         buffer.print(&input);
-    ///     }.boxed_local()
-    /// }
-    ///
-    /// let buffer_settings = BufferSettingsAsync::new("test_buffer")
-    ///     .input_callback(input_cb)
-    ///     .close_callback(|weechat: &Weechat, buffer: &Buffer| {
-    ///         Ok(())
-    /// });
-    ///
-    /// let buffer_handle = Weechat::buffer_new_with_async(buffer_settings)
-    ///     .expect("Can't create new room buffer");
-    ///
-    /// let buffer = buffer_handle
-    ///     .upgrade()
-    ///     .expect("Can't upgrade newly created buffer");
-    ///
-    /// buffer.enable_nicklist();
-    /// buffer.print("Hello world");
-    /// ```
     #[cfg(feature = "async")]
     #[cfg_attr(feature = "docs", doc(cfg(r#async)))]
-    pub fn buffer_new_with_async(settings: BufferSettingsAsync) -> Result<BufferHandle, ()> {
+    fn buffer_new_with_async(settings: BufferBuilderAsync) -> Result<BufferHandle, ()> {
         unsafe extern "C" fn c_input_cb(
             pointer: *const c_void,
             _data: *mut c_void,
@@ -502,42 +540,7 @@ impl Weechat {
         })
     }
 
-    /// Create a new Weechat buffer
-    ///
-    /// * `settings` - Settings for the new buffer.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the method is not called from the main Weechat thread.
-    ///
-    /// Returns a Buffer if one has been created, otherwise an empty Error.
-    /// # Example
-    /// ```no_run
-    /// # use std::borrow::Cow;
-    /// # use weechat::Weechat;
-    /// # use weechat::buffer::{Buffer, BufferHandle, BufferSettings};
-    /// fn input_cb(weechat: &Weechat, buffer: &Buffer, input: Cow<str>) -> Result<(), ()> {
-    ///     buffer.print(&input);
-    ///     Ok(())
-    /// }
-    ///
-    /// let buffer_settings = BufferSettings::new("test_buffer")
-    ///     .input_callback(input_cb)
-    ///     .close_callback(|weechat: &Weechat, buffer: &Buffer| {
-    ///         Ok(())
-    /// });
-    ///
-    /// let buffer_handle = Weechat::buffer_new(buffer_settings)
-    ///     .expect("Can't create new room buffer");
-    ///
-    /// let buffer = buffer_handle
-    ///     .upgrade()
-    ///     .expect("Can't upgrade newly created buffer");
-    ///
-    /// buffer.enable_nicklist();
-    /// buffer.print("Hello world");
-    /// ```
-    pub fn buffer_new(settings: BufferSettings) -> Result<BufferHandle, ()> {
+    fn buffer_new(settings: BufferBuilder) -> Result<BufferHandle, ()> {
         unsafe extern "C" fn c_input_cb(
             pointer: *const c_void,
             _data: *mut c_void,
@@ -1158,8 +1161,9 @@ impl Buffer<'_> {
     ///
     /// ```no_run
     /// # use weechat::Weechat;
-    /// # use weechat::buffer::BufferSettings;
-    /// # let buffer_handle = Weechat::buffer_new(BufferSettings::new("test"))
+    /// # use weechat::buffer::BufferBuilder;
+    /// # let buffer_handle = BufferBuilder::new("test")
+    /// #    .build()
     /// #    .unwrap();
     /// # let buffer = buffer_handle.upgrade().unwrap();
     ///
@@ -1214,8 +1218,9 @@ impl Buffer<'_> {
     /// # Example
     /// ```no_run
     /// # use weechat::Weechat;
-    /// # use weechat::buffer::BufferSettings;
-    /// # let buffer_handle = Weechat::buffer_new(BufferSettings::new("test"))
+    /// # use weechat::buffer::BufferBuilder;
+    /// # let buffer_handle = BufferBuilder::new("test")
+    /// #    .build()
     /// #    .unwrap();
     /// # let buffer = buffer_handle.upgrade().unwrap();
     ///

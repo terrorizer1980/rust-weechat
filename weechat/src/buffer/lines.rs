@@ -245,8 +245,9 @@ impl<'a> BufferLine<'a> {
     /// # Example
     /// ```no_run
     /// # use weechat::Weechat;
-    /// # use weechat::buffer::{BufferSettings, LineData};
-    /// # let buffer_handle = Weechat::buffer_new(BufferSettings::new("test"))
+    /// # use weechat::buffer::{BufferBuilder, LineData};
+    /// # let buffer_handle = BufferBuilder::new("test")
+    /// #    .build()
     /// #    .unwrap();
     /// # let buffer = buffer_handle.upgrade().unwrap();
     /// # let mut lines = buffer.lines();
