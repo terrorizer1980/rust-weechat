@@ -1,13 +1,14 @@
 use libc::{c_char, c_int};
 use std::borrow::Cow;
 use std::ffi::CStr;
+use std::marker::PhantomData;
 use std::os::raw::c_void;
 use std::ptr;
 
 use weechat_sys::{t_gui_buffer, t_weechat_plugin};
 
 use super::Hook;
-use crate::buffer::Buffer;
+use crate::buffer::{Buffer, InnerBuffer, InnerBuffers};
 use crate::{LossyCString, ReturnCode, Weechat};
 
 /// Hook for a signal, the hook is removed when the object is dropped.
@@ -53,6 +54,20 @@ impl<'a> Into<SignalData<'a>> for i32 {
 impl<'a> Into<SignalData<'a>> for Buffer<'a> {
     fn into(self) -> SignalData<'a> {
         SignalData::Buffer(self)
+    }
+}
+
+impl<'a> Into<SignalData<'a>> for &'a Buffer<'a> {
+    fn into(self) -> SignalData<'a> {
+        let ptr = self.ptr();
+
+        SignalData::Buffer(Buffer {
+            inner: InnerBuffers::BorrowedBuffer(InnerBuffer {
+                ptr,
+                weechat: self.inner.weechat_ptr(),
+                weechat_phantom: PhantomData,
+            }),
+        })
     }
 }
 
@@ -292,9 +307,8 @@ impl Weechat {
     /// #    .build()
     /// #    .unwrap();
     /// # let buffer = buffer_handle.upgrade().unwrap();
-    ///
     /// // Fetch the chat history for the buffer.
-    /// Weechat::hook_signal_send("logger_backlog", buffer);
+    /// Weechat::hook_signal_send("logger_backlog", &buffer);
     ///
     /// // Signal that the input text changed.
     /// Weechat::hook_signal_send("input_text_changed", "");

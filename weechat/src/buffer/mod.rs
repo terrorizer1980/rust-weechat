@@ -40,6 +40,15 @@ pub(crate) enum InnerBuffers<'a> {
     OwnedBuffer(InnerOwnedBuffer<'a>),
 }
 
+impl<'a> InnerBuffers<'a> {
+    pub(crate) fn weechat_ptr(&self) -> *mut t_weechat_plugin {
+        match self {
+            InnerBuffers::BorrowedBuffer(b) => b.weechat,
+            InnerBuffers::OwnedBuffer(b) => b.weechat,
+        }
+    }
+}
+
 pub(crate) struct InnerOwnedBuffer<'a> {
     pub(crate) weechat: *mut t_weechat_plugin,
     pub(crate) buffer_handle: &'a BufferHandle,
