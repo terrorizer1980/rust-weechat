@@ -201,14 +201,14 @@ impl<T: FnMut(BufferHandle, String) -> LocalBoxFuture<'static, ()> + 'static>
 
 #[cfg(feature = "async")]
 #[cfg_attr(feature = "docs", doc(cfg(r#async)))]
-/// Settings for the creation of a buffer.
+/// Builder for the creation of a buffer.
 pub struct BufferBuilderAsync {
     pub(crate) name: String,
     pub(crate) input_callback: Option<Box<dyn BufferInputCallbackAsync>>,
     pub(crate) close_callback: Option<Box<dyn BufferCloseCallback>>,
 }
 
-/// Settings for the creation of a buffer.
+/// Builder for the creation of a buffer.
 pub struct BufferBuilder {
     pub(crate) name: String,
     pub(crate) input_callback: Option<Box<dyn BufferInputCallback>>,
@@ -217,7 +217,8 @@ pub struct BufferBuilder {
 
 #[cfg(feature = "async")]
 impl BufferBuilderAsync {
-    /// Create new default buffer creation settings.
+    /// Create a new buffer builder that will create a buffer with an async
+    /// input callback.
     ///
     /// # Arguments
     ///
@@ -294,7 +295,8 @@ impl BufferBuilderAsync {
 }
 
 impl BufferBuilder {
-    /// Create new default buffer builder.
+    /// Create a new buffer builder that will create a buffer with an sync input
+    /// callback.
     ///
     /// # Arguments
     ///
@@ -420,7 +422,7 @@ impl Weechat {
 
     #[cfg(feature = "async")]
     #[cfg_attr(feature = "docs", doc(cfg(r#async)))]
-    fn buffer_new_with_async(settings: BufferBuilderAsync) -> Result<BufferHandle, ()> {
+    fn buffer_new_with_async(builder: BufferBuilderAsync) -> Result<BufferHandle, ()> {
         unsafe extern "C" fn c_input_cb(
             pointer: *const c_void,
             _data: *mut c_void,
@@ -487,7 +489,7 @@ impl Weechat {
         Weechat::check_thread();
         let weechat = unsafe { Weechat::weechat() };
 
-        let c_input_cb: Option<WeechatInputCbT> = match settings.input_callback {
+        let c_input_cb: Option<WeechatInputCbT> = match builder.input_callback {
             Some(_) => Some(c_input_cb),
             None => None,
         };
@@ -497,15 +499,15 @@ impl Weechat {
         // the buffer close callback.
         let buffer_pointers = Box::new(BufferPointersAsync {
             weechat: weechat.ptr,
-            input_cb: settings.input_callback,
-            close_cb: settings.close_callback,
+            input_cb: builder.input_callback,
+            close_cb: builder.close_callback,
             buffer_cell: None,
         });
 
         let buffer_pointers_ref = Box::leak(buffer_pointers);
 
         let buf_new = weechat.get().buffer_new.unwrap();
-        let c_name = LossyCString::new(settings.name);
+        let c_name = LossyCString::new(builder.name);
 
         let buf_ptr = unsafe {
             buf_new(
@@ -540,7 +542,7 @@ impl Weechat {
         })
     }
 
-    fn buffer_new(settings: BufferBuilder) -> Result<BufferHandle, ()> {
+    fn buffer_new(builder: BufferBuilder) -> Result<BufferHandle, ()> {
         unsafe extern "C" fn c_input_cb(
             pointer: *const c_void,
             _data: *mut c_void,
@@ -601,7 +603,7 @@ impl Weechat {
         Weechat::check_thread();
         let weechat = unsafe { Weechat::weechat() };
 
-        let c_input_cb: Option<WeechatInputCbT> = match settings.input_callback {
+        let c_input_cb: Option<WeechatInputCbT> = match builder.input_callback {
             Some(_) => Some(c_input_cb),
             None => None,
         };
@@ -611,14 +613,14 @@ impl Weechat {
         // the buffer close callback.
         let buffer_pointers = Box::new(BufferPointers {
             weechat: weechat.ptr,
-            input_cb: settings.input_callback,
-            close_cb: settings.close_callback,
+            input_cb: builder.input_callback,
+            close_cb: builder.close_callback,
             buffer_cell: None,
         });
         let buffer_pointers_ref = Box::leak(buffer_pointers);
 
         let buf_new = weechat.get().buffer_new.unwrap();
-        let c_name = LossyCString::new(settings.name);
+        let c_name = LossyCString::new(builder.name);
 
         let buf_ptr = unsafe {
             buf_new(
