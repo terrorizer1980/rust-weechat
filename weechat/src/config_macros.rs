@@ -3,20 +3,20 @@
 macro_rules! option_settings {
     ($option_type:ident, $option_name:ident, $description:literal, $default:literal $(,)?) => {
         $crate::paste::expr! {
-            [<$option_type OptionSettings>]::new(stringify!($option_name))
+            weechat::config::[<$option_type OptionSettings>]::new(stringify!($option_name))
                 .description($description)
                 .default_value($default)
         }
     };
     (Integer, $option_name:ident, $description:literal, $default:literal, $min:literal..$max:literal $(,)?) => {
-        IntegerOptionSettings::new(stringify!($option_name))
+        weechat::config::IntegerOptionSettings::new(stringify!($option_name))
             .description($description)
             .default_value($default)
             .min($min)
             .max($max)
     };
     (Enum, $option_name:ident, $description:literal, $out_type:ty $(,)?) => {
-        IntegerOptionSettings::new(stringify!($option_name))
+        weechat::config::IntegerOptionSettings::new(stringify!($option_name))
             .description($description)
             .default_value(<$out_type>::default() as i32)
             .string_values(
@@ -33,7 +33,7 @@ macro_rules! option_settings {
 macro_rules! option_create {
     ($option_type:ident, $option_weechat_type:ident, $option_name:ident, $($args:tt)*) => {
         $crate::paste::item! {
-            fn [<create_option_ $option_name>](section: &mut SectionHandleMut) {
+            fn [<create_option_ $option_name>](section: &mut weechat::config::SectionHandleMut) {
                 let option_settings = $crate::option_settings!($option_type, $option_name, $($args)*);
                 section.[<new_ $option_weechat_type:lower _option>](option_settings)
                     .expect(&format!("Can't create option {}", stringify!($option_name)));
@@ -53,7 +53,7 @@ macro_rules! option_getter {
             #[doc = "` option.\n"]
             #[doc = $description]
             pub fn [<$name>](&self) -> $output_type {
-                if let ConfigOption::[<$option_type>](o) = self.0.search_option($string_name)
+                if let weechat::config::ConfigOption::[<$option_type>](o) = self.0.search_option($string_name)
                     .expect(&format!("Couldn't find option {} in section {}",
                                      $string_name, self.0.name()))
                 {
@@ -73,8 +73,8 @@ macro_rules! option_getter {
                     .expect(&format!("Couldn't find option {} in section {}",
                                      $string_name, self.0.name()));
 
-                if let ConfigOption::String(o) = option {
-                    Weechat::eval_string_expression(&o.value())
+                if let weechat::config::ConfigOption::String(o) = option {
+                    weechat::Weechat::eval_string_expression(&o.value())
                         .expect(&format!(
                             "Can't evaluate string expression for option {} in section {}",
                             $string_name,
@@ -128,11 +128,11 @@ macro_rules! option {
 macro_rules! section {
     ($section:ident { $($option_name:ident: $option_type:ident {$($option:tt)*}), * $(,)? }) => {
         $crate::paste::item! {
-            pub struct [<$section:camel Section>]<'a>(SectionHandle<'a>);
+            pub struct [<$section:camel Section>]<'a>(weechat::config::SectionHandle<'a>);
 
             impl<'a> [<$section:camel Section>]<'a> {
                 fn create(config: &mut Config) {
-                    let section_settings = ConfigSectionSettings::new(stringify!($section));
+                    let section_settings = weechat::config::ConfigSectionSettings::new(stringify!($section));
 
                     let mut $section = config.new_section(section_settings)
                         .expect(&format!("Can't create config section {}", stringify!($section)));
@@ -140,7 +140,7 @@ macro_rules! section {
                     [<$section:camel Section>]::create_options(&mut $section);
                 }
 
-                fn create_options(section: &mut SectionHandleMut) {
+                fn create_options(section: &mut weechat::config::SectionHandleMut) {
                     $(
                         [<$section:camel Section>]::[<create_option_ $option_name>](section);
                     )*
@@ -291,17 +291,10 @@ macro_rules! config {
     ($config_name:literal, $(Section $section:ident { $($option:tt)* }), * $(,)?) => {
         #[allow(unused_imports)]
         use weechat::strum::VariantNames;
-        use std::ops::{Deref, DerefMut};
         #[allow(unused_imports)]
-        use weechat::config::{
-            SectionHandle, SectionHandleMut, StringOptionSettings,
-            ConfigOption, ConfigSection, ConfigSectionSettings,
-            BooleanOptionSettings, IntegerOptionSettings, ColorOptionSettings,
-            ConfigReloadCallback,
-        };
         pub struct Config(weechat::config::Config);
 
-        impl Deref for Config {
+        impl std::ops::Deref for Config {
             type Target = weechat::config::Config;
 
             fn deref(&self) -> &Self::Target {
@@ -309,7 +302,7 @@ macro_rules! config {
             }
         }
 
-        impl DerefMut for Config {
+        impl std::ops::DerefMut for Config {
             fn deref_mut(&mut self) -> &mut Self::Target {
                 &mut self.0
             }
@@ -330,7 +323,7 @@ macro_rules! config {
             /// Create a new Weechat configuration file with the given reload
             /// callback.
             pub fn new_with_callback(
-                reload_callback: impl ConfigReloadCallback,
+                reload_callback: impl weechat::config::ConfigReloadCallback,
             ) -> Result<Self, ()> {
                 let config = weechat::config::Config::new_with_callback(
                     $config_name,
