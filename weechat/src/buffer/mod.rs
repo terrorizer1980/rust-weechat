@@ -5,6 +5,7 @@ mod nick;
 mod nickgroup;
 
 use std::borrow::Cow;
+use std::cmp::{Ord, Ordering};
 use std::ffi::c_void;
 use std::ffi::CStr;
 use std::marker::PhantomData;
@@ -35,6 +36,14 @@ pub struct Buffer<'a> {
     pub(crate) inner: InnerBuffers<'a>,
 }
 
+impl<'a> std::fmt::Debug for Buffer<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Buffer")
+            .field("full_name", &self.full_name())
+            .finish()
+    }
+}
+
 pub(crate) enum InnerBuffers<'a> {
     BorrowedBuffer(InnerBuffer<'a>),
     OwnedBuffer(InnerOwnedBuffer<'a>),
@@ -63,6 +72,20 @@ pub(crate) struct InnerBuffer<'a> {
 impl PartialEq for Buffer<'_> {
     fn eq(&self, other: &Buffer) -> bool {
         self.ptr() == other.ptr()
+    }
+}
+
+impl PartialOrd for Buffer<'_> {
+    fn partial_cmp(&self, other: &Buffer) -> Option<Ordering> {
+        self.number().partial_cmp(&other.number())
+    }
+}
+
+impl Eq for Buffer<'_> {}
+
+impl Ord for Buffer<'_> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.number().cmp(&other.number())
     }
 }
 

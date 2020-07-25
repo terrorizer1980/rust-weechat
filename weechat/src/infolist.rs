@@ -26,8 +26,8 @@ pub struct Infolist<'a> {
     phantom_weechat: PhantomData<&'a Weechat>,
 }
 
-#[derive(Eq, Hash, Debug, PartialEq)]
 /// The type of an infolist variable.
+#[derive(Eq, Hash, Debug, PartialEq, Clone)]
 #[allow(missing_docs)]
 pub enum InfolistType {
     Integer,
@@ -150,6 +150,7 @@ impl<'a> InfolistItem<'a> {
 }
 
 /// A variable that was fetched out of the infolist item.
+#[derive(Debug, PartialEq, PartialOrd, Eq, Ord)]
 pub enum InfolistVariable<'a> {
     /// Represents an infolist integer variable.
     Integer(i32),
