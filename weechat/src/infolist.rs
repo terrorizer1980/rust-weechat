@@ -2,6 +2,21 @@
 //!
 //! The list of available infolists can be found in the Weechat plugin API
 //! reference.
+//!
+//! # Example
+//!
+//! # Examples
+//! ```no_run
+//! # use weechat::Weechat;
+//! # let weechat = unsafe { weechat::Weechat::weechat() };
+//! let infolist = weechat.get_infolist("hook", Some("infolist")).unwrap();
+//!
+//! for item in infolist {
+//!     for variable in &item {
+//!         Weechat::print(&format!("{:?}", variable));
+//!     }
+//! }
+//! ```
 
 use std::borrow::Cow;
 use std::collections::{
