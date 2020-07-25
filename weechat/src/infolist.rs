@@ -231,6 +231,10 @@ impl<'a> Infolist<'a> {
         match (infolist_name, variable_name) {
             ("logger_buffer", "buffer") => true,
             ("buffer", "pointer") => true,
+            ("buflist", "buffer") => true,
+            ("irc_server", "buffer") => true,
+            ("hotlist", "buffer_pointer") => true,
+            ("window", "buffer") => true,
             _ => false,
         }
     }
@@ -260,8 +264,6 @@ impl<'a> Infolist<'a> {
             }
 
             let field = if infolist_type == "p" {
-                // TODO this should be in a static hashmap, there are more
-                // infolists that contain buffer pointers.
                 if Infolist::is_pointer_buffer(&self.infolist_name, name) {
                     InfolistType::Buffer
                 } else {
