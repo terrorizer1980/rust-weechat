@@ -4,7 +4,10 @@
 //! reference.
 
 use std::borrow::Cow;
-use std::collections::{hash_map::Keys, HashMap};
+use std::collections::{
+    hash_map::{IntoIter as IterHashmap, Keys},
+    HashMap,
+};
 use std::ffi::CStr;
 use std::fmt::Debug;
 use std::marker::PhantomData;
@@ -75,7 +78,7 @@ impl<'a> InfolistItem<'a> {
         unsafe { infolist_integer(self.ptr, name.as_ptr()) }
     }
 
-    fn string(&self, name: &str) -> Option<Cow<str>> {
+    fn string(&'a self, name: &str) -> Option<Cow<str>> {
         let weechat = Weechat::from_ptr(self.weechat_ptr);
         let name = LossyCString::new(name);
 
@@ -129,6 +132,7 @@ impl<'a> InfolistItem<'a> {
     /// Get a variable from the current infolist item.
     ///
     /// # Arguments
+    ///
     /// * `key` - The name of the variable that should be fetched.
     pub fn get(&self, key: &str) -> Option<InfolistVariable> {
         let infolist_type = self.fields.get(key)?;
@@ -146,6 +150,66 @@ impl<'a> InfolistItem<'a> {
     /// Get the list of infolist variables that this item has.
     pub fn keys(&self) -> Keys<'_, String, InfolistType> {
         self.fields.keys()
+    }
+
+    /// An iterator visiting all variables in an infolist item.
+    /// The iterator element type a tuple of a string containing the variable
+    /// name and the variable itself.
+    ///
+    /// # Examples
+    /// ```no_run
+    /// # use weechat::Weechat;
+    /// # use weechat::infolist::InfolistVariable;
+    /// # let weechat = unsafe { weechat::Weechat::weechat() };
+    /// let infolist = weechat.get_infolist("buffer", None).unwrap();
+    ///
+    /// for item in infolist {
+    ///     for variable in &item {
+    ///         Weechat::print(&format!("{:?}", variable));
+    ///     }
+    /// }
+    /// ```
+    pub fn iter(&'a self) -> Iter<'a> {
+        Iter {
+            keys: self.fields.clone().into_iter(),
+            item: &self,
+        }
+    }
+}
+
+/// An iterator over the entries of a `InfolistItem`.
+///
+/// This `struct` is created by the [`iter`] method on [`InfolistItem`]. See its
+/// documentation for more.
+///
+/// [`iter`]: struct.InfolistItem.html#method.iter
+/// [`InfolistItem`]: struct.InfolistItem.html
+pub struct Iter<'a> {
+    item: &'a InfolistItem<'a>,
+    keys: IterHashmap<String, InfolistType>,
+}
+
+impl<'a> Iterator for Iter<'a> {
+    type Item = (String, InfolistVariable<'a>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            let (name, _) = self.keys.next()?;
+            let variable = self.item.get(&name);
+
+            if let Some(variable) = variable {
+                return Some((name, variable));
+            }
+        }
+    }
+}
+
+impl<'a> IntoIterator for &'a InfolistItem<'a> {
+    type Item = (String, InfolistVariable<'a>);
+    type IntoIter = Iter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
     }
 }
 
