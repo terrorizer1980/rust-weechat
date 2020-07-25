@@ -1,0 +1,17 @@
+[package]
+name = "weechat-infolist"
+version = "0.1.0"
+authors = ["Damir Jelić <poljar@termina.org.uk>"]
+edition = "2018"
+
+[lib]
+name = "infolist"
+crate-type = ["cdylib"]
+
+
+[dependencies]
+chrono = "0.4.13"
+itertools = "0.9.0"
+
+[dependencies.weechat]
+path = "../../"
