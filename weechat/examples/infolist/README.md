@@ -1,4 +1,4 @@
-# go
+# infolist
 
 Weechat infolist reimplementation in Rust.
 
