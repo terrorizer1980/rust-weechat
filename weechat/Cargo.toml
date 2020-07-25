@@ -19,7 +19,7 @@ rustdoc-args = ["--cfg", "feature=\"docs\""]
 # Support to run futures on the Weechat main thread.
 async = ["async-task", "pipe-channel", "futures", "async-trait"]
 
-# Declarative configuration macro, requires nightly.
+# Declarative configuration macro.
 config_macro = ["paste", "strum"]
 
 # Still unsound or experimental features will be hidden behind this flag.

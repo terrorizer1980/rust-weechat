@@ -7,8 +7,6 @@ matching library to match buffers by their short name.
 
 ## Build
 
-This plugin requires the Rust nightly compiler.
-
 To build the plugin
 ```
 make
