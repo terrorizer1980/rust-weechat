@@ -7,7 +7,7 @@ use weechat::config::{
 use weechat::hooks::{
     BarItem, Command, CommandSettings, SignalData, SignalHook,
 };
-use weechat::{weechat_plugin, Args, Plugin, ReturnCode, Weechat};
+use weechat::{plugin, Args, Plugin, ReturnCode, Weechat};
 
 struct SamplePlugin {
     _rust_hook: Command,
@@ -152,7 +152,7 @@ impl Drop for SamplePlugin {
     }
 }
 
-weechat_plugin!(
+plugin!(
     SamplePlugin,
     name: "rust_sample",
     author: "Damir Jelić <poljar@termina.org.uk>",

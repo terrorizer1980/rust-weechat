@@ -26,7 +26,7 @@ use weechat::{
         ModifierCallback, ModifierData, ModifierHook,
     },
     infolist::InfolistVariable,
-    weechat_plugin, Args, Plugin, ReturnCode, Weechat,
+    plugin, Args, Plugin, ReturnCode, Weechat,
 };
 
 use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
@@ -570,7 +570,7 @@ impl Plugin for Go {
     }
 }
 
-weechat_plugin!(
+plugin!(
     Go,
     name: "go",
     author: "Damir Jelić <poljar@termina.org.uk>",

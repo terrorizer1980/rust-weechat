@@ -132,14 +132,14 @@ impl Parse for WeechatPluginInfo {
 ///
 /// # Example
 /// ```
-/// # use weechat::{weechat_plugin, Args, Weechat, Plugin};
+/// # use weechat::{plugin, Args, Weechat, Plugin};
 /// # struct SamplePlugin;
 /// # impl Plugin for SamplePlugin {
 /// #    fn init(weechat: &Weechat, _args: Args) -> Result<Self, ()> {
 /// #        Ok(SamplePlugin)
 /// #    }
 /// # }
-/// weechat_plugin!(
+/// plugin!(
 ///     SamplePlugin,
 ///     name: "rust_sample",
 ///     author: "poljar",
@@ -149,7 +149,7 @@ impl Parse for WeechatPluginInfo {
 /// );
 /// ```
 #[proc_macro]
-pub fn weechat_plugin(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+pub fn plugin(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let WeechatPluginInfo {
         plugin,
         name,
@@ -166,41 +166,41 @@ pub fn weechat_plugin(input: proc_macro::TokenStream) -> proc_macro::TokenStream
     let (version_len, version) = version;
 
     let result = quote! {
-        #[no_mangle]
         #[doc(hidden)]
+        #[no_mangle]
         pub static weechat_plugin_api_version: [u8; weechat::weechat_sys::WEECHAT_PLUGIN_API_VERSION_LENGTH] =
             *weechat::weechat_sys::WEECHAT_PLUGIN_API_VERSION;
 
-        #[no_mangle]
         #[doc(hidden)]
+        #[no_mangle]
         pub static weechat_plugin_name: [u8; #name_len] = *#name;
 
-        #[no_mangle]
         #[doc(hidden)]
+        #[no_mangle]
         pub static weechat_plugin_author: [u8; #author_len] = *#author;
 
-        #[no_mangle]
         #[doc(hidden)]
+        #[no_mangle]
         pub static weechat_plugin_description: [u8; #description_len] = *#description;
 
-        #[no_mangle]
         #[doc(hidden)]
+        #[no_mangle]
         pub static weechat_plugin_version: [u8; #version_len] = *#version;
 
-        #[no_mangle]
         #[doc(hidden)]
+        #[no_mangle]
         pub static weechat_plugin_license: [u8; #license_len] = *#license;
 
         #[doc(hidden)]
         static mut __PLUGIN: Option<#plugin> = None;
 
-        #[no_mangle]
         /// This function is called when plugin is loaded by WeeChat.
         ///
         /// # Safety
         /// This function needs to be an extern C function and it can't be
         /// mangled, otherwise Weechat will not find the symbol.
         #[doc(hidden)]
+        #[no_mangle]
         pub unsafe extern "C" fn weechat_plugin_init(
             plugin: *mut weechat::weechat_sys::t_weechat_plugin,
             argc: weechat::libc::c_int,
@@ -228,8 +228,8 @@ pub fn weechat_plugin(input: proc_macro::TokenStream) -> proc_macro::TokenStream
         /// # Safety
         /// This function needs to be an extern C function and it can't be
         /// mangled, otherwise Weechat will not find the symbol.
-        #[no_mangle]
         #[doc(hidden)]
+        #[no_mangle]
         pub unsafe extern "C" fn weechat_plugin_end(
             _plugin: *mut weechat::weechat_sys::t_weechat_plugin
         ) -> weechat::libc::c_int {

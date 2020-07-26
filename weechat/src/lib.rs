@@ -7,7 +7,7 @@
 //! ```no_run
 //! use weechat::{
 //!    buffer::Buffer,
-//!    weechat_plugin, Args, Weechat, Plugin,
+//!    plugin, Args, Weechat, Plugin,
 //! };
 //!
 //! struct HelloWorld;
@@ -25,7 +25,7 @@
 //!     }
 //! }
 //!
-//! weechat_plugin!(
+//! plugin!(
 //!     HelloWorld,
 //!     name: "hello",
 //!     author: "Damir Jelić <poljar@termina.org.uk>",
@@ -63,7 +63,7 @@ pub mod infolist;
 pub use crate::weechat::{Args, Weechat};
 
 pub use libc;
-pub use weechat_macro::weechat_plugin;
+pub use weechat_macro::plugin;
 pub use weechat_sys;
 
 /// Weechat plugin trait.

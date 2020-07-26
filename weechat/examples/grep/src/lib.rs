@@ -21,7 +21,7 @@ use weechat::{infolist::InfolistVariable, Args, Plugin, Weechat};
 use weechat::buffer::{Buffer, BufferCloseCallback, BufferInputCallback};
 use weechat::config::{BooleanOptionSettings, Config, ConfigOption, ConfigSectionSettings};
 use weechat::hooks::{Command, CommandCallback, CommandSettings};
-use weechat::weechat_plugin;
+use weechat::plugin;
 
 use buffer::GrepBuffer;
 
@@ -329,7 +329,7 @@ impl Plugin for Ripgrep {
     }
 }
 
-weechat_plugin!(
+plugin!(
     Ripgrep,
     name: "ripgrep",
     author: "Damir Jelic <poljar@termina.org.uk>",

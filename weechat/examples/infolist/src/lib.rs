@@ -23,7 +23,7 @@ use weechat::{
     buffer::{Buffer, BufferBuilder, BufferCloseCallback, BufferHandle, BufferInputCallback},
     hooks::{Command, CommandCallback, CommandSettings},
     infolist::InfolistVariable,
-    weechat_plugin, Args, Plugin, Weechat,
+    plugin, Args, Plugin, Weechat,
 };
 
 struct Infolist {
@@ -247,7 +247,7 @@ impl Plugin for Infolist {
     }
 }
 
-weechat_plugin!(
+plugin!(
     Infolist,
     name: "infolist",
     author: "Damir Jelić <poljar@termina.org.uk>",
