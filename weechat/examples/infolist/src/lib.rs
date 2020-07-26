@@ -60,7 +60,7 @@ impl InnerInfolist {
     }
 
     fn display_infolist(&self, weechat: &Weechat, buffer: &Buffer, args: &str) {
-        let mut args = args.splitn(2, ' ').into_iter();
+        let mut args = args.splitn(2, ' ');
 
         let infolist_name = args.next().unwrap_or_default();
         let infolist_args = args.next();
