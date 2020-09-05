@@ -13,14 +13,14 @@ grep-searcher = "0.1.7"
 grep-matcher = "0.1.4"
 grep-regex = "0.1.8"
 
-tokio = { version = "0.2.21", features = [ "rt-threaded", "sync" ] }
-async-trait = "0.1.36"
+tokio = { version = "0.2.22", features = [ "rt-threaded", "sync" ] }
+async-trait = "0.1.40"
 
 [dependencies.weechat]
 path = "../../"
 features = ["async"]
 
 [dependencies.clap]
-version = "2.33.1"
+version = "2.33.3"
 default-features = false
 features = [ "suggestions" ]
