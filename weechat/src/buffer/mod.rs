@@ -99,6 +99,7 @@ impl Ord for Buffer<'_> {
 ///
 /// The buffer won't be closed if this handle gets dropped, to close the buffer
 /// call the close method on the upgraded buffer object.
+#[derive(Clone)]
 pub struct BufferHandle {
     buffer_name: Rc<String>,
     weechat: *mut t_weechat_plugin,
