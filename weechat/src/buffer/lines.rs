@@ -1,10 +1,6 @@
-use std::borrow::Cow;
-use std::collections::HashMap;
-use std::ffi::c_void;
-use std::marker::PhantomData;
+use std::{borrow::Cow, collections::HashMap, ffi::c_void, marker::PhantomData};
 
-use crate::buffer::Buffer;
-use crate::Weechat;
+use crate::{buffer::Buffer, Weechat};
 use weechat_sys::{t_hdata, t_weechat_plugin};
 
 /// An iterator that steps over the lines of the buffer.

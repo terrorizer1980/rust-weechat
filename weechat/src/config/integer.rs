@@ -1,6 +1,10 @@
-use crate::config::config_options::{ConfigOptions, FromPtrs, HidenConfigOptionT};
-use crate::config::{BaseConfigOption, ConfigSection};
-use crate::Weechat;
+use crate::{
+    config::{
+        config_options::{ConfigOptions, FromPtrs, HidenConfigOptionT},
+        BaseConfigOption, ConfigSection,
+    },
+    Weechat,
+};
 use std::marker::PhantomData;
 use weechat_sys::{t_config_option, t_weechat_plugin};
 

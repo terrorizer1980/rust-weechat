@@ -1,12 +1,11 @@
-use std::borrow::Cow;
-use std::ffi::CStr;
-use std::marker::PhantomData;
+use std::{borrow::Cow, ffi::CStr, marker::PhantomData};
 
 use weechat_sys::{t_gui_buffer, t_gui_nick_group, t_weechat_plugin};
 
-use crate::buffer::Buffer;
-use crate::buffer::{Nick, NickSettings};
-use crate::{LossyCString, Weechat};
+use crate::{
+    buffer::{Buffer, Nick, NickSettings},
+    LossyCString, Weechat,
+};
 
 /// Weechat nicklist Group type.
 pub struct NickGroup<'a> {

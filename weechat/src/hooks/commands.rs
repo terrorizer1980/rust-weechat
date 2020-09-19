@@ -1,13 +1,9 @@
 use libc::{c_char, c_int};
-use std::borrow::Cow;
-use std::ffi::CStr;
-use std::os::raw::c_void;
-use std::ptr;
+use std::{borrow::Cow, ffi::CStr, os::raw::c_void, ptr};
 
 use weechat_sys::{t_gui_buffer, t_weechat_plugin, WEECHAT_RC_OK};
 
-use crate::buffer::Buffer;
-use crate::{Args, LossyCString, ReturnCode, Weechat};
+use crate::{buffer::Buffer, Args, LossyCString, ReturnCode, Weechat};
 
 use super::Hook;
 

@@ -1,16 +1,11 @@
 use libc::{c_char, c_int};
-use std::borrow::Cow;
-use std::ffi::CStr;
-use std::os::raw::c_void;
-use std::ptr;
+use std::{borrow::Cow, ffi::CStr, os::raw::c_void, ptr};
 
 use weechat_sys::{
     t_gui_buffer, t_gui_completion, t_weechat_plugin, WEECHAT_RC_ERROR, WEECHAT_RC_OK,
 };
 
-use crate::buffer::Buffer;
-use crate::hooks::Hook;
-use crate::{LossyCString, Weechat};
+use crate::{buffer::Buffer, hooks::Hook, LossyCString, Weechat};
 
 /// A handle to a completion item.
 pub struct Completion {

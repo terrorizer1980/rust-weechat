@@ -1,13 +1,13 @@
-use std::borrow::Cow;
-use std::time::Instant;
-use weechat::buffer::{Buffer, BufferBuilder, NickSettings};
-use weechat::config::{
-    BooleanOption, BooleanOptionSettings, Conf, Config, ConfigSectionSettings,
+use std::{borrow::Cow, time::Instant};
+use weechat::{
+    buffer::{Buffer, BufferBuilder, NickSettings},
+    config::{
+        BooleanOption, BooleanOptionSettings, Conf, Config,
+        ConfigSectionSettings,
+    },
+    hooks::{BarItem, Command, CommandSettings, SignalData, SignalHook},
+    plugin, Args, Plugin, ReturnCode, Weechat,
 };
-use weechat::hooks::{
-    BarItem, Command, CommandSettings, SignalData, SignalHook,
-};
-use weechat::{plugin, Args, Plugin, ReturnCode, Weechat};
 
 struct SamplePlugin {
     _rust_hook: Command,

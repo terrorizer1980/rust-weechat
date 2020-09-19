@@ -1,9 +1,5 @@
-use crate::config::OptionChanged;
-use crate::LossyCString;
-use crate::Weechat;
-use std::borrow::Cow;
-use std::convert::TryFrom;
-use std::ffi::CStr;
+use crate::{config::OptionChanged, LossyCString, Weechat};
+use std::{borrow::Cow, convert::TryFrom, ffi::CStr};
 use weechat_sys::{t_config_option, t_weechat_plugin};
 
 #[derive(Debug, PartialEq, Clone)]

@@ -1,9 +1,6 @@
-use std::borrow::Cow;
-use std::ffi::CStr;
-use std::marker::PhantomData;
+use std::{borrow::Cow, ffi::CStr, marker::PhantomData};
 
-use crate::buffer::Buffer;
-use crate::{LossyCString, Weechat};
+use crate::{buffer::Buffer, LossyCString, Weechat};
 use weechat_sys::{t_gui_buffer, t_gui_nick, t_weechat_plugin};
 
 /// Settings to create a new nick.

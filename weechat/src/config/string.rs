@@ -1,9 +1,11 @@
-use crate::config::config_options::{ConfigOptions, FromPtrs, HidenConfigOptionT};
-use crate::config::{BaseConfigOption, ConfigSection};
-use crate::Weechat;
-use std::borrow::Cow;
-use std::ffi::CStr;
-use std::marker::PhantomData;
+use crate::{
+    config::{
+        config_options::{ConfigOptions, FromPtrs, HidenConfigOptionT},
+        BaseConfigOption, ConfigSection,
+    },
+    Weechat,
+};
+use std::{borrow::Cow, ffi::CStr, marker::PhantomData};
 use weechat_sys::{t_config_option, t_weechat_plugin};
 
 type StringCheckCb = Option<Box<dyn FnMut(&Weechat, &StringOption, Cow<str>) -> bool>>;

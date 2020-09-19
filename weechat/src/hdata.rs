@@ -1,7 +1,8 @@
-use std::borrow::Cow;
-use std::collections::HashMap;
-use std::ffi::c_void;
-use std::ffi::CStr;
+use std::{
+    borrow::Cow,
+    collections::HashMap,
+    ffi::{c_void, CStr},
+};
 use weechat_sys::t_hdata;
 
 use crate::{LossyCString, Weechat};

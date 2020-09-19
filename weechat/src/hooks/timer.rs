@@ -1,7 +1,5 @@
 use libc::c_int;
-use std::os::raw::c_void;
-use std::ptr;
-use std::time::Duration;
+use std::{os::raw::c_void, ptr, time::Duration};
 
 use weechat_sys::{t_weechat_plugin, WEECHAT_RC_OK};
 

@@ -1,23 +1,26 @@
 use libc::{c_char, c_int};
-use std::cell::{Ref, RefCell, RefMut};
-use std::collections::HashMap;
-use std::ffi::CStr;
-use std::ops::{Deref, DerefMut};
-use std::os::raw::c_void;
-use std::ptr;
-use std::rc::Weak;
+use std::{
+    cell::{Ref, RefCell, RefMut},
+    collections::HashMap,
+    ffi::CStr,
+    ops::{Deref, DerefMut},
+    os::raw::c_void,
+    ptr,
+    rc::Weak,
+};
 
 use std::marker::PhantomData;
 use weechat_sys::{t_config_file, t_config_option, t_config_section, t_weechat_plugin};
 
-use crate::config::config_options::CheckCB;
-use crate::config::config_options::{OptionPointers, OptionType};
-use crate::config::{
-    BaseConfigOption, BooleanOption, BooleanOptionSettings, ColorOption, ColorOptionSettings, Conf,
-    Config, ConfigOptions, IntegerOption, IntegerOptionSettings, OptionChanged, StringOption,
-    StringOptionSettings,
+use crate::{
+    config::{
+        config_options::{CheckCB, OptionPointers, OptionType},
+        BaseConfigOption, BooleanOption, BooleanOptionSettings, ColorOption, ColorOptionSettings,
+        Conf, Config, ConfigOptions, IntegerOption, IntegerOptionSettings, OptionChanged,
+        StringOption, StringOptionSettings,
+    },
+    LossyCString, Weechat,
 };
-use crate::{LossyCString, Weechat};
 
 #[derive(Default)]
 struct OptionDescription<'a> {

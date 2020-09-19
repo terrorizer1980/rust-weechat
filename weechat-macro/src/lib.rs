@@ -4,9 +4,12 @@ extern crate proc_macro;
 use proc_macro2::{Ident, Literal};
 use std::collections::HashMap;
 
-use syn::parse::{Parse, ParseStream, Result};
-use syn::punctuated::Punctuated;
-use syn::{parse_macro_input, Error, LitStr};
+use syn::{
+    parse::{Parse, ParseStream, Result},
+    parse_macro_input,
+    punctuated::Punctuated,
+    Error, LitStr,
+};
 
 use quote::quote;
 

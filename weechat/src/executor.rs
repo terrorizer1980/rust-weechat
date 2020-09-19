@@ -1,12 +1,16 @@
 pub use async_task::JoinHandle;
 use futures::future::{BoxFuture, Future};
 use pipe_channel::{channel, Receiver, Sender};
-use std::collections::VecDeque;
-use std::panic;
-use std::sync::{Arc, Mutex};
+use std::{
+    collections::VecDeque,
+    panic,
+    sync::{Arc, Mutex},
+};
 
-use crate::hooks::{FdHook, FdHookCallback, FdHookMode};
-use crate::Weechat;
+use crate::{
+    hooks::{FdHook, FdHookCallback, FdHookMode},
+    Weechat,
+};
 
 static mut _EXECUTOR: Option<WeechatExecutor> = None;
 

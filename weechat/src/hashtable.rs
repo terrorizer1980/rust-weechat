@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-use std::ffi::c_void;
+use std::{collections::HashMap, ffi::c_void};
 
 use weechat_sys::{t_hashtable, WEECHAT_HASHTABLE_STRING};
 

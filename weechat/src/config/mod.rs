@@ -33,14 +33,18 @@ mod integer;
 mod section;
 mod string;
 
-pub use crate::config::boolean::{BooleanOption, BooleanOptionSettings};
-pub use crate::config::color::{ColorOption, ColorOptionSettings};
-pub use crate::config::config::{Conf, Config, ConfigReloadCallback, OptionChanged};
-pub use crate::config::integer::{IntegerOption, IntegerOptionSettings};
-pub use crate::config::string::{StringOption, StringOptionSettings};
+pub use crate::config::{
+    boolean::{BooleanOption, BooleanOptionSettings},
+    color::{ColorOption, ColorOptionSettings},
+    config::{Conf, Config, ConfigReloadCallback, OptionChanged},
+    integer::{IntegerOption, IntegerOptionSettings},
+    string::{StringOption, StringOptionSettings},
+};
 
-pub use crate::config::config_options::{BaseConfigOption, ConfigOptions, OptionType};
-pub use crate::config::section::{
-    ConfigOption, ConfigSection, ConfigSectionSettings, SectionHandle, SectionHandleMut,
-    SectionReadCallback, SectionWriteCallback, SectionWriteDefaultCallback,
+pub use crate::config::{
+    config_options::{BaseConfigOption, ConfigOptions, OptionType},
+    section::{
+        ConfigOption, ConfigSection, ConfigSectionSettings, SectionHandle, SectionHandleMut,
+        SectionReadCallback, SectionWriteCallback, SectionWriteDefaultCallback,
+    },
 };

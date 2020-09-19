@@ -4,8 +4,7 @@ use libc::c_char;
 use std::os::raw::c_void;
 use weechat_sys::{t_gui_bar_item, t_gui_buffer, t_gui_window, t_hashtable, t_weechat_plugin};
 
-use crate::buffer::Buffer;
-use crate::{LossyCString, Weechat};
+use crate::{buffer::Buffer, LossyCString, Weechat};
 
 /// Trait for the bar item callback
 ///

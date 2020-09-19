@@ -1,14 +1,10 @@
 use libc::c_char;
-use std::borrow::Cow;
-use std::ffi::CStr;
-use std::os::raw::c_void;
-use std::ptr;
+use std::{borrow::Cow, ffi::CStr, os::raw::c_void, ptr};
 
 use weechat_sys::{t_gui_buffer, t_weechat_plugin};
 
 use super::Hook;
-use crate::buffer::Buffer;
-use crate::{LossyCString, Weechat};
+use crate::{buffer::Buffer, LossyCString, Weechat};
 
 /// Hook for a modifier, the hook is removed when the object is dropped.
 #[cfg_attr(feature = "docs", doc(cfg(unsound)))]

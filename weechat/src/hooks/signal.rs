@@ -1,17 +1,13 @@
 use libc::{c_char, c_int};
-use std::borrow::Cow;
-use std::cell::Cell;
-use std::ffi::CStr;
-use std::marker::PhantomData;
-use std::os::raw::c_void;
-use std::ptr;
-use std::rc::Rc;
+use std::{borrow::Cow, cell::Cell, ffi::CStr, marker::PhantomData, os::raw::c_void, ptr, rc::Rc};
 
 use weechat_sys::{t_gui_buffer, t_weechat_plugin};
 
 use super::Hook;
-use crate::buffer::{Buffer, InnerBuffer, InnerBuffers};
-use crate::{LossyCString, ReturnCode, Weechat};
+use crate::{
+    buffer::{Buffer, InnerBuffer, InnerBuffers},
+    LossyCString, ReturnCode, Weechat,
+};
 
 /// Hook for a signal, the hook is removed when the object is dropped.
 pub struct SignalHook {

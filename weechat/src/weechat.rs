@@ -4,10 +4,12 @@ use weechat_sys::t_weechat_plugin;
 
 use crate::LossyCString;
 use libc::{c_char, c_int};
-use std::ffi::{CStr, CString};
-use std::panic::PanicInfo;
-use std::path::PathBuf;
-use std::{ptr, vec};
+use std::{
+    ffi::{CStr, CString},
+    panic::PanicInfo,
+    path::PathBuf,
+    ptr, vec,
+};
 
 #[cfg(feature = "async")]
 use crate::executor::WeechatExecutor;

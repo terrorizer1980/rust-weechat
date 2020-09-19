@@ -18,23 +18,27 @@
 //! }
 //! ```
 
-use std::borrow::Cow;
-use std::cell::Cell;
-use std::collections::{
-    hash_map::{IntoIter as IterHashmap, Keys},
-    HashMap,
+use std::{
+    borrow::Cow,
+    cell::Cell,
+    collections::{
+        hash_map::{IntoIter as IterHashmap, Keys},
+        HashMap,
+    },
+    ffi::CStr,
+    fmt::Debug,
+    marker::PhantomData,
+    ptr,
+    rc::Rc,
+    time::{Duration, SystemTime},
 };
-use std::ffi::CStr;
-use std::fmt::Debug;
-use std::marker::PhantomData;
-use std::ptr;
-use std::rc::Rc;
-use std::time::{Duration, SystemTime};
 
 use weechat_sys::{t_gui_buffer, t_infolist, t_weechat_plugin};
 
-use crate::buffer::{Buffer, InnerBuffer, InnerBuffers};
-use crate::{LossyCString, Weechat};
+use crate::{
+    buffer::{Buffer, InnerBuffer, InnerBuffers},
+    LossyCString, Weechat,
+};
 
 /// An infolist is a list of items.
 ///

@@ -1,6 +1,5 @@
 use bindgen::Bindings;
-use std::env;
-use std::path::PathBuf;
+use std::{env, path::PathBuf};
 
 const WEECHAT_BUNDLED_ENV: &str = "WEECHAT_BUNDLED";
 const WEECHAT_PLUGIN_FILE_ENV: &str = "WEECHAT_PLUGIN_FILE";

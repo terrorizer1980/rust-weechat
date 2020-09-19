@@ -1,27 +1,30 @@
 use libc::{c_char, c_int};
-use std::borrow::Cow;
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::ffi::CStr;
-use std::io::Error as IoError;
-use std::io::ErrorKind;
-use std::marker::PhantomData;
-use std::os::raw::c_void;
-use std::ptr;
-use std::rc::Rc;
+use std::{
+    borrow::Cow,
+    cell::RefCell,
+    collections::HashMap,
+    ffi::CStr,
+    io::{Error as IoError, ErrorKind},
+    marker::PhantomData,
+    os::raw::c_void,
+    ptr,
+    rc::Rc,
+};
 
 use weechat_sys::{
     t_config_file, t_config_option, t_config_section, t_weechat_plugin, WEECHAT_RC_OK,
 };
 
-use crate::config::section::{
-    ConfigSection, ConfigSectionPointers, ConfigSectionSettings, SectionHandle, SectionHandleMut,
-    SectionReadCbT, SectionWriteCbT,
+use crate::{
+    config::{
+        section::{
+            ConfigSection, ConfigSectionPointers, ConfigSectionSettings, SectionHandle,
+            SectionHandleMut, SectionReadCbT, SectionWriteCbT,
+        },
+        BaseConfigOption, BooleanOption, ColorOption, ConfigOption, IntegerOption, StringOption,
+    },
+    LossyCString, Weechat,
 };
-use crate::config::{
-    BaseConfigOption, BooleanOption, ColorOption, ConfigOption, IntegerOption, StringOption,
-};
-use crate::{LossyCString, Weechat};
 
 /// Weechat configuration file
 pub struct Config {

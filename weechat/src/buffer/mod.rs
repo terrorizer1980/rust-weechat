@@ -4,15 +4,15 @@ mod lines;
 mod nick;
 mod nickgroup;
 
-use std::borrow::Cow;
-use std::cmp::{Ord, Ordering};
-use std::ffi::c_void;
-use std::ffi::CStr;
-use std::marker::PhantomData;
-use std::ptr;
+use std::{
+    borrow::Cow,
+    cmp::{Ord, Ordering},
+    ffi::{c_void, CStr},
+    marker::PhantomData,
+    ptr,
+};
 
-use std::cell::Cell;
-use std::rc::Rc;
+use std::{cell::Cell, rc::Rc};
 
 #[cfg(feature = "async")]
 use async_trait::async_trait;
@@ -25,9 +25,11 @@ use weechat_sys::{
     t_gui_buffer, t_gui_nick, t_hdata, t_weechat_plugin, WEECHAT_RC_ERROR, WEECHAT_RC_OK,
 };
 
-pub use crate::buffer::lines::{BufferLine, BufferLines, LineData};
-pub use crate::buffer::nick::{Nick, NickSettings};
-pub use crate::buffer::nickgroup::NickGroup;
+pub use crate::buffer::{
+    lines::{BufferLine, BufferLines, LineData},
+    nick::{Nick, NickSettings},
+    nickgroup::NickGroup,
+};
 
 /// A Weechat buffer.
 ///
