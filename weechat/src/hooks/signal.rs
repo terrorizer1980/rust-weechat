@@ -1,9 +1,11 @@
 use libc::{c_char, c_int};
 use std::borrow::Cow;
+use std::cell::Cell;
 use std::ffi::CStr;
 use std::marker::PhantomData;
 use std::os::raw::c_void;
 use std::ptr;
+use std::rc::Rc;
 
 use weechat_sys::{t_gui_buffer, t_weechat_plugin};
 
@@ -66,6 +68,7 @@ impl<'a> Into<SignalData<'a>> for &'a Buffer<'a> {
                 ptr,
                 weechat: self.inner.weechat_ptr(),
                 weechat_phantom: PhantomData,
+                closing: Rc::new(Cell::new(false)),
             }),
         })
     }

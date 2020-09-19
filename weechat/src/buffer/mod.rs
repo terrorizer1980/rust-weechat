@@ -50,6 +50,22 @@ pub(crate) enum InnerBuffers<'a> {
 }
 
 impl<'a> InnerBuffers<'a> {
+    fn is_closing(&self) -> bool {
+        match self {
+            InnerBuffers::BorrowedBuffer(b) => b.closing.get(),
+            InnerBuffers::OwnedBuffer(b) => b.closing.get(),
+        }
+    }
+
+    fn mark_as_closing(&self) {
+        match self {
+            InnerBuffers::BorrowedBuffer(b) => b.closing.as_ref().replace(true),
+            InnerBuffers::OwnedBuffer(b) => b.closing.as_ref().replace(true),
+        };
+    }
+}
+
+impl<'a> InnerBuffers<'a> {
     pub(crate) fn weechat_ptr(&self) -> *mut t_weechat_plugin {
         match self {
             InnerBuffers::BorrowedBuffer(b) => b.weechat,
@@ -61,12 +77,14 @@ impl<'a> InnerBuffers<'a> {
 pub(crate) struct InnerOwnedBuffer<'a> {
     pub(crate) weechat: *mut t_weechat_plugin,
     pub(crate) buffer_handle: &'a BufferHandle,
+    closing: Rc<Cell<bool>>,
 }
 
 pub(crate) struct InnerBuffer<'a> {
     pub(crate) weechat: *mut t_weechat_plugin,
     pub(crate) ptr: *mut t_gui_buffer,
     pub(crate) weechat_phantom: PhantomData<&'a Weechat>,
+    pub(crate) closing: Rc<Cell<bool>>,
 }
 
 impl PartialEq for Buffer<'_> {
@@ -104,6 +122,7 @@ pub struct BufferHandle {
     buffer_name: Rc<String>,
     weechat: *mut t_weechat_plugin,
     buffer_ptr: Rc<Cell<*mut t_gui_buffer>>,
+    closing: Rc<Cell<bool>>,
 }
 
 impl BufferHandle {
@@ -121,6 +140,7 @@ impl BufferHandle {
                 inner: InnerBuffers::OwnedBuffer(InnerOwnedBuffer {
                     weechat: self.weechat,
                     buffer_handle: self,
+                    closing: self.closing.clone(),
                 }),
             };
             Ok(buffer)
@@ -437,6 +457,7 @@ impl Weechat {
                 weechat: self.ptr,
                 ptr: buffer_ptr,
                 weechat_phantom: PhantomData,
+                closing: Rc::new(Cell::new(false)),
             }),
         }
     }
@@ -479,6 +500,7 @@ impl Weechat {
                 buffer_name: Rc::new(buffer.full_name().to_string()),
                 weechat: pointers.weechat,
                 buffer_ptr: buffer_cell,
+                closing: Rc::new(Cell::new(false)),
             };
             if let Some(cb) = pointers.input_cb.as_mut() {
                 let future = cb.callback(buffer_handle, input_data.to_string());
@@ -498,6 +520,7 @@ impl Weechat {
             let pointers = Box::from_raw(pointer as *mut BufferPointersAsync);
             let weechat = Weechat::from_ptr(pointers.weechat);
             let buffer = weechat.buffer_from_ptr(buffer);
+            buffer.mark_as_closing();
 
             let ret = if let Some(mut cb) = pointers.close_cb {
                 cb.callback(&weechat, &buffer).is_ok()
@@ -572,6 +595,7 @@ impl Weechat {
             buffer_name: Rc::new(buffer.full_name().to_string()),
             weechat: weechat.ptr,
             buffer_ptr: buffer_cell,
+            closing: Rc::new(Cell::new(false)),
         })
     }
 
@@ -612,6 +636,7 @@ impl Weechat {
             let pointers = Box::from_raw(pointer as *mut BufferPointers);
             let weechat = Weechat::from_ptr(pointers.weechat);
             let buffer = weechat.buffer_from_ptr(buffer);
+            buffer.mark_as_closing();
 
             let ret = if let Some(mut cb) = pointers.close_cb {
                 cb.callback(&weechat, &buffer).is_ok()
@@ -685,6 +710,7 @@ impl Weechat {
             buffer_name: Rc::new(buffer.full_name().to_string()),
             weechat: weechat.ptr,
             buffer_ptr: buffer_cell,
+            closing: Rc::new(Cell::new(false)),
         })
     }
 }
@@ -719,6 +745,14 @@ impl Buffer<'_> {
                 }
             }
         }
+    }
+
+    fn is_closing(&self) -> bool {
+        self.inner.is_closing()
+    }
+
+    fn mark_as_closing(&self) {
+        self.inner.mark_as_closing()
     }
 
     /// Display a message on the buffer.
@@ -1145,11 +1179,16 @@ impl Buffer<'_> {
     ///
     /// Note that this will only queue up the buffer to be closed. The close
     /// callback will first be run, only then will the buffer be closed.
+    ///
+    /// Multiple calls to this method will result in a nop.
     pub fn close(&self) {
-        let weechat = self.weechat();
+        if !self.is_closing() {
+            let weechat = self.weechat();
 
-        let buffer_close = weechat.get().buffer_close.unwrap();
-        unsafe { buffer_close(self.ptr()) }
+            let buffer_close = weechat.get().buffer_close.unwrap();
+            unsafe { buffer_close(self.ptr()) };
+            self.mark_as_closing();
+        }
     }
 
     /// Get the contents of the input

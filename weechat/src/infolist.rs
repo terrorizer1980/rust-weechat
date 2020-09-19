@@ -19,6 +19,7 @@
 //! ```
 
 use std::borrow::Cow;
+use std::cell::Cell;
 use std::collections::{
     hash_map::{IntoIter as IterHashmap, Keys},
     HashMap,
@@ -27,6 +28,7 @@ use std::ffi::CStr;
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use std::ptr;
+use std::rc::Rc;
 use std::time::{Duration, SystemTime};
 
 use weechat_sys::{t_gui_buffer, t_infolist, t_weechat_plugin};
@@ -126,6 +128,7 @@ impl<'a> InfolistItem<'a> {
                 weechat: self.weechat_ptr,
                 ptr,
                 weechat_phantom: PhantomData,
+                closing: Rc::new(Cell::new(false)),
             }),
         })
     }
