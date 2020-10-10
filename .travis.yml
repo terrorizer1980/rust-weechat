@@ -2,8 +2,6 @@ language: rust
 rust: stable
 
 jobs:
-  allow_failures:
-    - rust: nightly
   include:
     - stage: Lint
 
