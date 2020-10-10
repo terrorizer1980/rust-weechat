@@ -47,11 +47,6 @@ macro_rules! option_create {
 macro_rules! option_getter {
     ($option_type:ident, $name:ident, $string_name:expr, $description:literal, $output_type:ty) => {
         $crate::paste::item! {
-            #[allow(dead_code)]
-            #[doc = "Get the value for the `"]
-            #[doc = $string_name]
-            #[doc = "` option.\n"]
-            #[doc = $description]
             pub fn [<$name>](&self) -> $output_type {
                 if let weechat::config::ConfigOption::[<$option_type>](o) = self.0.search_option($string_name)
                     .expect(&format!("Couldn't find option {} in section {}",
@@ -159,9 +154,6 @@ macro_rules! section {
 macro_rules! section_getter {
     ($section:ident, $section_name:expr) => {
         $crate::paste::item! {
-            #[doc = "Get the `"]
-            #[doc = $section_name]
-            #[doc = "` section."]
             pub fn $section(&self) -> [<$section:camel Section>] {
                 let section = self.0.search_section($section_name)
                     .expect(&format!("Couldn't find section {}", $section_name));

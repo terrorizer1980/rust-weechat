@@ -9,7 +9,7 @@ name = "go"
 crate-type = ["cdylib"]
 
 [dependencies]
-fuzzy-matcher = "0.3.5"
+fuzzy-matcher = "0.3.7"
 
 [dependencies.weechat]
 path = "../../"
