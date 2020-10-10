@@ -1,6 +1,6 @@
 [package]
 name = "weechat"
-version = "0.3.1"
+version = "0.4.0"
 authors = ["Damir Jelić <poljar@termina.org.uk>"]
 
 repository = "https://github.com/poljar/rust-weechat/"
@@ -38,8 +38,8 @@ futures = { version = "0.3.6", optional = true }
 paste = { version = "1.0.1", optional = true }
 strum = { version = "0.19.5", optional = true }
 
-weechat-macro = { version = "0.3.1", path = "../weechat-macro" }
-weechat-sys = { version = "0.3.1", path = "../weechat-sys" }
+weechat-macro = { version = "0.4.0", path = "../weechat-macro" }
+weechat-sys = { version = "0.4.0", path = "../weechat-sys" }
 
 [dev-dependencies]
 async-std = { version = "1.6.5", features = [ "unstable" ] }
