@@ -506,7 +506,7 @@ impl Weechat {
             };
             if let Some(cb) = pointers.input_cb.as_mut() {
                 let future = cb.callback(buffer_handle, input_data.to_string());
-                Weechat::spawn_buffer_cb(buffer.full_name().to_string(), future);
+                Weechat::spawn_buffer_cb(buffer.full_name().to_string(), future).detach();
             }
 
             WEECHAT_RC_OK

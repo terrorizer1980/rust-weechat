@@ -88,7 +88,7 @@ pub trait Plugin: Sized {
 
 #[cfg(feature = "async")]
 #[cfg_attr(feature = "docs", doc(cfg(r#async)))]
-pub use executor::JoinHandle;
+pub use executor::Task;
 
 /// Status values for Weechat callbacks
 pub enum ReturnCode {

@@ -1,4 +1,4 @@
-pub use async_task::JoinHandle;
+pub use async_task::{Runnable, Task};
 use futures::future::{BoxFuture, Future};
 use pipe_channel::{channel, Receiver, Sender};
 use std::{
@@ -16,8 +16,22 @@ static mut _EXECUTOR: Option<WeechatExecutor> = None;
 
 type BufferName = String;
 
-type Job = async_task::Task<()>;
-type BufferJob = async_task::Task<BufferName>;
+type Job = Runnable;
+struct BufferJob(Runnable, BufferName);
+
+impl BufferJob {
+    fn run(self) -> bool {
+        self.0.run()
+    }
+
+    fn cancel(self) {
+        drop(self)
+    }
+
+    fn tag(&self) -> &BufferName {
+        &self.1
+    }
+}
 
 enum ExecutorJob {
     Job(Job),
@@ -59,7 +73,7 @@ impl FdHookCallback for WeechatExecutor {
                     if buffer.is_some() {
                         let _ = panic::catch_unwind(|| t.run());
                     } else {
-                        t.cancel();
+                        t.cancel()
                     }
                 }
             }
@@ -68,7 +82,7 @@ impl FdHookCallback for WeechatExecutor {
         let future = self.non_local_futures.lock().unwrap().pop_front();
         // Spawn a future if there was one sent from another thread.
         if let Some(future) = future {
-            self.spawn_local(future);
+            self.spawn_local(future).detach();
         }
     }
 }
@@ -95,15 +109,15 @@ impl WeechatExecutor {
         executor
     }
 
-    pub fn spawn_local<F, R>(&self, future: F) -> JoinHandle<R, ()>
+    pub fn spawn_local<F>(&self, future: F) -> Task<F::Output>
     where
-        F: Future<Output = R> + 'static,
-        R: 'static,
+        F: Future + 'static,
+        F::Output: 'static,
     {
         let sender = Arc::downgrade(&self.sender);
         let queue = Arc::downgrade(&self.futures);
 
-        let schedule = move |task| {
+        let schedule = move |runnable| {
             let sender = sender.upgrade();
             let queue = queue.upgrade();
 
@@ -117,18 +131,18 @@ impl WeechatExecutor {
                     .lock()
                     .expect("Lock of the future queue of the Weechat executor is poisoned");
 
-                queue.push_back(ExecutorJob::Job(task));
+                queue.push_back(ExecutorJob::Job(runnable));
                 weechat_notify
                     .send(())
                     .expect("Can't notify Weechat to run a future");
             }
         };
 
-        let (task, handle) = async_task::spawn_local(future, schedule, ());
+        let (runnable, task) = async_task::spawn_local(future, schedule);
 
-        task.schedule();
+        runnable.schedule();
 
-        handle
+        task
     }
 
     pub fn free() {
@@ -163,27 +177,27 @@ impl WeechatExecutor {
     }
 
     /// Spawn a future that will run on the Weechat main loop.
-    pub fn spawn<F, R>(future: F) -> JoinHandle<R, ()>
+    pub fn spawn<F>(future: F) -> Task<F::Output>
     where
-        F: Future<Output = R> + 'static,
-        R: 'static,
+        F: Future + 'static,
+        F::Output: 'static,
     {
         let executor = unsafe { _EXECUTOR.as_ref().expect("Executor wasn't started") };
 
         executor.spawn_local(future)
     }
 
-    pub(crate) fn spawn_buffer_cb<F, R>(buffer_name: String, future: F) -> JoinHandle<R, String>
+    pub(crate) fn spawn_buffer_cb<F>(buffer_name: String, future: F) -> Task<F::Output>
     where
-        F: Future<Output = R> + 'static,
-        R: 'static,
+        F: Future + 'static,
+        F::Output: 'static,
     {
         let executor = unsafe { _EXECUTOR.as_ref().expect("Executor wasn't started") };
 
         let sender = Arc::downgrade(&executor.sender);
         let queue = Arc::downgrade(&executor.futures);
 
-        let schedule = move |task| {
+        let schedule = move |runnable| {
             let sender = sender.upgrade();
             let queue = queue.upgrade();
 
@@ -197,17 +211,20 @@ impl WeechatExecutor {
                     .lock()
                     .expect("Lock of the future queue of the Weechat executor is poisoned");
 
-                queue.push_back(ExecutorJob::BufferJob(task));
+                queue.push_back(ExecutorJob::BufferJob(BufferJob(
+                    runnable,
+                    buffer_name.clone(),
+                )));
                 weechat_notify
                     .send(())
                     .expect("Can't notify Weechat to run a future");
             }
         };
 
-        let (task, handle) = async_task::spawn_local(future, schedule, buffer_name);
+        let (runnable, task) = async_task::spawn_local(future, schedule);
 
-        task.schedule();
+        runnable.schedule();
 
-        handle
+        task
     }
 }

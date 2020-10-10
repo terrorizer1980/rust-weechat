@@ -1,27 +1,30 @@
 mod buffer;
 
 use clap::{App, Arg};
-use std::borrow::Cow;
-use std::path::{Path, PathBuf};
-use std::str::FromStr;
-use tokio::runtime::{Builder, Runtime};
-use tokio::sync::mpsc::{channel, Receiver, Sender};
+use std::{
+    borrow::Cow,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
+use tokio::{
+    runtime::{Builder, Runtime},
+    sync::mpsc::{channel, Receiver, Sender},
+};
 
 use grep_regex::RegexMatcher;
-use grep_searcher::sinks::Lossy;
-use grep_searcher::Searcher;
+use grep_searcher::{sinks::Lossy, Searcher};
 use std::io;
 
-use std::cell::RefCell;
-use std::rc::Rc;
-use std::time::Instant;
+use std::{cell::RefCell, rc::Rc, time::Instant};
 
 use weechat::{infolist::InfolistVariable, Args, Plugin, Weechat};
 
-use weechat::buffer::{Buffer, BufferCloseCallback, BufferInputCallback};
-use weechat::config::{BooleanOptionSettings, Config, ConfigOption, ConfigSectionSettings};
-use weechat::hooks::{Command, CommandCallback, CommandSettings};
-use weechat::plugin;
+use weechat::{
+    buffer::{Buffer, BufferCloseCallback, BufferInputCallback},
+    config::{BooleanOptionSettings, Config, ConfigOption, ConfigSectionSettings},
+    hooks::{Command, CommandCallback, CommandSettings},
+    plugin,
+};
 
 use buffer::GrepBuffer;
 
@@ -209,7 +212,8 @@ impl RipgrepCommand {
             file.to_owned(),
             term.to_string(),
             rx,
-        ));
+        ))
+        .detach();
     }
 }
 

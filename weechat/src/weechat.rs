@@ -14,7 +14,7 @@ use std::{
 #[cfg(feature = "async")]
 use crate::executor::WeechatExecutor;
 #[cfg(feature = "async")]
-pub use async_task::JoinHandle;
+pub use async_task::Task;
 #[cfg(feature = "async")]
 use std::future::Future;
 
@@ -546,10 +546,10 @@ impl Weechat {
     /// ```
     #[cfg(feature = "async")]
     #[cfg_attr(feature = "docs", doc(cfg(r#async)))]
-    pub fn spawn<F, R>(future: F) -> JoinHandle<R, ()>
+    pub fn spawn<F>(future: F) -> Task<F::Output>
     where
-        F: Future<Output = R> + 'static,
-        R: 'static,
+        F: Future + 'static,
+        F::Output: 'static,
     {
         Weechat::check_thread();
         WeechatExecutor::spawn(future)
@@ -569,10 +569,10 @@ impl Weechat {
     }
 
     #[cfg(feature = "async")]
-    pub(crate) fn spawn_buffer_cb<F, R>(buffer_name: String, future: F) -> JoinHandle<R, String>
+    pub(crate) fn spawn_buffer_cb<F>(buffer_name: String, future: F) -> Task<F::Output>
     where
-        F: Future<Output = R> + 'static,
-        R: 'static,
+        F: Future + 'static,
+        F::Output: 'static,
     {
         WeechatExecutor::spawn_buffer_cb(buffer_name, future)
     }
