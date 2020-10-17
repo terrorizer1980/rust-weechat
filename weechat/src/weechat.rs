@@ -443,7 +443,7 @@ impl Weechat {
     /// Replace a leading `~` with the home directory.
     ///
     /// If the string does not start with `~`, the same string is returned.
-    pub fn expand_home(&self, string: &str) -> String {
+    pub fn expand_home(string: &str) -> String {
         Weechat::check_thread();
 
         let weechat = unsafe { Weechat::weechat() };
