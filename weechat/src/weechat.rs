@@ -440,6 +440,29 @@ impl Weechat {
         PathBuf::from(path)
     }
 
+    /// Replace a leading `~` with the home directory.
+    ///
+    /// If the string does not start with `~`, the same string is returned.
+    pub fn expand_home(&self, string: &str) -> String {
+        Weechat::check_thread();
+
+        let weechat = unsafe { Weechat::weechat() };
+        let expand = weechat.get().string_expand_home.unwrap();
+        let string = LossyCString::new(string);
+
+        let string = unsafe {
+            let result = expand(string.as_ptr());
+
+            if result.is_null() {
+                panic!("Returned null while expanding the home dir");
+            } else {
+                CStr::from_ptr(result).to_string_lossy().to_string()
+            }
+        };
+
+        string.to_string()
+    }
+
     /// Execute a modifier.
     ///
     /// A modifier takes a string and modifies it in some way, Weechat has a
