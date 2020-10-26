@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-use std::{borrow::Cow, cell::RefCell, cmp::Ordering, rc::Rc};
+use std::{borrow::Cow, cell::RefCell, cmp::Reverse, rc::Rc};
 
 use weechat::{
     buffer::Buffer,
@@ -124,7 +124,7 @@ impl<'a> From<&'a Buffer<'a>> for InputState {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd)]
+#[derive(Clone, Debug, PartialEq, Eq, Ord, PartialOrd)]
 struct BufferData {
     score: i64,
     number: i32,
@@ -139,17 +139,6 @@ impl<'a> From<&Buffer<'a>> for BufferData {
             number: buffer.number(),
             full_name: Rc::new(buffer.full_name().to_string()),
             short_name: Rc::new(buffer.short_name().to_string()),
-        }
-    }
-}
-
-impl Ord for BufferData {
-    fn cmp(&self, other: &Self) -> Ordering {
-        let score = self.score.cmp(&other.score);
-
-        match score {
-            Ordering::Equal => self.number.cmp(&other.number),
-            _ => score,
         }
     }
 }
@@ -199,7 +188,7 @@ impl BufferList {
     /// given pattern, the score is adjusted to signal how well a buffer matches
     /// the pattern.
     fn filter(&self, pattern: &str) -> Self {
-        let matcher = SkimMatcherV2::default();
+        let matcher = SkimMatcherV2::default().smart_case();
 
         let mut buffers: Vec<BufferData> = self
             .buffers
@@ -215,7 +204,7 @@ impl BufferList {
             })
             .collect();
 
-        buffers.sort();
+        buffers.sort_by_key(|b| Reverse(b.score));
 
         BufferList {
             config: self.config.clone(),
