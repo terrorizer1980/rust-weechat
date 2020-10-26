@@ -16,6 +16,34 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+#![deny(
+    dead_code,
+    trivial_casts,
+    missing_debug_implementations,
+    trivial_numeric_casts,
+    unused_extern_crates,
+    unused_import_braces,
+    unused_qualifications
+)]
+
+//! Rewrite of the popular go.py script for Weechat
+//!
+//! This is a complete rewrite of go.py found in the Weechat scripts repo, it's
+//! using the [fuzzy-matcher] crate to provide powerful fzf-like matching of
+//! buffer names.
+//!
+//! TODO
+//!
+//! * Highlight the characters that are matching, switch to `fuzzy_indices()` to
+//! get the positions that need to be highlighted.
+//!
+//! * Add the use_core_instead_weechat config option.
+//!
+//! * Add the buffer_number setting so numbers aren't displayed, also allow to
+//! select the number if it's enabled.
+//!
+//! [fuzzy-matcher]: https://docs.rs/fuzzy-matcher/
+
 use std::{borrow::Cow, cell::RefCell, cmp::Reverse, rc::Rc};
 
 use weechat::{
