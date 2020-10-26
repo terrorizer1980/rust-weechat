@@ -167,7 +167,7 @@ impl RipgrepCommand {
     ///
     /// This runs on the Tokio executor in a separate thread, returns the
     /// searchresult through a mpsc channel to the Weechat thread.
-    async fn search(file: PathBuf, matcher: RegexMatcher, mut sender: Sender<SearchResult>) {
+    async fn search(file: PathBuf, matcher: RegexMatcher, sender: Sender<SearchResult>) {
         let mut matches: Vec<String> = vec![];
 
         let sink = Lossy(|_, line| {
@@ -306,10 +306,9 @@ impl Plugin for Ripgrep {
 
         let command_info = CommandSettings::new("rg");
 
-        let runtime = Builder::new()
-            .threaded_scheduler()
+        let runtime = Builder::new_multi_thread()
+            .max_threads(4)
             .thread_name("ripgrep-searcher")
-            .core_threads(4)
             .build()
             .expect("Can't create the Tokio runtime");
 

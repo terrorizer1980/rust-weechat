@@ -12,4 +12,4 @@ repository = "https://github.com/poljar/rust-weechat"
 bindgen = "0.55.1"
 
 [dependencies]
-libc = "0.2.79"
+libc = "0.2.80"

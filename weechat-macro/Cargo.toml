@@ -12,8 +12,8 @@ repository = "https://github.com/poljar/rust-weechat"
 proc-macro = true
 
 [dependencies]
-libc = "0.2.79"
-syn = "1.0.43"
+libc = "0.2.80"
+syn = "1.0.48"
 proc-macro2 = "1.0.24"
 quote = "1.0.7"
 
