@@ -43,14 +43,17 @@ config!(
             "Foreground color for the non-selected name of a buffer.",
             "black",
         },
+
         color_name_bg: Color {
             "Background color for the non-selected name of a buffer.",
             "cyan",
         },
+
         color_name_selected_fg: Color {
             "Foreground color for the selected name of a buffer.",
             "black",
         },
+
         color_name_selected_bg: Color {
             "Background color for the selected name of a buffer.",
             "yellow",
@@ -60,14 +63,17 @@ config!(
             "Foreground color for the non-selected number of a buffer.",
             "yellow",
         },
+
         color_number_bg: Color {
             "Background color for the non-selected number of a buffer.",
             "magenta",
         },
+
         color_number_selected_fg: Color {
             "Foreground color for the selected number of a buffer.",
             "yellow",
         },
+
         color_number_selected_bg: Color {
             "Background color for the selected number of a buffer.",
             "red",
