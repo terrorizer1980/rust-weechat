@@ -37,8 +37,6 @@
 //! * Highlight the characters that are matching, switch to `fuzzy_indices()` to
 //! get the positions that need to be highlighted.
 //!
-//! * Add the use_core_instead_weechat config option.
-//!
 //! * Add the buffer_number setting so numbers aren't displayed, also allow to
 //! select the number if it's enabled.
 //!
@@ -65,6 +63,11 @@ config!(
         prompt: String {
             "Prompt to display before the list of buffers.",
             "Go to: ",
+        },
+
+        use_core_instead_weechat: bool {
+            "Use the name \"core\" instead of \"weechat\" for the core buffer",
+            false,
         },
 
         color_name_fg: Color {
@@ -205,7 +208,15 @@ impl BufferList {
             let buffer = item.get("pointer").expect("Infolist doesn't have a buffer");
 
             if let InfolistVariable::Buffer(b) = buffer {
-                buffers.push(BufferData::from(&b));
+                let mut buffer_data = BufferData::from(&b);
+
+                if config.look().use_core_instead_weechat()
+                    && buffer_data.short_name.as_str() == "weechat"
+                {
+                    buffer_data.short_name = Rc::new("core".to_string());
+                }
+
+                buffers.push(buffer_data);
             }
         }
 
