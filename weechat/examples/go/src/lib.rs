@@ -32,11 +32,6 @@
 //! using the [fuzzy-matcher] crate to provide powerful fzf-like matching of
 //! buffer names.
 //!
-//! TODO
-//!
-//! * Highlight the characters that are matching, switch to `fuzzy_indices()` to
-//! get the positions that need to be highlighted.
-//!
 //! [fuzzy-matcher]: https://docs.rs/fuzzy-matcher/
 
 use std::{borrow::Cow, cell::RefCell, cmp::Reverse, rc::Rc};
@@ -85,6 +80,28 @@ config!(
         color_name_selected_bg: Color {
             "Background color for the selected name of a buffer.",
             "yellow",
+        },
+
+        color_name_highlight_fg: Color {
+            "Foreground color for letters that match our search term.",
+            "red",
+        },
+
+        color_name_highlight_bg: Color {
+            "Background color for letters that match our search term.",
+            "cyan",
+        },
+
+        color_name_highlight_selected_fg: Color {
+            "Foreground color for letters that match our search term on the \
+                selected buffer.",
+            "red",
+        },
+
+        color_name_highlight_selected_bg: Color {
+            "Background color for letters that match our search term on the \
+                selected buffer.",
+            "brown",
         },
 
         color_number_fg: Color {
@@ -167,6 +184,7 @@ impl<'a> From<&'a Buffer<'a>> for InputState {
 struct BufferData {
     score: i64,
     number: i32,
+    indices: Vec<usize>,
     full_name: Rc<String>,
     short_name: Rc<String>,
 }
@@ -176,6 +194,7 @@ impl<'a> From<&Buffer<'a>> for BufferData {
         BufferData {
             score: 0,
             number: buffer.number(),
+            indices: Vec::new(),
             full_name: Rc::new(buffer.full_name().to_string()),
             short_name: Rc::new(buffer.short_name().to_string()),
         }
@@ -247,11 +266,14 @@ impl BufferList {
                     buffer_data.short_name.to_string()
                 };
 
-                matcher.fuzzy_match(&buffer_name, &pattern).map(|score| {
-                    let mut new_buffer = buffer_data.clone();
-                    new_buffer.score = score;
-                    new_buffer
-                })
+                matcher
+                    .fuzzy_indices(&buffer_name, &pattern)
+                    .map(|(score, indices)| {
+                        let mut new_buffer = buffer_data.clone();
+                        new_buffer.score = score;
+                        new_buffer.indices = indices;
+                        new_buffer
+                    })
             })
             .collect();
 
@@ -327,6 +349,11 @@ impl std::fmt::Display for BufferList {
         let name_selected_fg = self.config.look().color_name_selected_fg();
         let name_selected_bg = self.config.look().color_name_selected_bg();
 
+        let name_highlight_fg = self.config.look().color_name_highlight_fg();
+        let name_highlight_bg = self.config.look().color_name_highlight_bg();
+        let name_highlight_sel_fg = self.config.look().color_name_highlight_selected_fg();
+        let name_highlight_sel_bg = self.config.look().color_name_highlight_selected_bg();
+
         let number_fg = self.config.look().color_number_fg();
         let number_bg = self.config.look().color_number_bg();
         let number_selected_fg = self.config.look().color_number_selected_fg();
@@ -337,35 +364,54 @@ impl std::fmt::Display for BufferList {
             .iter()
             .enumerate()
             .map(|(i, buffer_data)| {
-                let number_color = if i == self.selected_buffer {
-                    Weechat::color_pair(&number_selected_fg, &number_selected_bg)
-                } else {
-                    Weechat::color_pair(&number_fg, &number_bg)
-                };
-
-                let name_color = if i == self.selected_buffer {
-                    Weechat::color_pair(&name_selected_fg, &name_selected_bg)
-                } else {
-                    Weechat::color_pair(&name_fg, &name_bg)
-                };
-
-                if self.config.behaviour().buffer_numbers() {
-                    format!(
-                        "{}{}{}{}{}",
-                        number_color,
-                        buffer_data.number,
-                        name_color,
-                        buffer_data.short_name,
-                        Weechat::color("reset"),
+                let (number_color, name_color, name_highlight) = if i == self.selected_buffer {
+                    (
+                        Weechat::color_pair(&number_selected_fg, &number_selected_bg),
+                        Weechat::color_pair(&name_selected_fg, &name_selected_bg),
+                        Weechat::color_pair(&name_highlight_sel_fg, &name_highlight_sel_bg),
                     )
                 } else {
-                    format!(
-                        "{}{}{}",
-                        name_color,
-                        buffer_data.short_name,
-                        Weechat::color("reset"),
+                    (
+                        Weechat::color_pair(&number_fg, &number_bg),
+                        Weechat::color_pair(&name_fg, &name_bg),
+                        Weechat::color_pair(&name_highlight_fg, &name_highlight_bg),
                     )
-                }
+                };
+
+                let buffer_number = if self.config.behaviour().buffer_numbers() {
+                    buffer_data.number.to_string()
+                } else {
+                    "".to_string()
+                };
+
+                let buffer_name: String = buffer_data
+                    .short_name
+                    .chars()
+                    .enumerate()
+                    .map(|(i, g)| {
+                        // We don't highlight the buffer number and it isn't yet
+                        // part of the string, so move our current index for the
+                        // buffer name length.
+                        let i = i + buffer_number.len();
+
+                        let color = if buffer_data.indices.contains(&i) {
+                            &name_highlight
+                        } else {
+                            &name_color
+                        };
+
+                        format!("{}{}{}", color, g, Weechat::color("reset"))
+                    })
+                    .collect();
+
+                let buffer_number = format!(
+                    "{}{}{}",
+                    number_color,
+                    buffer_number,
+                    Weechat::color("reset")
+                );
+
+                format!("{}{}", buffer_number, buffer_name)
             })
             .collect();
 
