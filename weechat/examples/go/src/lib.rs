@@ -37,9 +37,6 @@
 //! * Highlight the characters that are matching, switch to `fuzzy_indices()` to
 //! get the positions that need to be highlighted.
 //!
-//! * Add the buffer_number setting so numbers aren't displayed, also allow to
-//! select the number if it's enabled.
-//!
 //! [fuzzy-matcher]: https://docs.rs/fuzzy-matcher/
 
 use std::{borrow::Cow, cell::RefCell, cmp::Reverse, rc::Rc};
@@ -108,14 +105,19 @@ config!(
         color_number_selected_bg: Color {
             "Background color for the selected number of a buffer.",
             "red",
-        }
+        },
     },
 
     Section behaviour {
         autojump: bool {
             "Automatically jump to a buffer when it is uniquely selected.",
             false,
-        }
+        },
+
+        buffer_numbers: bool {
+            "Automatically jump to a buffer when it is uniquely selected.",
+            false,
+        },
     }
 );
 
@@ -239,13 +241,17 @@ impl BufferList {
             .buffers
             .iter()
             .filter_map(|buffer_data| {
-                matcher
-                    .fuzzy_match(&buffer_data.short_name, &pattern)
-                    .map(|score| {
-                        let mut new_buffer = buffer_data.clone();
-                        new_buffer.score = score;
-                        new_buffer
-                    })
+                let buffer_name = if self.config.behaviour().buffer_numbers() {
+                    format!("{}{}", buffer_data.number, buffer_data.short_name)
+                } else {
+                    buffer_data.short_name.to_string()
+                };
+
+                matcher.fuzzy_match(&buffer_name, &pattern).map(|score| {
+                    let mut new_buffer = buffer_data.clone();
+                    new_buffer.score = score;
+                    new_buffer
+                })
             })
             .collect();
 
@@ -343,14 +349,23 @@ impl std::fmt::Display for BufferList {
                     Weechat::color_pair(&name_fg, &name_bg)
                 };
 
-                format!(
-                    "{}{}{}{}{}",
-                    number_color,
-                    buffer_data.number,
-                    name_color,
-                    buffer_data.short_name,
-                    Weechat::color("reset"),
-                )
+                if self.config.behaviour().buffer_numbers() {
+                    format!(
+                        "{}{}{}{}{}",
+                        number_color,
+                        buffer_data.number,
+                        name_color,
+                        buffer_data.short_name,
+                        Weechat::color("reset"),
+                    )
+                } else {
+                    format!(
+                        "{}{}{}",
+                        name_color,
+                        buffer_data.short_name,
+                        Weechat::color("reset"),
+                    )
+                }
             })
             .collect();
 
