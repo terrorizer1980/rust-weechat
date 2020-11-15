@@ -3,6 +3,7 @@
 mod lines;
 mod nick;
 mod nickgroup;
+mod window;
 
 use std::{
     borrow::Cow,
@@ -29,6 +30,7 @@ pub use crate::buffer::{
     lines::{BufferLine, BufferLines, LineData},
     nick::{Nick, NickSettings},
     nickgroup::NickGroup,
+    window::Window,
 };
 
 /// A Weechat buffer.
@@ -1326,6 +1328,26 @@ impl Buffer<'_> {
             last_line,
             buffer: PhantomData,
             done: false,
+        }
+    }
+
+    /// Get the window object that is currently displaying this buffer.
+    ///
+    /// Is `None` if no window is displaying this buffer.
+    pub fn window(&self) -> Option<Window> {
+        let weechat = self.weechat();
+        let get_window = weechat.get().window_search_with_buffer.unwrap();
+
+        let ptr = unsafe { get_window(self.ptr()) };
+
+        if ptr.is_null() {
+            None
+        } else {
+            Some(Window {
+                weechat: weechat.ptr,
+                ptr,
+                phantom: PhantomData,
+            })
         }
     }
 }
