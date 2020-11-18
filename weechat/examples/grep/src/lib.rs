@@ -23,7 +23,7 @@ use weechat::{
     buffer::{Buffer, BufferCloseCallback, BufferInputCallback},
     config::{BooleanOptionSettings, Config, ConfigOption, ConfigSectionSettings},
     hooks::{Command, CommandCallback, CommandSettings},
-    plugin,
+    plugin, Prefix,
 };
 
 use buffer::GrepBuffer;
@@ -193,7 +193,7 @@ impl RipgrepCommand {
             Err(e) => {
                 Weechat::print(&format!(
                     "{} Invalid regular expression {:?}",
-                    Weechat::prefix("error"),
+                    Weechat::prefix(Prefix::Error),
                     e
                 ));
                 return;

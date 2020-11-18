@@ -23,7 +23,7 @@ use weechat::{
     buffer::{Buffer, BufferBuilder, BufferCloseCallback, BufferHandle, BufferInputCallback},
     hooks::{Command, CommandCallback, CommandSettings},
     infolist::InfolistVariable,
-    plugin, Args, Plugin, Weechat,
+    plugin, Args, Plugin, Prefix, Weechat,
 };
 
 struct Infolist {
@@ -70,7 +70,7 @@ impl InnerInfolist {
         } else {
             buffer.print(&format!(
                 "{}Infolist {} not found",
-                Weechat::prefix("error"),
+                Weechat::prefix(Prefix::Error),
                 infolist_name
             ));
             return;

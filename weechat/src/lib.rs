@@ -60,7 +60,7 @@ pub mod config;
 pub mod hooks;
 pub mod infolist;
 
-pub use crate::weechat::{Args, Weechat};
+pub use crate::weechat::{Args, Prefix, Weechat};
 
 pub use libc;
 pub use weechat_macro::plugin;

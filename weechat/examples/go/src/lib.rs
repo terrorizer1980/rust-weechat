@@ -44,7 +44,7 @@ use weechat::{
         ModifierCallback, ModifierData, ModifierHook,
     },
     infolist::InfolistVariable,
-    plugin, Args, Plugin, ReturnCode, Weechat,
+    plugin, Args, Plugin, Prefix, ReturnCode, Weechat,
 };
 
 use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
@@ -635,7 +635,7 @@ impl Plugin for Go {
         if let Err(e) = config.read() {
             Weechat::print(&format!(
                 "{}Error reading go config file {:?}",
-                Weechat::prefix("error"),
+                Weechat::prefix(Prefix::Error),
                 e
             ));
             return Err(());

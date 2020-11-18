@@ -24,6 +24,33 @@ pub struct Args {
     iter: vec::IntoIter<String>,
 }
 
+/// A Weechat prefix, can be prepended to a message to notify the message
+/// category.
+pub enum Prefix {
+    /// Prefix for an error message.
+    Error,
+    /// Prefix for a networking related message.
+    Network,
+    /// Prefix for a `/me` action type of message.
+    Action,
+    /// Prefix for a message notifying that an user has joined the chat.
+    Join,
+    /// Prefix for a message notifying that an user has left the chat.
+    Quit,
+}
+
+impl Prefix {
+    fn as_str(&self) -> &str {
+        match self {
+            Prefix::Error => "error",
+            Prefix::Network => "network",
+            Prefix::Action => "action",
+            Prefix::Join => "join",
+            Prefix::Quit => "quit",
+        }
+    }
+}
+
 impl Args {
     /// Create an Args object from the underlying weechat C types.
     /// Expects the strings in argv to be valid utf8, if not invalid UTF-8
@@ -123,7 +150,7 @@ impl Weechat {
         if current_thread_id == weechat_thread {
             Weechat::print(&format!(
                 "{}Panic in the main Weechat thread: {}",
-                Weechat::prefix("error"),
+                Weechat::prefix(Prefix::Error),
                 info
             ));
         } else {
@@ -147,7 +174,7 @@ impl Weechat {
     async fn thread_panic(thread_name: String, message: String) {
         Weechat::print(&format!(
             "{}Thread '{}{}{}' {}.",
-            Weechat::prefix("error"),
+            Weechat::prefix(Prefix::Error),
             Weechat::color("red"),
             thread_name,
             Weechat::color("reset"),
@@ -313,16 +340,18 @@ impl Weechat {
     /// # Panics
     ///
     /// Panics if the method is not called from the main Weechat thread.
-    pub fn prefix(prefix: &str) -> &str {
+    pub fn prefix(prefix: Prefix) -> String {
         Weechat::check_thread();
         let weechat = unsafe { Weechat::weechat() };
+
         let prefix_fn = weechat.get().prefix.unwrap();
-        let prefix = LossyCString::new(prefix);
+        let prefix = LossyCString::new(prefix.as_str());
 
         unsafe {
             CStr::from_ptr(prefix_fn(prefix.as_ptr()))
                 .to_str()
                 .expect("Weechat returned a non UTF-8 string")
+                .to_string()
         }
     }
 
