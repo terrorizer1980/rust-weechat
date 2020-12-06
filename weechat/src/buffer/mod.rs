@@ -1147,6 +1147,16 @@ impl Buffer<'_> {
         self.set("nicklist", "0")
     }
 
+    /// Enable displaying of groups in the nicklist.
+    pub fn enable_nicklist_groups(&self) {
+        self.set("nicklist_display_groups", "1")
+    }
+
+    /// Disable displaying of groups in the nicklist.
+    pub fn disable_nicklist_groups(&self) {
+        self.set("nicklist_display_groups", "0")
+    }
+
     /// Enable the nicklist for this buffer.
     pub fn enable_nicklist(&self) {
         self.set("nicklist", "1")
