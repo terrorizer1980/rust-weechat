@@ -1,5 +1,7 @@
 //! Main weechat module
 
+use backtrace::Backtrace;
+
 use weechat_sys::t_weechat_plugin;
 
 use crate::LossyCString;
@@ -147,19 +149,41 @@ impl Weechat {
         let current_thread_id = current_thread.id();
         let thread_name = current_thread.name().unwrap_or("Unnamed");
 
+        let backtrace = std::env::var("RUST_BACKTRACE")
+            .map(|v| v == "1")
+            .unwrap_or(false);
+
         if current_thread_id == weechat_thread {
-            Weechat::print(&format!(
-                "{}Panic in the main Weechat thread: {}",
-                Weechat::prefix(Prefix::Error),
-                info
-            ));
+            if backtrace {
+                let bt = Backtrace::new();
+
+                Weechat::print(&format!(
+                    "{}Panic in the main Weechat thread: {}\n{:?}",
+                    Weechat::prefix(Prefix::Error),
+                    info,
+                    bt,
+                ));
+            } else {
+                Weechat::print(&format!(
+                    "{}Panic in the main Weechat thread: {}",
+                    Weechat::prefix(Prefix::Error),
+                    info,
+                ));
+            }
         } else {
             #[cfg(feature = "async")]
             {
+                let bt = if backtrace {
+                    Some(Backtrace::new())
+                } else {
+                    None
+                };
+
                 if current_thread_id != weechat_thread {
                     Weechat::spawn_from_thread(Weechat::thread_panic(
                         thread_name.to_string(),
                         info.to_string(),
+                        bt,
                     ))
                 }
             }
@@ -171,15 +195,27 @@ impl Weechat {
     }
 
     #[cfg(feature = "async")]
-    async fn thread_panic(thread_name: String, message: String) {
-        Weechat::print(&format!(
-            "{}Thread '{}{}{}' {}.",
-            Weechat::prefix(Prefix::Error),
-            Weechat::color("red"),
-            thread_name,
-            Weechat::color("reset"),
-            message
-        ));
+    async fn thread_panic(thread_name: String, message: String, backtrace: Option<Backtrace>) {
+        if let Some(backtrace) = backtrace {
+            Weechat::print(&format!(
+                "{}Thread '{}{}{}' {}\n{:?}",
+                Weechat::prefix(Prefix::Error),
+                Weechat::color("red"),
+                thread_name,
+                Weechat::color("reset"),
+                message,
+                backtrace,
+            ));
+        } else {
+            Weechat::print(&format!(
+                "{}Thread '{}{}{}' {}.",
+                Weechat::prefix(Prefix::Error),
+                Weechat::color("red"),
+                thread_name,
+                Weechat::color("reset"),
+                message
+            ));
+        }
     }
 
     /// Free internal plugin data.
