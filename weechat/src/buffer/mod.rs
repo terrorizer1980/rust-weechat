@@ -1253,6 +1253,35 @@ impl Buffer<'_> {
         self.weechat().core_buffer()
     }
 
+    /// Merge two buffers.
+    pub fn merge(&self, target_buffer: &Buffer) {
+        let weechat = self.weechat();
+
+        if target_buffer != self {
+            let merge = weechat.get().buffer_merge.unwrap();
+            unsafe { merge(self.ptr(), target_buffer.ptr()) };
+        }
+    }
+
+    /// Unmerge the buffer if it's merged with other buffers, the buffer will be
+    /// moved to the current buffer number + 1.
+    pub fn unmerge(&self) {
+        self.unmerge_helper(None);
+    }
+
+    /// Unmerge the buffer if it's merged with other buffers, the buffer will be
+    /// moved to target number.
+    pub fn unmerge_to(&self, target_number: u16) {
+        self.unmerge_helper(Some(target_number));
+    }
+
+    fn unmerge_helper(&self, target_number: Option<u16>) {
+        let weechat = self.weechat();
+
+        let unmerge = weechat.get().buffer_unmerge.unwrap();
+        unsafe { unmerge(self.ptr(), target_number.map(|n| n.into()).unwrap_or(-1)) };
+    }
+
     /// Run the given command in the buffer.
     ///
     /// # Arguments
