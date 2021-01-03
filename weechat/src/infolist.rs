@@ -33,7 +33,7 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use weechat_sys::{t_gui_buffer, t_infolist, t_weechat_plugin};
+use weechat_sys::{t_gui_buffer, t_infolist};
 
 use crate::{
     buffer::{Buffer, InnerBuffer, InnerBuffers},
@@ -46,8 +46,7 @@ use crate::{
 pub struct Infolist<'a> {
     ptr: *mut t_infolist,
     infolist_name: String,
-    weechat_ptr: *mut t_weechat_plugin,
-    phantom_weechat: PhantomData<&'a Weechat>,
+    weechat: &'a Weechat,
 }
 
 /// The type of an infolist variable.
@@ -78,7 +77,7 @@ impl From<&str> for InfolistType {
 /// hashmap.
 pub struct InfolistItem<'a> {
     ptr: *mut t_infolist,
-    weechat_ptr: *mut t_weechat_plugin,
+    weechat: Weechat,
     fields: HashMap<String, InfolistType>,
     infolist: PhantomData<&'a Infolist<'a>>,
 }
@@ -91,19 +90,17 @@ impl<'a> Debug for InfolistItem<'a> {
 
 impl<'a> InfolistItem<'a> {
     fn integer(&self, name: &str) -> i32 {
-        let weechat = Weechat::from_ptr(self.weechat_ptr);
         let name = LossyCString::new(name);
 
-        let infolist_integer = weechat.get().infolist_integer.unwrap();
+        let infolist_integer = self.weechat.get().infolist_integer.unwrap();
 
         unsafe { infolist_integer(self.ptr, name.as_ptr()) }
     }
 
     fn string(&'a self, name: &str) -> Option<Cow<str>> {
-        let weechat = Weechat::from_ptr(self.weechat_ptr);
         let name = LossyCString::new(name);
 
-        let infolist_string = weechat.get().infolist_string.unwrap();
+        let infolist_string = self.weechat.get().infolist_string.unwrap();
 
         unsafe {
             let ptr = infolist_string(self.ptr, name.as_ptr());
@@ -116,10 +113,9 @@ impl<'a> InfolistItem<'a> {
     }
 
     fn buffer(&self, name: &str) -> Option<Buffer> {
-        let weechat = Weechat::from_ptr(self.weechat_ptr);
         let name = LossyCString::new(name);
 
-        let infolist_pointer = weechat.get().infolist_pointer.unwrap();
+        let infolist_pointer = self.weechat.get().infolist_pointer.unwrap();
 
         let ptr = unsafe { infolist_pointer(self.ptr, name.as_ptr()) as *mut t_gui_buffer };
 
@@ -129,19 +125,17 @@ impl<'a> InfolistItem<'a> {
 
         Some(Buffer {
             inner: InnerBuffers::BorrowedBuffer(InnerBuffer {
-                weechat: self.weechat_ptr,
+                weechat: &self.weechat,
                 ptr,
-                weechat_phantom: PhantomData,
                 closing: Rc::new(Cell::new(false)),
             }),
         })
     }
 
     fn time(&self, name: &str) -> Option<SystemTime> {
-        let weechat = Weechat::from_ptr(self.weechat_ptr);
         let name = LossyCString::new(name);
 
-        let infolist_time = weechat.get().infolist_time.unwrap();
+        let infolist_time = self.weechat.get().infolist_time.unwrap();
 
         let time = unsafe { infolist_time(self.ptr, name.as_ptr()) };
 
@@ -262,9 +256,7 @@ impl<'a> Infolist<'a> {
     }
 
     fn get_fields(&self) -> HashMap<String, InfolistType> {
-        let weechat = Weechat::from_ptr(self.weechat_ptr);
-
-        let infolist_fields = weechat.get().infolist_fields.unwrap();
+        let infolist_fields = self.weechat.get().infolist_fields.unwrap();
         let mut fields: HashMap<String, InfolistType> = HashMap::new();
 
         let fields_string = unsafe {
@@ -304,8 +296,7 @@ impl<'a> Infolist<'a> {
 
 impl<'a> Drop for Infolist<'a> {
     fn drop(&mut self) {
-        let weechat = Weechat::from_ptr(self.weechat_ptr);
-        let infolist_free = weechat.get().infolist_free.unwrap();
+        let infolist_free = self.weechat.get().infolist_free.unwrap();
 
         unsafe { infolist_free(self.ptr) }
     }
@@ -372,8 +363,7 @@ impl Weechat {
             Ok(Infolist {
                 ptr: infolist_ptr,
                 infolist_name: infolist_name.to_owned(),
-                weechat_ptr: self.ptr,
-                phantom_weechat: PhantomData,
+                weechat: &self,
             })
         }
     }
@@ -383,8 +373,7 @@ impl<'a> Iterator for Infolist<'a> {
     type Item = InfolistItem<'a>;
 
     fn next(&mut self) -> Option<InfolistItem<'a>> {
-        let weechat = Weechat::from_ptr(self.weechat_ptr);
-        let infolist_next = weechat.get().infolist_next.unwrap();
+        let infolist_next = self.weechat.get().infolist_next.unwrap();
 
         let ret = unsafe { infolist_next(self.ptr) };
 
@@ -393,7 +382,7 @@ impl<'a> Iterator for Infolist<'a> {
 
             Some(InfolistItem {
                 ptr: self.ptr,
-                weechat_ptr: self.weechat_ptr,
+                weechat: Weechat::from_ptr(self.weechat.ptr),
                 fields,
                 infolist: PhantomData,
             })

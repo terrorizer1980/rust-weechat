@@ -1,5 +1,5 @@
 use libc::{c_char, c_int};
-use std::{borrow::Cow, cell::Cell, ffi::CStr, marker::PhantomData, os::raw::c_void, ptr, rc::Rc};
+use std::{borrow::Cow, cell::Cell, ffi::CStr, os::raw::c_void, ptr, rc::Rc};
 
 use weechat_sys::{t_gui_buffer, t_weechat_plugin};
 
@@ -62,8 +62,7 @@ impl<'a> Into<SignalData<'a>> for &'a Buffer<'a> {
         SignalData::Buffer(Buffer {
             inner: InnerBuffers::BorrowedBuffer(InnerBuffer {
                 ptr,
-                weechat: self.inner.weechat_ptr(),
-                weechat_phantom: PhantomData,
+                weechat: self.inner.weechat(),
                 closing: Rc::new(Cell::new(false)),
             }),
         })

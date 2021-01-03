@@ -36,6 +36,7 @@
 //! ```
 
 #![deny(missing_docs)]
+#![allow(clippy::result_unit_err)]
 #![cfg_attr(feature = "docs", feature(doc_cfg))]
 
 use std::ffi::CString;

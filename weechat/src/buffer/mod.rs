@@ -70,24 +70,23 @@ impl<'a> InnerBuffers<'a> {
 }
 
 impl<'a> InnerBuffers<'a> {
-    pub(crate) fn weechat_ptr(&self) -> *mut t_weechat_plugin {
+    pub(crate) fn weechat(&self) -> &Weechat {
         match self {
-            InnerBuffers::BorrowedBuffer(b) => b.weechat,
-            InnerBuffers::OwnedBuffer(b) => b.weechat,
+            InnerBuffers::BorrowedBuffer(b) => &b.weechat,
+            InnerBuffers::OwnedBuffer(b) => &b.weechat,
         }
     }
 }
 
 pub(crate) struct InnerOwnedBuffer<'a> {
-    pub(crate) weechat: *mut t_weechat_plugin,
+    pub(crate) weechat: Weechat,
     pub(crate) buffer_handle: &'a BufferHandle,
     closing: Rc<Cell<bool>>,
 }
 
 pub(crate) struct InnerBuffer<'a> {
-    pub(crate) weechat: *mut t_weechat_plugin,
+    pub(crate) weechat: &'a Weechat,
     pub(crate) ptr: *mut t_gui_buffer,
-    pub(crate) weechat_phantom: PhantomData<&'a Weechat>,
     pub(crate) closing: Rc<Cell<bool>>,
 }
 
@@ -142,7 +141,7 @@ impl BufferHandle {
         } else {
             let buffer = Buffer {
                 inner: InnerBuffers::OwnedBuffer(InnerOwnedBuffer {
-                    weechat: self.weechat,
+                    weechat: Weechat::from_ptr(self.weechat),
                     buffer_handle: self,
                     closing: self.closing.clone(),
                 }),
@@ -458,9 +457,8 @@ impl Weechat {
     pub(crate) fn buffer_from_ptr(&self, buffer_ptr: *mut t_gui_buffer) -> Buffer {
         Buffer {
             inner: InnerBuffers::BorrowedBuffer(InnerBuffer {
-                weechat: self.ptr,
+                weechat: self,
                 ptr: buffer_ptr,
-                weechat_phantom: PhantomData,
                 closing: Rc::new(Cell::new(false)),
             }),
         }
@@ -471,6 +469,19 @@ impl Weechat {
         let buffer_search = self.get().buffer_search.unwrap();
 
         let buf_ptr = unsafe { buffer_search(ptr::null(), ptr::null()) };
+        if buf_ptr.is_null() {
+            panic!("No open buffer found");
+        } else {
+            self.buffer_from_ptr(buf_ptr)
+        }
+    }
+
+    /// Get the main/core buffer.
+    pub fn core_buffer(&self) -> Buffer {
+        let buffer_search = self.get().buffer_search_main.unwrap();
+
+        let buf_ptr = unsafe { buffer_search() };
+
         if buf_ptr.is_null() {
             panic!("No open buffer found");
         } else {
@@ -727,13 +738,11 @@ pub(crate) type WeechatInputCbT = unsafe extern "C" fn(
 ) -> c_int;
 
 impl Buffer<'_> {
-    fn weechat(&self) -> Weechat {
-        let ptr = match &self.inner {
-            InnerBuffers::BorrowedBuffer(b) => b.weechat,
-            InnerBuffers::OwnedBuffer(b) => b.weechat,
-        };
-
-        Weechat::from_ptr(ptr)
+    fn weechat(&self) -> &Weechat {
+        match &self.inner {
+            InnerBuffers::BorrowedBuffer(b) => &b.weechat,
+            InnerBuffers::OwnedBuffer(b) => &b.weechat,
+        }
     }
 
     pub(crate) fn ptr(&self) -> *mut t_gui_buffer {
@@ -1237,6 +1246,11 @@ impl Buffer<'_> {
     /// Switch to the buffer
     pub fn switch_to(&self) {
         self.set("display", "1");
+    }
+
+    /// Get the main/core buffer
+    pub fn core_buffer(&self) -> Buffer {
+        self.weechat().core_buffer()
     }
 
     /// Run the given command in the buffer.
