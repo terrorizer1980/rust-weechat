@@ -244,15 +244,15 @@ pub enum InfolistVariable<'a> {
 
 impl<'a> Infolist<'a> {
     fn is_pointer_buffer(infolist_name: &str, variable_name: &str) -> bool {
-        match (infolist_name, variable_name) {
-            ("logger_buffer", "buffer") => true,
-            ("buffer", "pointer") => true,
-            ("buflist", "buffer") => true,
-            ("irc_server", "buffer") => true,
-            ("hotlist", "buffer_pointer") => true,
-            ("window", "buffer") => true,
-            _ => false,
-        }
+        matches!(
+            (infolist_name, variable_name),
+            ("logger_buffer", "buffer")
+                | ("buffer", "pointer")
+                | ("buflist", "buffer")
+                | ("irc_server", "buffer")
+                | ("hotlist", "buffer_pointer")
+                | ("window", "buffer")
+        )
     }
 
     fn get_fields(&self) -> HashMap<String, InfolistType> {

@@ -525,7 +525,7 @@ impl Weechat {
             }
         };
 
-        string.to_string()
+        string
     }
 
     /// Execute a modifier.

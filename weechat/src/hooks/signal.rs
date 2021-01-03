@@ -74,6 +74,7 @@ impl<'a> SignalData<'a> {
         // This table is taken from the Weechat plugin API docs
         //
         // https://weechat.org/files/doc/stable/weechat_plugin_api.en.html#_hook_signal
+        #[allow(clippy::match_like_matches_macro)]
         match signal_name {
             "irc_channel_opened" | "irc_pv_opened" | "irc_server_opened" => true,
 
