@@ -91,21 +91,21 @@ impl Completion {
     }
 
     /// Get the command used in the completion.
-    pub fn base_command(&self) -> Cow<str> {
+    pub fn base_command(&self) -> Option<Cow<str>> {
         self.get_string("base_command")
     }
 
     /// Get the word that is being completed.
-    pub fn base_word(&self) -> Cow<str> {
+    pub fn base_word(&self) -> Option<Cow<str>> {
         self.get_string("base_word")
     }
 
     /// Get the command arguments including the base word.
-    pub fn arguments(&self) -> Cow<str> {
+    pub fn arguments(&self) -> Option<Cow<str>> {
         self.get_string("args")
     }
 
-    fn get_string(&self, property_name: &str) -> Cow<str> {
+    fn get_string(&self, property_name: &str) -> Option<Cow<str>> {
         let weechat = Weechat::from_ptr(self.weechat_ptr);
 
         let get_string = weechat.get().hook_completion_get_string.unwrap();
@@ -114,7 +114,12 @@ impl Completion {
 
         unsafe {
             let ret = get_string(self.ptr, property_name.as_ptr());
-            CStr::from_ptr(ret).to_string_lossy()
+
+            if ret.is_null() {
+                None
+            } else {
+                Some(CStr::from_ptr(ret).to_string_lossy())
+            }
         }
     }
 
