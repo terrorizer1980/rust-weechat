@@ -162,13 +162,46 @@ struct CompletionHookData {
 impl CompletionHook {
     /// Create a new completion
     ///
+    /// # Arguments
+    ///
     /// * `name` - The name of the new completion. After this is created the
     ///     can be used as `%(name)` when creating commands.
     ///
     /// * `description` - The description of the new completion.
     ///
     /// * `callback` - A function that will be called when the completion is
-    ///     used, the callback must populate the words for the completion.
+    ///     used, the callback must populate the candidates for the completion.
+    ///
+    /// # Example
+    /// ```no_run
+    /// # use std::borrow::Cow;
+    /// # use std::collections::HashSet;
+    /// # use weechat::Weechat;
+    /// # use weechat::buffer::Buffer;
+    /// # use weechat::hooks::{CompletionCallback, CompletionHook, Completion, CompletionPosition};
+    ///
+    /// pub struct MyMap {
+    ///     server_names: HashSet<String>,
+    /// }
+    ///
+    /// impl CompletionCallback for MyMap {
+    ///     fn callback(&mut self, _: &Weechat, _: &Buffer, _: Cow<str>, completion: &Completion) -> Result<(), ()> {
+    ///         for server_name in &self.server_names {
+    ///             completion.add_with_options(server_name, false, CompletionPosition::Sorted);
+    ///         }
+    ///         Ok(())
+    ///     }
+    /// }
+    ///
+    /// let servers = MyMap { server_names: HashSet::new() };
+    ///
+    /// let completion = CompletionHook::new(
+    ///     "matrix_servers",
+    ///     "Completion for the list of added Matrix servers",
+    ///     servers,
+    /// ).unwrap();
+    ///
+    /// ```
     pub fn new(
         completion_item: &str,
         description: &str,
