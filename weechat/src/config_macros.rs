@@ -124,6 +124,29 @@ macro_rules! section {
     ($section:ident { $($option_name:ident: $option_type:ident {$($option:tt)*}), * $(,)? }) => {
         $crate::paste::item! {
             pub struct [<$section:camel Section>]<'a>(weechat::config::SectionHandle<'a>);
+            pub struct [<$section:camel SectionMut>]<'a>(weechat::config::SectionHandleMut<'a>);
+
+            impl<'a> std::ops::Deref for [<$section:camel Section>]<'a> {
+                type Target = weechat::config::SectionHandle<'a>;
+
+                fn deref(&self) -> &Self::Target {
+                    &self.0
+                }
+            }
+
+            impl<'a> std::ops::Deref for [<$section:camel SectionMut>]<'a> {
+                type Target = weechat::config::SectionHandleMut<'a>;
+
+                fn deref(&self) -> &Self::Target {
+                    &self.0
+                }
+            }
+
+            impl<'a> std::ops::DerefMut for [<$section:camel SectionMut>]<'a> {
+                fn deref_mut(&mut self) -> &mut Self::Target {
+                    &mut self.0
+                }
+            }
 
             impl<'a> [<$section:camel Section>]<'a> {
                 fn create(config: &mut Config) {
@@ -159,6 +182,13 @@ macro_rules! section_getter {
                     .expect(&format!("Couldn't find section {}", $section_name));
 
                 $crate::paste::item! { [<$section:camel Section>](section) }
+            }
+
+            pub fn [<$section _mut>](&mut self) -> [<$section:camel SectionMut>] {
+                let section = self.0.search_section_mut($section_name)
+                    .expect(&format!("Couldn't find section {}", $section_name));
+
+                $crate::paste::item! { [<$section:camel SectionMut>](section) }
             }
         }
     };
