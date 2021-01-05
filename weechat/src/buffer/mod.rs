@@ -1425,4 +1425,14 @@ impl Buffer<'_> {
             })
         }
     }
+
+    /// Hide the buffer from the buflist.
+    pub fn hide(&self) {
+        self.set("hidden", "1");
+    }
+
+    /// Unhide the buffer from the buflist.
+    pub fn unhide(&self) {
+        self.set("hidden", "0");
+    }
 }
