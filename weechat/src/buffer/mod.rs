@@ -1238,6 +1238,28 @@ impl Buffer<'_> {
         self.set("input_pos", &position.to_string())
     }
 
+    /// Enable multiline support.
+    ///
+    /// If enabled multiple lines separated by a newline are sent as a single
+    /// string to the input callback. If disabled each line will be sent to the
+    /// input callback separately.
+    pub fn enable_multiline(&self) {
+        self.set("input_multiline", &1.to_string());
+    }
+
+    /// Disable multiline support.
+    ///
+    /// If enabled multiple lines separated by a newline are sent as a single
+    /// string to the input callback. If disabled each line will be sent to the
+    pub fn disable_multiline(&self) {
+        self.set("input_multiline", &0.to_string());
+    }
+
+    /// Is multiline support enabled for this buffer.
+    pub fn is_multiline_enabled(&self) -> bool {
+        self.get_integer("input_multiline") == 1
+    }
+
     /// Get the number of the buffer.
     pub fn number(&self) -> i32 {
         self.get_integer("number")
