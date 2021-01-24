@@ -307,7 +307,7 @@ impl Plugin for Ripgrep {
         let command_info = CommandSettings::new("rg");
 
         let runtime = Builder::new_multi_thread()
-            .max_threads(4)
+            .worker_threads(4)
             .thread_name("ripgrep-searcher")
             .build()
             .expect("Can't create the Tokio runtime");

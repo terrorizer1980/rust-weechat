@@ -608,7 +608,7 @@ impl Weechat {
     ///
     /// ```no_run
     /// use weechat::Weechat;
-    /// use async_std::sync::{channel, Receiver};
+    /// use async_std::channel::{bounded as channel, Receiver};
     /// use futures::executor::block_on;
     ///
     /// pub async fn task(receiver: Receiver<String>) {
