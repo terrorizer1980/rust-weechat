@@ -34,15 +34,15 @@ impl<'a> ModifierData<'a> {
         if modifier_name.starts_with("bar_condition_") {
             true
         } else {
-            match modifier_name {
+            matches!(
+                modifier_name,
                 "bar_condition_yyy"
-                | "history_add"
-                | "input_text_content"
-                | "input_text_display"
-                | "input_text_display_with_cursor"
-                | "input_text_for_buffer" => true,
-                _ => false,
-            }
+                    | "history_add"
+                    | "input_text_content"
+                    | "input_text_display"
+                    | "input_text_display_with_cursor"
+                    | "input_text_for_buffer"
+            )
         }
     }
 
