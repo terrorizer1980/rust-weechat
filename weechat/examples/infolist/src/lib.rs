@@ -26,8 +26,8 @@ use weechat::{
     plugin, Args, Plugin, Prefix, Weechat,
 };
 
+#[allow(unused)]
 struct Infolist {
-    #[used]
     command: Command,
 }
 

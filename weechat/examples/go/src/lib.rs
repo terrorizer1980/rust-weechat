@@ -138,8 +138,8 @@ config!(
     }
 );
 
+#[allow(unused)]
 struct Go {
-    #[used]
     command: Command,
 }
 
@@ -419,14 +419,11 @@ impl std::fmt::Display for BufferList {
     }
 }
 
+#[allow(unused)]
 struct Hooks {
-    #[used]
     modifier: ModifierHook,
-    #[used]
     input_command: CommandRun,
-    #[used]
     buffer_command: CommandRun,
-    #[used]
     window_command: CommandRun,
 }
 
