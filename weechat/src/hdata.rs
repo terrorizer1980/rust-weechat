@@ -2,6 +2,7 @@ use std::{
     borrow::Cow,
     collections::HashMap,
     ffi::{c_void, CStr},
+    os::raw::c_char,
 };
 use weechat_sys::t_hdata;
 
@@ -57,7 +58,7 @@ impl Weechat {
         hdata: *mut t_hdata,
         pointer: *mut c_void,
         name: &str,
-    ) -> i8 {
+    ) -> c_char {
         let hdata_char = self.get().hdata_char.unwrap();
         let name = LossyCString::new(name);
 

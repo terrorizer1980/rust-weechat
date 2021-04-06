@@ -1,4 +1,3 @@
-use libc::{c_char, c_int};
 use std::{
     borrow::Cow,
     cell::RefCell,
@@ -6,7 +5,7 @@ use std::{
     ffi::CStr,
     io::{Error as IoError, ErrorKind},
     marker::PhantomData,
-    os::raw::c_void,
+    os::raw::{c_char, c_int, c_void},
     ptr,
     rc::Rc,
 };

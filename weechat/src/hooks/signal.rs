@@ -1,5 +1,11 @@
-use libc::{c_char, c_int};
-use std::{borrow::Cow, cell::Cell, ffi::CStr, os::raw::c_void, ptr, rc::Rc};
+use std::{
+    borrow::Cow,
+    cell::Cell,
+    ffi::CStr,
+    os::raw::{c_char, c_int, c_void},
+    ptr,
+    rc::Rc,
+};
 
 use weechat_sys::{t_gui_buffer, t_weechat_plugin};
 
@@ -327,7 +333,7 @@ impl Weechat {
             unsafe {
                 signal_send(
                     signal_name.as_ptr(),
-                    weechat_sys::WEECHAT_HOOK_SIGNAL_STRING as *const _ as *const i8,
+                    weechat_sys::WEECHAT_HOOK_SIGNAL_STRING as *const _ as *const c_char,
                     string.as_ptr() as *mut _,
                 )
             }
@@ -343,7 +349,7 @@ impl Weechat {
                 ),
                 SignalData::String(_) => unreachable!(),
             };
-            unsafe { signal_send(signal_name.as_ptr(), data_type as *const i8, ptr) }
+            unsafe { signal_send(signal_name.as_ptr(), data_type as *const c_char, ptr) }
         };
 
         match ret {

@@ -1,10 +1,9 @@
-use libc::{c_char, c_int};
 use std::{
     cell::{Ref, RefCell, RefMut},
     collections::HashMap,
     ffi::CStr,
     ops::{Deref, DerefMut},
-    os::raw::c_void,
+    os::raw::{c_char, c_int, c_void},
     ptr,
     rc::Weak,
 };
@@ -395,8 +394,8 @@ pub(crate) type SectionReadCbT = unsafe extern "C" fn(
     _data: *mut c_void,
     _config: *mut t_config_file,
     _section: *mut t_config_section,
-    option_name: *const i8,
-    value: *const i8,
+    option_name: *const c_char,
+    value: *const c_char,
 ) -> c_int;
 
 pub(crate) type SectionWriteCbT = unsafe extern "C" fn(
