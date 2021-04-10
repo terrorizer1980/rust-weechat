@@ -12,10 +12,10 @@ repository = "https://github.com/poljar/rust-weechat"
 proc-macro = true
 
 [dependencies]
-libc = "0.2.82"
-syn = "1.0.59"
-proc-macro2 = "1.0.24"
-quote = "1.0.8"
+libc = "0.2.93"
+syn = "1.0.69"
+proc-macro2 = "1.0.26"
+quote = "1.0.9"
 
 [dev-dependencies]
 weechat = { path = "../weechat" }

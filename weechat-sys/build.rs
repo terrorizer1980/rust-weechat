@@ -29,11 +29,11 @@ fn build(file: &str) -> Result<Bindings, ()> {
     builder = builder.header(file);
 
     for t in INCLUDED_TYPES {
-        builder = builder.whitelist_type(t);
+        builder = builder.allowlist_type(t);
     }
 
     for v in INCLUDED_VARS {
-        builder = builder.whitelist_var(v);
+        builder = builder.allowlist_var(v);
     }
 
     builder.generate()
