@@ -132,7 +132,7 @@ config!(
         },
 
         buffer_numbers: bool {
-            "Automatically jump to a buffer when it is uniquely selected.",
+            "Display buffer numbers.",
             false,
         },
     }
