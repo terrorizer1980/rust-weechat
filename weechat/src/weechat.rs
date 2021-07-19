@@ -602,7 +602,12 @@ impl Weechat {
     ///
     /// # Panics
     ///
-    /// Panics if the method is not called from the main Weechat thread.
+    /// Panics if the method is not called from the main Weechat thread or if
+    /// the method is called in a buffer close callback when Weechat is shutting
+    /// down.
+    ///
+    /// The buffer close callback gets called after the plugin is dropped and
+    /// the executor will be stopped at that point.
     ///
     /// # Example
     ///
@@ -630,11 +635,58 @@ impl Weechat {
     /// let (tx, rx) = channel(1000);
     ///
     /// Weechat::spawn(task(rx));
-    /// block_on(tx.send("Hello wordl".to_string()));
+    /// block_on(tx.send("Hello world".to_string()));
     /// ```
     #[cfg(feature = "async")]
     #[cfg_attr(feature = "docs", doc(cfg(r#async)))]
     pub fn spawn<F>(future: F) -> Task<F::Output>
+    where
+        F: Future + 'static,
+        F::Output: 'static,
+    {
+        Weechat::check_thread();
+        WeechatExecutor::spawn(future).expect("Executor isn't running anymore")
+    }
+
+    /// Spawn a new `Future` on the main Weechat thread, checking if the
+    /// executor is running.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the method is not called from the main Weechat thread.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use weechat::Weechat;
+    /// use async_std::channel::{bounded as channel, Receiver};
+    /// use futures::executor::block_on;
+    ///
+    /// pub async fn task(receiver: Receiver<String>) {
+    ///     loop {
+    ///         match receiver.recv().await {
+    ///             Ok(m) => {
+    ///                 Weechat::print(&format!("Received message: {}", m));
+    ///             },
+    ///             Err(e) => {
+    ///                 Weechat::print(
+    ///                     &format!("Error receiving on channel {:?}", e)
+    ///                 );
+    ///                 return;
+    ///             }
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// let (tx, rx) = channel(1000);
+    ///
+    /// if let Some(task) = Weechat::spawn_checked(task(rx)) {
+    ///     block_on(tx.send("Hello world".to_string()));
+    /// }
+    /// ```
+    #[cfg(feature = "async")]
+    #[cfg_attr(feature = "docs", doc(cfg(r#async)))]
+    pub fn spawn_checked<F>(future: F) -> Option<Task<F::Output>>
     where
         F: Future + 'static,
         F::Output: 'static,

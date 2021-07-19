@@ -177,14 +177,18 @@ impl WeechatExecutor {
     }
 
     /// Spawn a future that will run on the Weechat main loop.
-    pub fn spawn<F>(future: F) -> Task<F::Output>
+    pub fn spawn<F>(future: F) -> Option<Task<F::Output>>
     where
         F: Future + 'static,
         F::Output: 'static,
     {
-        let executor = unsafe { _EXECUTOR.as_ref().expect("Executor wasn't started") };
+        let executor = unsafe { _EXECUTOR.as_ref() };
 
-        executor.spawn_local(future)
+        if let Some(executor) = executor {
+            Some(executor.spawn_local(future))
+        } else {
+            None
+        }
     }
 
     pub(crate) fn spawn_buffer_cb<F>(buffer_name: String, future: F) -> Task<F::Output>
